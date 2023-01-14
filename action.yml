@@ -1,11 +1,10 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: rtx install
+description: Actions for working with rtx runtime manager
+author: Jeff Dickey (@jdxcode)
 inputs:
-  milliseconds: # change this
-    required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+  tool_versions:
+    required: false
+    description: If present, this value will be written to the .tool-versions file
 runs:
-  using: 'node16'
-  main: 'dist/index.js'
+  using: node16
+  main: dist/index.js

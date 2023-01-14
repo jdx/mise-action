@@ -1,19 +1,34 @@
 import * as core from '@actions/core'
-import {wait} from './wait'
+import * as exec from '@actions/exec'
+import * as fs from 'fs'
 
 async function run(): Promise<void> {
-  try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_STEP_DEBUG` to true
+  await setupRTX()
+  await setToolVersions()
+  await exec.exec('rtx', ['install'])
+}
 
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+async function setupRTX(): Promise<void> {
+  console.error("TODO: SETUPRTX");
+}
 
-    core.setOutput('time', new Date().toTimeString())
-  } catch (error) {
-    if (error instanceof Error) core.setFailed(error.message)
+async function setToolVersions(): Promise<void> {
+  let toolVersions = core.getInput("tool_versions", { required: false });
+  if (toolVersions) {
+    await fs.promises.writeFile(".tool-versions", toolVersions, {
+      encoding: "utf8",
+    });
   }
 }
 
-run()
+if (require.main === module) {
+  try {
+    run()
+  } catch (err) {
+    if (err instanceof Error) {
+      core.setFailed(err.message)
+    } else throw err
+  }
+}
+
+export { run }
