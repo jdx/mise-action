@@ -19,4 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: rtx-cli
       - uses: ./
