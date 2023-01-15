@@ -5,6 +5,7 @@ import * as fs from 'fs'
 async function run(): Promise<void> {
   await setupRTX()
   await setToolVersions()
+  await exec.exec('rtx', ['--version'])
   await exec.exec('rtx', ['install'])
 }
 

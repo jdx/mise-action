@@ -47,6 +47,7 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         yield setupRTX();
         yield setToolVersions();
+        yield exec.exec('rtx', ['--version']);
         yield exec.exec('rtx', ['install']);
     });
 }
