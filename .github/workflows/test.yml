@@ -20,5 +20,3 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: ./
-        with:
-          milliseconds: 1000
