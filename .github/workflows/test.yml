@@ -23,3 +23,9 @@ jobs:
         with:
           tool: rtx-cli
       - uses: ./
+        with:
+          tool_versions: |
+            nodejs 18
+      - run: |
+          rtx --version
+          rtx exec -- node --version
