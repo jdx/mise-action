@@ -19,13 +19,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: taiki-e/install-action@v2
-        with:
-          tool: rtx-cli
       - uses: ./
         with:
           tool_versions: |
             nodejs 18
-      - run: |
-          rtx --version
-          rtx exec -- node --version
+      - run: rtx --version
+      - run: rtx exec -- node --version
+      - run: which node
+      - run: node -v
