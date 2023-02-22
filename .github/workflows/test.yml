@@ -33,6 +33,8 @@ jobs:
       - uses: ./
         with:
           tool_versions: ${{ matrix.tool_versions }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: rtx --version
       - run: rtx exec -- node --version
       - run: which node

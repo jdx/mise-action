@@ -55,29 +55,20 @@ function run() {
     });
 }
 exports.run = run;
-function getLatestRTXAssetURL() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const output = yield exec.getExecOutput('curl', ['-sSf', 'https://api.github.com/repos/jdxcode/rtx/releases/latest'], { silent: true });
-        const json = JSON.parse(output.stdout);
-        const platform = `${getOS()}-${os.arch()}`;
-        const asset = json.assets.find(a => a.name.endsWith(platform));
-        if (!asset) {
-            const assets = json.assets.map(a => a.name).join(', ');
-            throw new Error(`No asset for ${platform}, got: ${assets}`);
-        }
-        return asset.browser_download_url;
-    });
-}
 function setupRTX() {
     return __awaiter(this, void 0, void 0, function* () {
         const rtxBinDir = path.join(os.homedir(), '.local/share/rtx/bin');
+        const platform = `${getOS()}-${os.arch()}`;
         yield fs.promises.mkdir(rtxBinDir, { recursive: true });
-        yield exec.exec('curl', [
-            '-sSfL',
-            '--compressed',
+        yield exec.exec('gh', [
+            'release',
+            'download',
+            '--pattern',
+            `*${platform}`,
+            '--repo',
+            'jdxcode/rtx',
             '--output',
-            path.join(rtxBinDir, 'rtx'),
-            yield getLatestRTXAssetURL()
+            path.join(rtxBinDir, 'rtx')
         ]);
         yield exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
         core.addPath(rtxBinDir);
