@@ -1,4 +1,4 @@
-name: rtx install
+name: rtx action
 description: Actions for working with rtx runtime manager
 author: Jeff Dickey (@jdxcode)
 branding:
