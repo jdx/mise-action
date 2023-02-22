@@ -1,8 +1,9 @@
 name: rtx install
 description: Actions for working with rtx runtime manager
 author: Jeff Dickey (@jdxcode)
-icon: arrow-down-circle
-color: purple
+branding:
+  icon: arrow-down-circle
+  color: purple
 inputs:
   tool_versions:
     required: false
