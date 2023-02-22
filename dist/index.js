@@ -43,18 +43,44 @@ exports.run = void 0;
 const core = __importStar(__nccwpck_require__(186));
 const exec = __importStar(__nccwpck_require__(514));
 const fs = __importStar(__nccwpck_require__(147));
+const os = __importStar(__nccwpck_require__(37));
+const path = __importStar(__nccwpck_require__(17));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         yield setupRTX();
         yield setToolVersions();
         yield exec.exec('rtx', ['--version']);
         yield exec.exec('rtx', ['install']);
+        yield setPaths();
     });
 }
 exports.run = run;
+function getLatestRTXAssetURL() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const output = yield exec.getExecOutput('curl', ['-sSf', 'https://api.github.com/repos/jdxcode/rtx/releases/latest'], { silent: true });
+        const json = JSON.parse(output.stdout);
+        const platform = `${getOS()}-${os.arch()}`;
+        const asset = json.assets.find(a => a.name.endsWith(platform));
+        if (!asset) {
+            const assets = json.assets.map(a => a.name).join(', ');
+            throw new Error(`No asset for ${platform}, got: ${assets}`);
+        }
+        return asset.browser_download_url;
+    });
+}
 function setupRTX() {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug('Not implemented');
+        const rtxBinDir = path.join(os.homedir(), '.local/share/rtx/bin');
+        yield fs.promises.mkdir(rtxBinDir, { recursive: true });
+        yield exec.exec('curl', [
+            '-sSfL',
+            '--compressed',
+            '--output',
+            path.join(rtxBinDir, 'rtx'),
+            yield getLatestRTXAssetURL()
+        ]);
+        yield exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
+        core.addPath(rtxBinDir);
     });
 }
 function setToolVersions() {
@@ -65,6 +91,27 @@ function setToolVersions() {
                 encoding: 'utf8'
             });
         }
+    });
+}
+function getOS() {
+    switch (process.platform) {
+        case 'darwin':
+            return 'macos';
+        default:
+            return process.platform;
+    }
+}
+function setPaths() {
+    return __awaiter(this, void 0, void 0, function* () {
+        for (const binPath of yield getBinPaths()) {
+            core.addPath(binPath);
+        }
+    });
+}
+function getBinPaths() {
+    return __awaiter(this, void 0, void 0, function* () {
+        const output = yield exec.getExecOutput('rtx', ['bin-paths']);
+        return output.stdout.split('\n');
     });
 }
 if (require.main === require.cache[eval('__filename')]) {
