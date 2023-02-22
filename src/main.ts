@@ -12,41 +12,19 @@ async function run(): Promise<void> {
   await setPaths()
 }
 
-interface GHAsset {
-  name: string
-  url: string
-  browser_download_url: string
-}
-
-interface GHAssets {
-  assets: GHAsset[]
-}
-
-async function getLatestRTXAssetURL(): Promise<string> {
-  const output = await exec.getExecOutput(
-    'curl',
-    ['-sSf', 'https://api.github.com/repos/jdxcode/rtx/releases/latest'],
-    {silent: true}
-  )
-  const json: GHAssets = JSON.parse(output.stdout)
-  const platform = `${getOS()}-${os.arch()}`
-  const asset = json.assets.find(a => a.name.endsWith(platform))
-  if (!asset) {
-    const assets = json.assets.map(a => a.name).join(', ')
-    throw new Error(`No asset for ${platform}, got: ${assets}`)
-  }
-  return asset.browser_download_url
-}
-
 async function setupRTX(): Promise<void> {
   const rtxBinDir = path.join(os.homedir(), '.local/share/rtx/bin')
+  const platform = `${getOS()}-${os.arch()}`
   await fs.promises.mkdir(rtxBinDir, {recursive: true})
-  await exec.exec('curl', [
-    '-sSfL',
-    '--compressed',
+  await exec.exec('gh', [
+    'release',
+    'download',
+    '--pattern',
+    `*${platform}`,
+    '--repo',
+    'jdxcode/rtx',
     '--output',
-    path.join(rtxBinDir, 'rtx'),
-    await getLatestRTXAssetURL()
+    path.join(rtxBinDir, 'rtx')
   ])
   await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')])
   core.addPath(rtxBinDir)

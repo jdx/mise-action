@@ -16,13 +16,25 @@ jobs:
       - run: |
           npm run all
   test: # make sure the action works on a clean machine without building
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+        tool_versions:
+          - |
+            nodejs 18
+          - |
+            nodejs 16
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
       - uses: ./
         with:
-          tool_versions: |
-            nodejs 18
+          tool_versions: ${{ matrix.tool_versions }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: rtx --version
       - run: rtx exec -- node --version
       - run: which node
