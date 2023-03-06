@@ -63,6 +63,7 @@ function setupRTX() {
         yield exec.exec('gh', [
             'release',
             'download',
+            '--clobber',
             '--pattern',
             `*${platform}`,
             '--repo',

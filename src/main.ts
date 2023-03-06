@@ -19,6 +19,7 @@ async function setupRTX(): Promise<void> {
   await exec.exec('gh', [
     'release',
     'download',
+    '--clobber',
     '--pattern',
     `*${platform}`,
     '--repo',
