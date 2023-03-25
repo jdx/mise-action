@@ -6,9 +6,10 @@ import * as path from 'path'
 
 async function run(): Promise<void> {
   await setupRTX()
-  await setToolVersions()
   await exec.exec('rtx', ['--version'])
-  await exec.exec('rtx', ['install'])
+  if (await setToolVersions()) {
+    await exec.exec('rtx', ['install'])
+  }
   await setPaths()
 }
 
@@ -31,13 +32,16 @@ async function setupRTX(): Promise<void> {
   core.addPath(rtxBinDir)
 }
 
-async function setToolVersions(): Promise<void> {
+// returns true if tool_versions was set
+async function setToolVersions(): Promise<Boolean> {
   const toolVersions = core.getInput('tool_versions', {required: false})
   if (toolVersions) {
     await fs.promises.writeFile('.tool-versions', toolVersions, {
       encoding: 'utf8'
     })
+    return true
   }
+  return false
 }
 
 function getOS(): string {

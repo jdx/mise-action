@@ -48,9 +48,10 @@ const path = __importStar(__nccwpck_require__(17));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         yield setupRTX();
-        yield setToolVersions();
         yield exec.exec('rtx', ['--version']);
-        yield exec.exec('rtx', ['install']);
+        if (yield setToolVersions()) {
+            yield exec.exec('rtx', ['install']);
+        }
         yield setPaths();
     });
 }
@@ -75,6 +76,7 @@ function setupRTX() {
         core.addPath(rtxBinDir);
     });
 }
+// returns true if tool_versions was set
 function setToolVersions() {
     return __awaiter(this, void 0, void 0, function* () {
         const toolVersions = core.getInput('tool_versions', { required: false });
@@ -82,7 +84,9 @@ function setToolVersions() {
             yield fs.promises.writeFile('.tool-versions', toolVersions, {
                 encoding: 'utf8'
             });
+            return true;
         }
+        return false;
     });
 }
 function getOS() {
