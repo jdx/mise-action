@@ -29,15 +29,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = void 0;
 const core = __importStar(__nccwpck_require__(186));
@@ -45,49 +36,43 @@ const exec = __importStar(__nccwpck_require__(514));
 const fs = __importStar(__nccwpck_require__(147));
 const os = __importStar(__nccwpck_require__(37));
 const path = __importStar(__nccwpck_require__(17));
-function run() {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield setupRTX();
-        yield exec.exec('rtx', ['--version']);
-        if (yield setToolVersions()) {
-            yield exec.exec('rtx', ['install']);
-        }
-        yield setPaths();
-    });
+async function run() {
+    await setupRTX();
+    await exec.exec('rtx', ['--version']);
+    if (await setToolVersions()) {
+        await exec.exec('rtx', ['install']);
+    }
+    await setPaths();
 }
 exports.run = run;
-function setupRTX() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const rtxBinDir = path.join(os.homedir(), '.local/share/rtx/bin');
-        const platform = `${getOS()}-${os.arch()}`;
-        yield fs.promises.mkdir(rtxBinDir, { recursive: true });
-        yield exec.exec('gh', [
-            'release',
-            'download',
-            '--clobber',
-            '--pattern',
-            `*${platform}`,
-            '--repo',
-            'jdxcode/rtx',
-            '--output',
-            path.join(rtxBinDir, 'rtx')
-        ]);
-        yield exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
-        core.addPath(rtxBinDir);
-    });
+async function setupRTX() {
+    const rtxBinDir = path.join(os.homedir(), '.local/share/rtx/bin');
+    const platform = `${getOS()}-${os.arch()}`;
+    await fs.promises.mkdir(rtxBinDir, { recursive: true });
+    await exec.exec('gh', [
+        'release',
+        'download',
+        '--clobber',
+        '--pattern',
+        `*${platform}`,
+        '--repo',
+        'jdxcode/rtx',
+        '--output',
+        path.join(rtxBinDir, 'rtx')
+    ]);
+    await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
+    core.addPath(rtxBinDir);
 }
 // returns true if tool_versions was set
-function setToolVersions() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const toolVersions = core.getInput('tool_versions', { required: false });
-        if (toolVersions) {
-            yield fs.promises.writeFile('.tool-versions', toolVersions, {
-                encoding: 'utf8'
-            });
-            return true;
-        }
-        return false;
-    });
+async function setToolVersions() {
+    const toolVersions = core.getInput('tool_versions', { required: false });
+    if (toolVersions) {
+        await fs.promises.writeFile('.tool-versions', toolVersions, {
+            encoding: 'utf8'
+        });
+        return true;
+    }
+    return false;
 }
 function getOS() {
     switch (process.platform) {
@@ -97,18 +82,14 @@ function getOS() {
             return process.platform;
     }
 }
-function setPaths() {
-    return __awaiter(this, void 0, void 0, function* () {
-        for (const binPath of yield getBinPaths()) {
-            core.addPath(binPath);
-        }
-    });
+async function setPaths() {
+    for (const binPath of await getBinPaths()) {
+        core.addPath(binPath);
+    }
 }
-function getBinPaths() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const output = yield exec.getExecOutput('rtx', ['bin-paths']);
-        return output.stdout.split('\n');
-    });
+async function getBinPaths() {
+    const output = await exec.getExecOutput('rtx', ['bin-paths']);
+    return output.stdout.split('\n');
 }
 if (require.main === require.cache[eval('__filename')]) {
     try {
