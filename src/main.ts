@@ -14,20 +14,10 @@ async function run(): Promise<void> {
 }
 
 async function setupRTX(): Promise<void> {
-  const rtxBinDir = path.join(os.homedir(), '.local/share/rtx/bin')
-  const platform = `${getOS()}-${os.arch()}`
+  const rtxBinDir = path.join(rtxDir(), 'bin')
+  const url = `https://rtx.pub/rtx-latest-${getOS()}-${os.arch()}`
   await fs.promises.mkdir(rtxBinDir, {recursive: true})
-  await exec.exec('gh', [
-    'release',
-    'download',
-    '--clobber',
-    '--pattern',
-    `*${platform}`,
-    '--repo',
-    'jdxcode/rtx',
-    '--output',
-    path.join(rtxBinDir, 'rtx')
-  ])
+  await exec.exec('curl', [url, '--output', path.join(rtxBinDir, 'rtx')])
   await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')])
   core.addPath(rtxBinDir)
 }
@@ -62,6 +52,16 @@ async function setPaths(): Promise<void> {
 async function getBinPaths(): Promise<string[]> {
   const output = await exec.getExecOutput('rtx', ['bin-paths'])
   return output.stdout.split('\n')
+}
+
+function rtxDir(): string {
+  if (process.env.RTX_DATA_HOME) {
+    return process.env.RTX_DATA_HOME
+  }
+  if (process.env.XDG_DATA_HOME) {
+    return path.join(process.env.XDG_DATA_HOME, 'rtx')
+  }
+  return path.join(os.homedir(), '.local/share/rtx')
 }
 
 if (require.main === module) {
