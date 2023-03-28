@@ -7,9 +7,8 @@ import * as path from 'path'
 async function run(): Promise<void> {
   await setupRTX()
   await exec.exec('rtx', ['--version'])
-  if (await setToolVersions()) {
-    await exec.exec('rtx', ['install'])
-  }
+  await setToolVersions()
+  await exec.exec('rtx', ['install'])
   await setPaths()
 }
 

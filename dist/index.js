@@ -39,9 +39,8 @@ const path = __importStar(__nccwpck_require__(17));
 async function run() {
     await setupRTX();
     await exec.exec('rtx', ['--version']);
-    if (await setToolVersions()) {
-        await exec.exec('rtx', ['install']);
-    }
+    await setToolVersions();
+    await exec.exec('rtx', ['install']);
     await setPaths();
 }
 exports.run = run;
