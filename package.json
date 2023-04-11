@@ -1,33 +1,35 @@
 {
-  "name": "typescript-action",
+  "name": "rtx-action",
   "version": "1.1.1",
   "private": true,
-  "description": "TypeScript template action",
+  "description": "rtx tool setup action",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
     "format": "prettier --write '**/*.ts'",
     "format-check": "prettier --check '**/*.ts'",
     "lint": "eslint src/**/*.ts",
-    "package": "ncc build --source-map --license licenses.txt",
+    "package": "ncc build --source-map --license licenses.txt && ncc build -o dist/cache-save lib/cache-save.js --source-map",
     "test": "jest",
     "all": "npm run build && npm run format && npm run lint && npm run package && npm test",
     "prepare": "husky install"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/jdxcode/rtx-action.git"
   },
   "keywords": [
     "actions",
-    "node",
+    "rtx",
     "setup"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@actions/cache": "^3.2.1",
     "@actions/core": "^1.10.0",
-    "@actions/exec": "^1.1.1"
+    "@actions/exec": "^1.1.1",
+    "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
     "@tsconfig/node16": "^1.0.3",

@@ -8,6 +8,11 @@ inputs:
   tool_versions:
     required: false
     description: If present, this value will be written to the .tool-versions file
+outputs::
+  cache-hit:
+    description: 'A boolean value to indicate if a cache was hit.'
 runs:
   using: node16
   main: dist/index.js
+  post: dist/cache-save/index.js
+  post-if: success()

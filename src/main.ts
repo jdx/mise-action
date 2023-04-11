@@ -1,15 +1,38 @@
+import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
+import * as glob from '@actions/glob'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import {rtxDir} from './utils'
 
 async function run(): Promise<void> {
+  await setToolVersions()
+  await restoreRTXCache()
   await setupRTX()
   await exec.exec('rtx', ['--version'])
-  await setToolVersions()
   await exec.exec('rtx', ['install'])
   await setPaths()
+}
+
+async function restoreRTXCache(): Promise<void> {
+  const cachePath = rtxDir()
+  const fileHash = await glob.hashFiles(`**/.tool-versions\n**/.rtx.toml`)
+  const primaryKey = `rtx-tools-${getOS()}-${os.arch()}-${fileHash}`
+
+  core.saveState('PRIMARY_KEY', primaryKey)
+
+  const cacheKey = await cache.restoreCache([cachePath], primaryKey)
+  core.setOutput('cache-hit', Boolean(cacheKey))
+
+  if (!cacheKey) {
+    core.info(`rtx cache not found for ${getOS()}-${os.arch()} tool versions`)
+    return
+  }
+
+  core.saveState('CACHE_KEY', cacheKey)
+  core.info(`rtx cache restored from key: ${cacheKey}`)
 }
 
 async function setupRTX(): Promise<void> {
@@ -51,16 +74,6 @@ async function setPaths(): Promise<void> {
 async function getBinPaths(): Promise<string[]> {
   const output = await exec.getExecOutput('rtx', ['bin-paths'])
   return output.stdout.split('\n')
-}
-
-function rtxDir(): string {
-  if (process.env.RTX_DATA_HOME) {
-    return process.env.RTX_DATA_HOME
-  }
-  if (process.env.XDG_DATA_HOME) {
-    return path.join(process.env.XDG_DATA_HOME, 'rtx')
-  }
-  return path.join(os.homedir(), '.local/share/rtx')
 }
 
 if (require.main === module) {
