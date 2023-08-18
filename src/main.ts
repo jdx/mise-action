@@ -11,9 +11,22 @@ async function run(): Promise<void> {
   await setToolVersions()
   await restoreRTXCache()
   await setupRTX()
+  await setEnvVars()
   await exec.exec('rtx', ['--version'])
   await exec.exec('rtx', ['install'])
   await setPaths()
+}
+
+async function setEnvVars(): Promise<void> {
+  if (!process.env['RTX_TRUSTED_CONFIG_PATHS']) {
+    core.exportVariable(
+      'RTX_TRUSTED_CONFIG_PATHS',
+      path.join(process.cwd(), '.rtx.toml')
+    )
+  }
+  if (!process.env['RTX_YES']) {
+    core.exportVariable('RTX_YES', 'yes')
+  }
 }
 
 async function restoreRTXCache(): Promise<void> {
