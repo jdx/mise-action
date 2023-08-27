@@ -1,6 +1,6 @@
 name: rtx action
 description: Actions for working with rtx runtime manager
-author: Jeff Dickey (@jdxcode)
+author: Jeff Dickey <@jdx>
 branding:
   icon: arrow-down-circle
   color: purple

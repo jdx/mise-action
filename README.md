@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: jdxcode/rtx-action@v1
+      - uses: jdx/rtx-action@v1
         with:
           tool_versions: |
             shellcheck 0.9.0
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: jdxcode/rtx-action@v1
+      - uses: jdx/rtx-action@v1
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
