@@ -45,7 +45,10 @@ async function run() {
     await setupRTX();
     await setEnvVars();
     await exec.exec('rtx', ['--version']);
-    await exec.exec('rtx', ['install']);
+    const install = core.getBooleanInput('install', { required: false });
+    if (install) {
+        await exec.exec('rtx', ['install']);
+    }
     await setPaths();
 }
 exports.run = run;

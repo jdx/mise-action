@@ -8,6 +8,10 @@ inputs:
   tool_versions:
     required: false
     description: If present, this value will be written to the .tool-versions file
+  install:
+    required: false
+    default: true
+    description: 'if false, will not run `rtx install`'
 outputs:
   cache-hit:
     description: 'A boolean value to indicate if a cache was hit.'
