@@ -1,7 +1,7 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as fs from 'fs'
-import {rtxDir} from './utils'
+import { rtxDir } from './utils'
 
 export async function run(): Promise<void> {
   try {

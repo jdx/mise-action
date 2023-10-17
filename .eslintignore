@@ -1,4 +1,4 @@
-dist/
 lib/
+dist/
 node_modules/
-jest.config.js
+coverage/

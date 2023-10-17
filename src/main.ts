@@ -5,7 +5,7 @@ import * as glob from '@actions/glob'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import {rtxDir} from './utils'
+import { rtxDir } from './utils'
 
 async function run(): Promise<void> {
   await setToolVersions()
@@ -13,7 +13,7 @@ async function run(): Promise<void> {
   await setupRTX()
   await setEnvVars()
   await exec.exec('rtx', ['--version'])
-  const install = core.getBooleanInput('install', {required: false})
+  const install = core.getBooleanInput('install', { required: false })
   if (install) {
     await exec.exec('rtx', ['install'])
   }
@@ -54,15 +54,15 @@ async function restoreRTXCache(): Promise<void> {
 async function setupRTX(): Promise<void> {
   const rtxBinDir = path.join(rtxDir(), 'bin')
   const url = `https://rtx.pub/rtx-latest-${getOS()}-${os.arch()}`
-  await fs.promises.mkdir(rtxBinDir, {recursive: true})
+  await fs.promises.mkdir(rtxBinDir, { recursive: true })
   await exec.exec('curl', [url, '--output', path.join(rtxBinDir, 'rtx')])
   await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')])
   core.addPath(rtxBinDir)
 }
 
 // returns true if tool_versions was set
-async function setToolVersions(): Promise<Boolean> {
-  const toolVersions = core.getInput('tool_versions', {required: false})
+async function setToolVersions(): Promise<boolean> {
+  const toolVersions = core.getInput('tool_versions', { required: false })
   if (toolVersions) {
     await fs.promises.writeFile('.tool-versions', toolVersions, {
       encoding: 'utf8'
@@ -102,4 +102,4 @@ if (require.main === module) {
   }
 }
 
-export {run}
+export { run }

@@ -25,9 +25,9 @@ jobs:
           - macos-latest
         tool_versions:
           - |
-            nodejs 18
+            nodejs 20
           - |
-            nodejs 16
+            nodejs 18
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

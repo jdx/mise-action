@@ -1,4 +1,4 @@
-## Example Workflow
+# Example Workflow
 
 ```yaml
 name: test

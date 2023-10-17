@@ -1,19 +1,9 @@
 {
   "name": "rtx-action",
-  "version": "1.1.1",
-  "private": true,
   "description": "rtx tool setup action",
-  "main": "lib/main.js",
-  "scripts": {
-    "build": "tsc",
-    "format": "prettier --write '**/*.ts'",
-    "format-check": "prettier --check '**/*.ts'",
-    "lint": "eslint src/**/*.ts",
-    "package": "ncc build --source-map --license licenses.txt && ncc build -o dist/cache-save lib/cache-save.js --source-map",
-    "test": "jest",
-    "all": "npm run build && npm run format && npm run lint && npm run package && npm test",
-    "prepare": "husky install"
-  },
+  "version": "1.1.1",
+  "author": "jdx",
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jdx/rtx-action.git"
@@ -23,29 +13,41 @@
     "rtx",
     "setup"
   ],
-  "author": "",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "all": "npm run format:write && npm run lint && npm run package",
+    "bundle": "npm run format:write && npm run package",
+    "format:check": "prettier --check **/*.ts",
+    "format:write": "prettier --write **/*.ts",
+    "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
+    "package": "ncc build src/index.ts --license licenses.txt",
+    "package:watch": "npm run package -- --watch",
+    "prepare": "husky install"
+  },
   "license": "MIT",
   "dependencies": {
     "@actions/cache": "^3.2.2",
-    "@actions/core": "^1.10.0",
+    "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
     "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
-    "@tsconfig/node16": "^16.1.1",
     "@types/node": "^20.8.6",
     "@typescript-eslint/eslint-plugin": "^6.7.5",
-    "@typescript-eslint/parser": "^6.7.4",
+    "@typescript-eslint/parser": "^6.7.5",
     "@vercel/ncc": "^0.38.0",
     "eslint": "^8.51.0",
     "eslint-plugin-github": "^4.10.1",
     "eslint-plugin-jest": "^27.4.2",
+    "eslint-plugin-jsonc": "^2.10.0",
     "eslint-plugin-prettier": "^5.0.1",
     "husky": "^8.0.3",
     "jest": "^29.7.0",
     "js-yaml": "^4.1.0",
     "prettier": "^3.0.3",
-    "ts-jest": "^29.1.1",
+    "prettier-eslint": "^16.1.1",
     "typescript": "^5.2.2"
   }
 }
