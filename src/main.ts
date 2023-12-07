@@ -28,7 +28,7 @@ async function setEnvVars(): Promise<void> {
     )
   }
   if (!process.env['RTX_YES']) {
-    core.exportVariable('RTX_YES', 'yes')
+    core.exportVariable('RTX_YES', '1')
   }
 }
 

@@ -82948,7 +82948,7 @@ async function setEnvVars() {
         core.exportVariable('RTX_TRUSTED_CONFIG_PATHS', path.join(process.cwd(), '.rtx.toml'));
     }
     if (!process.env['RTX_YES']) {
-        core.exportVariable('RTX_YES', 'yes');
+        core.exportVariable('RTX_YES', '1');
     }
 }
 async function restoreRTXCache() {
