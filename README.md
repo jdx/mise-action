@@ -27,3 +27,12 @@ jobs:
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
+
+Alternatively, rtx is easy to use in GitHub Actions even without this:
+
+```yaml
+jobs:
+  build:
+    steps:
+    - run: curl https://rtx.pub/install.sh | sh && echo "$HOME/.local/share/rtx/bin/rtx" >> $GITHUB_PATH
+```
