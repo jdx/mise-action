@@ -34,5 +34,8 @@ Alternatively, rtx is easy to use in GitHub Actions even without this:
 jobs:
   build:
     steps:
-    - run: curl https://rtx.pub/install.sh | sh && echo "$HOME/.local/share/rtx/bin" >> $GITHUB_PATH
+    - run: |
+        curl https://rtx.pub/install.sh | sh
+        echo "$HOME/.local/share/rtx/bin" >> $GITHUB_PATH
+        echo "$HOME/.local/share/rtx/shims" >> $GITHUB_PATH
 ```
