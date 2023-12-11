@@ -82967,7 +82967,7 @@ async function restoreRTXCache() {
 }
 async function setupRTX() {
     const rtxBinDir = path.join((0, utils_1.rtxDir)(), 'bin');
-    const url = `https://rtx.pub/rtx-latest-${getOS()}-${os.arch()}`;
+    const url = `https://rtx.jdx.dev/rtx-latest-${getOS()}-${os.arch()}`;
     await fs.promises.mkdir(rtxBinDir, { recursive: true });
     await exec.exec('curl', [url, '--output', path.join(rtxBinDir, 'rtx')]);
     await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);

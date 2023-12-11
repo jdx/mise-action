@@ -53,7 +53,7 @@ async function restoreRTXCache(): Promise<void> {
 
 async function setupRTX(): Promise<void> {
   const rtxBinDir = path.join(rtxDir(), 'bin')
-  const url = `https://rtx.pub/rtx-latest-${getOS()}-${os.arch()}`
+  const url = `https://rtx.jdx.dev/rtx-latest-${getOS()}-${os.arch()}`
   await fs.promises.mkdir(rtxBinDir, { recursive: true })
   await exec.exec('curl', [url, '--output', path.join(rtxBinDir, 'rtx')])
   await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')])
