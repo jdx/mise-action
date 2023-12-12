@@ -82932,7 +82932,14 @@ const path = __importStar(__nccwpck_require__(1017));
 const utils_1 = __nccwpck_require__(1314);
 async function run() {
     await setToolVersions();
-    await restoreRTXCache();
+    if (core.getBooleanInput('cache')) {
+        await restoreRTXCache();
+        core.saveState('CACHE', false);
+    }
+    else {
+        core.saveState('CACHE', true);
+        core.setOutput('cache-hit', false);
+    }
     await setupRTX();
     await setEnvVars();
     await exec.exec('rtx', ['--version']);

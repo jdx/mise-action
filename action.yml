@@ -12,6 +12,10 @@ inputs:
     required: false
     default: "true"
     description: 'if false, will not run `rtx install`'
+  cache:
+    required: false
+    default: "true"
+    description: 'if false, action will not automatically cache'
 outputs:
   cache-hit:
     description: 'A boolean value to indicate if a cache was hit.'

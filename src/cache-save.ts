@@ -12,6 +12,13 @@ export async function run(): Promise<void> {
 }
 
 async function cacheRTXTools(): Promise<void> {
+  const skipCache = core.getState('CACHE')
+
+  if (skipCache) {
+    core.info('Skipping saving cache')
+    return
+  }
+
   const state = core.getState('CACHE_KEY')
   const primaryKey = core.getState('PRIMARY_KEY')
   const cachePath = rtxDir()

@@ -9,7 +9,15 @@ import { rtxDir } from './utils'
 
 async function run(): Promise<void> {
   await setToolVersions()
-  await restoreRTXCache()
+
+  if (core.getBooleanInput('cache')) {
+    await restoreRTXCache()
+    core.saveState('CACHE', false)
+  } else {
+    core.saveState('CACHE', true)
+    core.setOutput('cache-hit', false)
+  }
+
   await setupRTX()
   await setEnvVars()
   await exec.exec('rtx', ['--version'])
