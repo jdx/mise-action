@@ -16,6 +16,9 @@ jobs:
       - uses: actions/checkout@v3
       - uses: jdx/rtx-action@v1
         with:
+          version: 2023.12.0 # [default: latest] rtx version to install
+          install: true # [default: true] run `rtx install`
+          cache: true # [default: true] cache rtx using GitHub's cache
           tool_versions: |
             shellcheck 0.9.0
       - run: shellcheck scripts/*.sh

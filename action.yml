@@ -5,6 +5,9 @@ branding:
   icon: arrow-down-circle
   color: purple
 inputs:
+  version:
+    required: false
+    description: 'The version of rtx to use. If not specified, will use the latest release.'
   tool_versions:
     required: false
     description: If present, this value will be written to the .tool-versions file

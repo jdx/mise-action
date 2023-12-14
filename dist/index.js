@@ -82940,7 +82940,8 @@ async function run() {
         core.saveState('CACHE', true);
         core.setOutput('cache-hit', false);
     }
-    await setupRTX();
+    const version = core.getInput('version');
+    await setupRTX(version);
     await setEnvVars();
     await exec.exec('rtx', ['--version']);
     const install = core.getBooleanInput('install', { required: false });
@@ -82972,9 +82973,11 @@ async function restoreRTXCache() {
     core.saveState('CACHE_KEY', cacheKey);
     core.info(`rtx cache restored from key: ${cacheKey}`);
 }
-async function setupRTX() {
+async function setupRTX(version) {
     const rtxBinDir = path.join((0, utils_1.rtxDir)(), 'bin');
-    const url = `https://rtx.jdx.dev/rtx-latest-${getOS()}-${os.arch()}`;
+    const url = version
+        ? `https://rtx.jdx.dev/v${version}/rtx-v${version}-${getOS()}-${os.arch()}`
+        : `https://rtx.jdx.dev/rtx-latest-${getOS()}-${os.arch()}`;
     await fs.promises.mkdir(rtxBinDir, { recursive: true });
     await exec.exec('curl', [url, '--output', path.join(rtxBinDir, 'rtx')]);
     await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
