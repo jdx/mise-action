@@ -24,8 +24,8 @@
     "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
     "package": "ncc build src/index.ts --license licenses.txt",
     "package:watch": "npm run package -- --watch",
-    "prepare": "husky install",
-    "postversion": "git push origin v$(jq -r .version package.json) && git tag v1 -f && git push origin v1 -f"
+    "postversion": "./scripts/postversion.sh",
+    "prepare": "husky install"
   },
   "license": "MIT",
   "dependencies": {
