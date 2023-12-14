@@ -14,9 +14,7 @@ async function run(): Promise<void> {
 
     if (core.getBooleanInput('cache')) {
       await restoreRTXCache()
-      core.saveState('CACHE', false)
     } else {
-      core.saveState('CACHE', true)
       core.setOutput('cache-hit', false)
     }
 
@@ -41,7 +39,7 @@ async function setEnvVars(): Promise<void> {
       core.exportVariable(k, v)
     }
   }
-  set('RTX_TRUSTED_CONFIG_PATHS', path.join(process.cwd(), '.rtx.toml'))
+  set('RTX_TRUSTED_CONFIG_PATHS', process.cwd())
   set('RTX_YES', '1')
 
   const shimsDir = path.join(rtxDir(), 'shims')
@@ -53,15 +51,18 @@ async function restoreRTXCache(): Promise<void> {
   core.startGroup('Restoring rtx cache')
   const cachePath = rtxDir()
   const fileHash = await glob.hashFiles(`**/.tool-versions\n**/.rtx.toml`)
-  const primaryKey = `rtx-tools-${getOS()}-${os.arch()}-${fileHash}`
+  const prefix = core.getInput('cache_key_prefix') || 'rtx-v0'
+  const primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`
 
+  core.saveState('CACHE', core.getBooleanInput('cache_save') ?? true)
   core.saveState('PRIMARY_KEY', primaryKey)
+  core.saveState('RTX_DIR', cachePath)
 
   const cacheKey = await cache.restoreCache([cachePath], primaryKey)
   core.setOutput('cache-hit', Boolean(cacheKey))
 
   if (!cacheKey) {
-    core.info(`rtx cache not found for ${getOS()}-${os.arch()} tool versions`)
+    core.info(`rtx cache not found for ${primaryKey}`)
     return
   }
 
@@ -109,12 +110,14 @@ function getOS(): string {
   }
 }
 
-const testRTX = async (): Promise<number> =>
-  core.group('Running rtx --version', async () =>
-    exec.exec('rtx', ['--version'])
-  )
-const rtxInstall = async (): Promise<number> =>
-  core.group('Running rtx --version', async () => exec.exec('rtx', ['install']))
+const testRTX = async (): Promise<number> => rtx(['--version'])
+const rtxInstall = async (): Promise<number> => rtx(['install'])
+const rtx = async (args: string[]): Promise<number> =>
+  core.group(`Running rtx ${args.join(' ')}`, async () => {
+    const cwd = core.getInput('install_dir') || process.cwd()
+    return exec.exec('rtx', args, { cwd })
+  })
+
 const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
   core.group(`Writing ${p}`, async () => {
     core.info(`Body:\n${body}`)

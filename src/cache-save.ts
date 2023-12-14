@@ -13,9 +13,7 @@ export async function run(): Promise<void> {
 }
 
 async function cacheRTXTools(): Promise<void> {
-  const skipCache = core.getState('CACHE')
-
-  if (skipCache) {
+  if (!core.getState('CACHE')) {
     core.info('Skipping saving cache')
     return
   }
@@ -29,16 +27,14 @@ async function cacheRTXTools(): Promise<void> {
   }
 
   if (primaryKey === state) {
-    core.info(
-      `Cache hit occurred on the primary key ${primaryKey}, not saving cache.`
-    )
+    core.info(`Cache hit occurred on key ${primaryKey}, not saving cache.`)
     return
   }
 
   const cacheId = await cache.saveCache([cachePath], primaryKey)
   if (cacheId === -1) return
 
-  core.info(`Cache saved with the primary key: ${primaryKey}`)
+  core.info(`Cache saved from ${cachePath} with key: ${primaryKey}`)
 }
 
 run()

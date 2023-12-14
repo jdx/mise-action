@@ -7,6 +7,10 @@ on: # rebuild any PRs and main branch changes
       - 'releases/*'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
 jobs:
   build: # make sure build/ci work properly
     runs-on: ubuntu-latest
@@ -46,6 +50,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./
         with:
+          cache_save: ${{ github.ref_name == 'main' }}
+          cache_key_prefix: rtx-v1
           version: 2023.12.23
           rtx_toml: |
             [tools]
