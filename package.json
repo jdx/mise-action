@@ -25,7 +25,7 @@
     "package": "ncc build src/index.ts --license licenses.txt",
     "package:watch": "npm run package -- --watch",
     "prepare": "husky install",
-    "postversion": "git push --tags && git tag v1 -f && git push origin v1 -f"
+    "postversion": "git push origin v$(jq -r .version package.json) && git tag v1 -f && git push origin v1 -f"
   },
   "license": "MIT",
   "dependencies": {
