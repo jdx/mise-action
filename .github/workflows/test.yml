@@ -47,3 +47,8 @@ jobs:
       - uses: ./
         with:
           version: 2023.12.23
+          rtx_toml: |
+            [tools]
+            bun = "1"
+      - run: which bun
+      - run: bun -v

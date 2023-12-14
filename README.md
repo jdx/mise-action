@@ -19,8 +19,13 @@ jobs:
           version: 2023.12.0 # [default: latest] rtx version to install
           install: true # [default: true] run `rtx install`
           cache: true # [default: true] cache rtx using GitHub's cache
+          # automatically write this .tool-versions file
           tool_versions: |
             shellcheck 0.9.0
+          # or, if you prefer .rtx.toml format:
+          rtx_toml: |
+            [tools]
+            shellcheck = "0.9.0"
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest
