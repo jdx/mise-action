@@ -41,6 +41,7 @@ async function setEnvVars(): Promise<void> {
   }
   set('RTX_TRUSTED_CONFIG_PATHS', process.cwd())
   set('RTX_YES', '1')
+  set('RTX_EXPERIMENTAL', getExperimental() ? '1' : '0')
 
   const shimsDir = path.join(rtxDir(), 'shims')
   core.info(`Adding ${shimsDir} to PATH`)
@@ -85,6 +86,11 @@ async function setupRTX(version: string | undefined): Promise<void> {
   ])
   await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')])
   core.addPath(rtxBinDir)
+}
+
+function getExperimental(): boolean {
+  const experimentalString = core.getInput('experimental')
+  return experimentalString === 'true' ? true : false
 }
 
 async function setToolVersions(): Promise<void> {

@@ -20,6 +20,7 @@ jobs:
           install: true # [default: true] run `rtx install`
           cache: true # [default: true] cache rtx using GitHub's cache
           # automatically write this .tool-versions file
+          experimental: true # [default: false] enable experimental features
           tool_versions: |
             shellcheck 0.9.0
           # or, if you prefer .rtx.toml format:

@@ -82964,6 +82964,7 @@ async function setEnvVars() {
     };
     set('RTX_TRUSTED_CONFIG_PATHS', process.cwd());
     set('RTX_YES', '1');
+    set('RTX_EXPERIMENTAL', getExperimental() ? '1' : '0');
     const shimsDir = path.join((0, utils_1.rtxDir)(), 'shims');
     core.info(`Adding ${shimsDir} to PATH`);
     core.addPath(shimsDir);
@@ -83001,6 +83002,10 @@ async function setupRTX(version) {
     ]);
     await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
     core.addPath(rtxBinDir);
+}
+function getExperimental() {
+    const experimentalString = core.getInput('experimental');
+    return experimentalString === 'true' ? true : false;
 }
 async function setToolVersions() {
     const toolVersions = core.getInput('tool_versions');
