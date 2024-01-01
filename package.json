@@ -35,7 +35,7 @@
     "@actions/glob": "^0.4.0"
   },
   "devDependencies": {
-    "@types/node": "^20.10.5",
+    "@types/node": "^20.10.6",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.16.0",
     "@vercel/ncc": "^0.38.1",
