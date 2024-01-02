@@ -40,8 +40,8 @@ jobs:
           tool_versions: ${{ matrix.tool_versions }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: rtx --version
-      - run: rtx exec -- node --version
+      - run: mise --version
+      - run: mise exec -- node --version
       - run: which node
       - run: node -v
   specific_version:
@@ -51,9 +51,9 @@ jobs:
       - uses: ./
         with:
           cache_save: ${{ github.ref_name == 'main' }}
-          cache_key_prefix: rtx-v1
+          cache_key_prefix: mise-v1
           version: 2023.12.23
-          rtx_toml: |
+          mise_toml: |
             [tools]
             bun = "1"
       - run: which bun

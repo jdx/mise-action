@@ -1,16 +1,16 @@
 {
-  "name": "rtx-action",
-  "description": "rtx tool setup action",
+  "name": "mise-action",
+  "description": "mise tool setup action",
   "version": "1.3.2",
   "author": "jdx",
   "private": true,
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jdx/rtx-action.git"
+    "url": "git+https://github.com/jdx/mise-action.git"
   },
   "keywords": [
     "actions",
-    "rtx",
+    "mise",
     "setup"
   ],
   "exports": {

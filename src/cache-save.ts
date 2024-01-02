@@ -1,18 +1,18 @@
 import * as cache from '@actions/cache'
 import * as core from '@actions/core'
 import * as fs from 'fs'
-import { rtxDir } from './utils'
+import { miseDir } from './utils'
 
 export async function run(): Promise<void> {
   try {
-    await cacheRTXTools()
+    await cacheMiseTools()
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
     else throw error
   }
 }
 
-async function cacheRTXTools(): Promise<void> {
+async function cacheMiseTools(): Promise<void> {
   if (!core.getState('CACHE')) {
     core.info('Skipping saving cache')
     return
@@ -20,7 +20,7 @@ async function cacheRTXTools(): Promise<void> {
 
   const state = core.getState('CACHE_KEY')
   const primaryKey = core.getState('PRIMARY_KEY')
-  const cachePath = rtxDir()
+  const cachePath = miseDir()
 
   if (!fs.existsSync(cachePath)) {
     throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)

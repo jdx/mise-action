@@ -1,5 +1,5 @@
-name: rtx action
-description: Actions for working with rtx runtime manager
+name: mise action
+description: Actions for working with mise runtime manager
 author: Jeff Dickey <@jdx>
 branding:
   icon: arrow-down-circle
@@ -7,27 +7,27 @@ branding:
 inputs:
   version:
     required: false
-    description: The version of rtx to use. If not specified, will use the latest release.
-  rtx_dir:
+    description: The version of mise to use. If not specified, will use the latest release.
+  mise_dir:
     required: false
     description: |
-      The directory that rtx will be installed to, defaults to $HOME/.local/share/rtx
-      Or $XDG_DATA_HOME/rtx if $XDG_DATA_HOME is set.
-      Or $RTX_DATA_DIR if $RTX_DATA_DIR is set.
+      The directory that mise will be installed to, defaults to $HOME/.local/share/mise
+      Or $XDG_DATA_HOME/mise if $XDG_DATA_HOME is set.
+      Or $MISE_DATA_DIR if $MISE_DATA_DIR is set.
   tool_versions:
     required: false
     description: If present, this value will be written to the .tool-versions file
-  rtx_toml:
+  mise_toml:
     required: false
-    description: If present, this value will be written to the .rtx.toml file
+    description: If present, this value will be written to the .mise.toml file
   install:
     required: false
     default: "true"
-    description: if false, will not run `rtx install`
+    description: if false, will not run `mise install`
   install_dir:
     required: false
     default: "."
-    description: The directory that `rtx install` will be executed in
+    description: The directory that `mise install` will be executed in
   cache:
     required: false
     default: "true"
@@ -38,7 +38,7 @@ inputs:
     description: if false, action will not write to cache
   cache_key_prefix:
     required: false
-    default: "rtx-v0"
+    default: "mise-v0"
     description: The prefix key to use for the cache, change this to invalidate the cache
   experimental:
     required: false

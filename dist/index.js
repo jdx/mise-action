@@ -82932,17 +82932,17 @@ const utils_1 = __nccwpck_require__(1314);
 async function run() {
     try {
         await setToolVersions();
-        await setRtxToml();
+        await setMiseToml();
         if (core.getBooleanInput('cache')) {
-            await restoreRTXCache();
+            await restoreMiseCache();
         }
         else {
             core.setOutput('cache-hit', false);
         }
         const version = core.getInput('version');
-        await setupRTX(version);
+        await setupMise(version);
         await setEnvVars();
-        await testRTX();
+        await testMise();
         if (core.getBooleanInput('install')) {
             await rtxInstall();
         }
@@ -82962,46 +82962,46 @@ async function setEnvVars() {
             core.exportVariable(k, v);
         }
     };
-    set('RTX_TRUSTED_CONFIG_PATHS', process.cwd());
-    set('RTX_YES', '1');
-    set('RTX_EXPERIMENTAL', getExperimental() ? '1' : '0');
-    const shimsDir = path.join((0, utils_1.rtxDir)(), 'shims');
+    set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
+    set('MISE_YES', '1');
+    set('MISE_EXPERIMENTAL', getExperimental() ? '1' : '0');
+    const shimsDir = path.join((0, utils_1.miseDir)(), 'shims');
     core.info(`Adding ${shimsDir} to PATH`);
     core.addPath(shimsDir);
 }
-async function restoreRTXCache() {
-    core.startGroup('Restoring rtx cache');
-    const cachePath = (0, utils_1.rtxDir)();
-    const fileHash = await glob.hashFiles(`**/.tool-versions\n**/.rtx.toml`);
-    const prefix = core.getInput('cache_key_prefix') || 'rtx-v0';
+async function restoreMiseCache() {
+    core.startGroup('Restoring mise cache');
+    const cachePath = (0, utils_1.miseDir)();
+    const fileHash = await glob.hashFiles(`**/.tool-versions\n**/.mise.toml`);
+    const prefix = core.getInput('cache_key_prefix') || 'mise-v0';
     const primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`;
     core.saveState('CACHE', core.getBooleanInput('cache_save') ?? true);
     core.saveState('PRIMARY_KEY', primaryKey);
-    core.saveState('RTX_DIR', cachePath);
+    core.saveState('MISE_DIR', cachePath);
     const cacheKey = await cache.restoreCache([cachePath], primaryKey);
     core.setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
-        core.info(`rtx cache not found for ${primaryKey}`);
+        core.info(`mise cache not found for ${primaryKey}`);
         return;
     }
     core.saveState('CACHE_KEY', cacheKey);
-    core.info(`rtx cache restored from key: ${cacheKey}`);
+    core.info(`mise cache restored from key: ${cacheKey}`);
 }
-async function setupRTX(version) {
-    core.startGroup(version ? `Setup rtx@${version}` : 'Setup rtx');
-    const rtxBinDir = path.join((0, utils_1.rtxDir)(), 'bin');
+async function setupMise(version) {
+    core.startGroup(version ? `Setup mise@${version}` : 'Setup mise');
+    const miseBinDir = path.join((0, utils_1.miseDir)(), 'bin');
     const url = version
-        ? `https://rtx.jdx.dev/v${version}/rtx-v${version}-${getOS()}-${os.arch()}`
-        : `https://rtx.jdx.dev/rtx-latest-${getOS()}-${os.arch()}`;
-    await fs.promises.mkdir(rtxBinDir, { recursive: true });
+        ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}`
+        : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}`;
+    await fs.promises.mkdir(miseBinDir, { recursive: true });
     await exec.exec('curl', [
         '-fsSL',
         url,
         '--output',
-        path.join(rtxBinDir, 'rtx')
+        path.join(miseBinDir, 'mise')
     ]);
-    await exec.exec('chmod', ['+x', path.join(rtxBinDir, 'rtx')]);
-    core.addPath(rtxBinDir);
+    await exec.exec('chmod', ['+x', path.join(miseBinDir, 'mise')]);
+    core.addPath(miseBinDir);
 }
 function getExperimental() {
     const experimentalString = core.getInput('experimental');
@@ -83013,10 +83013,10 @@ async function setToolVersions() {
         await writeFile('.tool-versions', toolVersions);
     }
 }
-async function setRtxToml() {
-    const toml = core.getInput('rtx_toml');
+async function setMiseToml() {
+    const toml = core.getInput('mise_toml');
     if (toml) {
-        await writeFile('.rtx.toml', toml);
+        await writeFile('.mise.toml', toml);
     }
 }
 function getOS() {
@@ -83027,11 +83027,11 @@ function getOS() {
             return process.platform;
     }
 }
-const testRTX = async () => rtx(['--version']);
-const rtxInstall = async () => rtx(['install']);
-const rtx = async (args) => core.group(`Running rtx ${args.join(' ')}`, async () => {
+const testMise = async () => mise(['--version']);
+const rtxInstall = async () => mise(['install']);
+const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('install_dir') || process.cwd();
-    return exec.exec('rtx', args, { cwd });
+    return exec.exec('mise', args, { cwd });
 });
 const writeFile = async (p, body) => core.group(`Writing ${p}`, async () => {
     core.info(`Body:\n${body}`);
@@ -83071,22 +83071,22 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.rtxDir = void 0;
+exports.miseDir = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const os = __importStar(__nccwpck_require__(2037));
 const path = __importStar(__nccwpck_require__(1017));
-function rtxDir() {
-    const dir = core.getState('RTX_DIR');
+function miseDir() {
+    const dir = core.getState('MISE_DIR');
     if (dir)
         return dir;
-    const { RTX_DATA_DIR, XDG_DATA_HOME } = process.env;
-    if (RTX_DATA_DIR)
-        return RTX_DATA_DIR;
+    const { MISE_DATA_DIR, XDG_DATA_HOME } = process.env;
+    if (MISE_DATA_DIR)
+        return MISE_DATA_DIR;
     if (XDG_DATA_HOME)
-        return path.join(XDG_DATA_HOME, 'rtx');
-    return path.join(os.homedir(), '.local/share/rtx');
+        return path.join(XDG_DATA_HOME, 'mise');
+    return path.join(os.homedir(), '.local/share/mise');
 }
-exports.rtxDir = rtxDir;
+exports.miseDir = miseDir;
 
 
 /***/ }),
