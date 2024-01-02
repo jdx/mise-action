@@ -23,7 +23,7 @@ async function run(): Promise<void> {
     await setEnvVars()
     await testMise()
     if (core.getBooleanInput('install')) {
-      await rtxInstall()
+      await miseInstall()
     }
   } catch (err) {
     if (err instanceof Error) core.setFailed(err.message)
@@ -117,7 +117,7 @@ function getOS(): string {
 }
 
 const testMise = async (): Promise<number> => mise(['--version'])
-const rtxInstall = async (): Promise<number> => mise(['install'])
+const miseInstall = async (): Promise<number> => mise(['install'])
 const mise = async (args: string[]): Promise<number> =>
   core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('install_dir') || process.cwd()

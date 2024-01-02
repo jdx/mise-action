@@ -82944,7 +82944,7 @@ async function run() {
         await setEnvVars();
         await testMise();
         if (core.getBooleanInput('install')) {
-            await rtxInstall();
+            await miseInstall();
         }
     }
     catch (err) {
@@ -83028,7 +83028,7 @@ function getOS() {
     }
 }
 const testMise = async () => mise(['--version']);
-const rtxInstall = async () => mise(['install']);
+const miseInstall = async () => mise(['install']);
 const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('install_dir') || process.cwd();
     return exec.exec('mise', args, { cwd });
