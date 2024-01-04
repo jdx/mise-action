@@ -2,5 +2,5 @@
 # shellcheck disable=SC1091
 . "$(dirname -- "$0")/_/husky.sh"
 
-npm run all
+pnpm run all
 git add dist

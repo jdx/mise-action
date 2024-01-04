@@ -40,16 +40,16 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: npm
 
       - name: Install Dependencies
         id: install
-        run: npm ci
+        run: pnpm i
 
       - name: Build dist/ Directory
         id: build
-        run: npm run bundle
+        run: pnpm run bundle
 
       - name: Compare Expected and Actual Directories
         id: diff

@@ -17,13 +17,13 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "all": "npm run format:write && npm run lint && npm run package",
-    "bundle": "npm run format:write && npm run package",
+    "all": "npm run format:write && pnpm run lint && pnpm run package",
+    "bundle": "pnpm run format:write && pnpm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
     "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
     "package": "ncc build -s src/index.ts --license licenses.txt && ncc -s build src/cache-save.ts -o dist/cache-save/",
-    "package:watch": "npm run package -- --watch",
+    "package:watch": "pnpm run package -- --watch",
     "postversion": "./scripts/postversion.sh",
     "prepare": "husky install"
   },

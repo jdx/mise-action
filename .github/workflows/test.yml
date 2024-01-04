@@ -17,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          npm install
+          pnpm install
       - run: |
-          npm run all
+          pnpm run all
   test: # make sure the action works on a clean machine without building
     strategy:
       fail-fast: false
