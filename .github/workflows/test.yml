@@ -52,7 +52,7 @@ jobs:
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
-          version: 2023.12.23
+          version: 2024.1.6
           mise_toml: |
             [tools]
             bun = "1"
