@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: jdx/mise-action@v1
+      - uses: jdx/mise-action@v2
         with:
           version: 2023.12.0 # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
