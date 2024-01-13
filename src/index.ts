@@ -51,7 +51,15 @@ async function setEnvVars(): Promise<void> {
 async function restoreMiseCache(): Promise<void> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
-  const fileHash = await glob.hashFiles(`**/.tool-versions\n**/.mise.toml`)
+  const fileHash = await glob.hashFiles(
+    [
+      `**/.config/mise/config.toml`,
+      `**/.mise.*.toml`,
+      `**/.mise.toml`,
+      `**/.mise/config.toml`,
+      `**/.tool-versions`
+    ].join('\n')
+  )
   const prefix = core.getInput('cache_key_prefix') || 'mise-v0'
   const primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`
 

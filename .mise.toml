@@ -1,2 +1,5 @@
+tasks.lint = "bun run lint"
+tasks."lint:fix" = "bun run format:write"
+
 [tools]
 node = '20.10.0'
