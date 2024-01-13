@@ -1,5 +1,6 @@
 tasks.lint = "bun run lint"
 tasks."lint:fix" = "bun run format:write"
+tasks.version = "npm run version"
 
 [tools]
 node = '20.10.0'
