@@ -43,6 +43,17 @@ async function setEnvVars(): Promise<void> {
   set('MISE_YES', '1')
   set('MISE_EXPERIMENTAL', getExperimental() ? '1' : '0')
 
+  const envOutput = await miseEnv();
+  if (envOutput.exitCode === 0) {
+    const envVars = JSON.parse(envOutput.stdout)
+    delete envVars['PATH'] // update PATH below
+    for (const [key, value] of Object.entries(envVars)) {
+      set(key, value)
+    }
+  } else {
+    throw new Error(`Failed to run mise env: ${envOutput.stderr}`)
+  }
+
   const shimsDir = path.join(miseDir(), 'shims')
   core.info(`Adding ${shimsDir} to PATH`)
   core.addPath(shimsDir)
@@ -126,6 +137,10 @@ function getOS(): string {
 
 const testMise = async (): Promise<number> => mise(['--version'])
 const miseInstall = async (): Promise<number> => mise(['install'])
+const miseEnv = async (): Promise<ExecOutput> =>
+    core.group(`Running mise env --json`, async () => {
+      return exec.getExecOutput('mise', 'env', '--json')
+    })
 const mise = async (args: string[]): Promise<number> =>
   core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('install_dir') || process.cwd()
