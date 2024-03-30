@@ -24,7 +24,7 @@
     "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
     "package": "ncc build -s src/index.ts --license licenses.txt && ncc -s build src/cache-save.ts -o dist/cache-save/",
     "package:watch": "npm run package -- --watch",
-    "preversion": "./scripts/preversion.sh",
+    "version": "./scripts/version.sh",
     "postversion": "./scripts/postversion.sh",
     "prepare": "husky install"
   },
