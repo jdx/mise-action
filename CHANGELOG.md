@@ -1,12 +1,21 @@
 # Changelog
 
 ---
-## [unreleased]
+## [2.0.3](https://github.com/jdx/mise-action/compare/v2.0.2..2.0.3) - 2024-03-30
 
 ### 🔍 Other Changes
 
 - recompile by [@jdx](https://github.com/jdx) in [5173b58](https://github.com/jdx/mise-action/commit/5173b58ce80d4fcb06718136d9549d8180441a91)
 - npm update by [@jdx](https://github.com/jdx) in [e1f00a0](https://github.com/jdx/mise-action/commit/e1f00a0bf8dfe2cc7167344fde559956e187e92a)
+
+### 📚 Documentation
+
+- added git-cliff (#62) by [@jdx](https://github.com/jdx) in [#62](https://github.com/jdx/mise-action/pull/62)
+
+### ⚙️ Miscellaneous Tasks
+
+- npm update (#61) by [@jdx](https://github.com/jdx) in [#61](https://github.com/jdx/mise-action/pull/61)
+- fix version script by [@jdx](https://github.com/jdx) in [736f8d9](https://github.com/jdx/mise-action/commit/736f8d9429367170ef64bbdd0b593f640cf1f55d)
 
 ---
 ## [2.0.2](https://github.com/jdx/mise-action/compare/v2.0.1..v2.0.2) - 2024-01-13
