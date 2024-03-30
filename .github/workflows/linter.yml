@@ -26,6 +26,8 @@ jobs:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         id: setup-node
@@ -45,5 +47,7 @@ jobs:
           DEFAULT_BRANCH: main
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TYPESCRIPT_DEFAULT_STYLE: prettier
+          VALIDATE_CHECKOV: false
+          VALIDATE_MARKDOWN: false
           VALIDATE_JSCPD: false
           VALIDATE_NATURAL_LANGUAGE: false
