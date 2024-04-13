@@ -1,12 +1,20 @@
 # Changelog
 
 ---
-## [2.0.3](https://github.com/jdx/mise-action/compare/v2.0.2..2.0.3) - 2024-03-30
+## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.3..2.0.4) - 2024-04-13
+
+### ⚙️ Miscellaneous Tasks
+
+- **(eslint)** updated eslint@8 by [@jdx](https://github.com/jdx) in [0f558f8](https://github.com/jdx/mise-action/commit/0f558f87e146e155e5bd79c9f134bc09e95090a5)
+
+---
+## [2.0.3](https://github.com/jdx/mise-action/compare/v2.0.2..v2.0.3) - 2024-03-30
 
 ### 🔍 Other Changes
 
 - recompile by [@jdx](https://github.com/jdx) in [5173b58](https://github.com/jdx/mise-action/commit/5173b58ce80d4fcb06718136d9549d8180441a91)
 - npm update by [@jdx](https://github.com/jdx) in [e1f00a0](https://github.com/jdx/mise-action/commit/e1f00a0bf8dfe2cc7167344fde559956e187e92a)
+- 2.0.3 by [@jdx](https://github.com/jdx) in [3e282fc](https://github.com/jdx/mise-action/commit/3e282fcd55c8de21f232397e9fb876cd33e612f1)
 
 ### 📚 Documentation
 
