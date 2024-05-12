@@ -39,9 +39,10 @@ async function setEnvVars(): Promise<void> {
       core.exportVariable(k, v)
     }
   }
+  if (getExperimental()) set('MISE_EXPERIMENTAL', '1')
+  set('MISE_LOG_LEVEL', core.getInput('log_level') || 'info')
   set('MISE_TRUSTED_CONFIG_PATHS', process.cwd())
   set('MISE_YES', '1')
-  set('MISE_EXPERIMENTAL', getExperimental() ? '1' : '0')
 
   const shimsDir = path.join(miseDir(), 'shims')
   core.info(`Adding ${shimsDir} to PATH`)

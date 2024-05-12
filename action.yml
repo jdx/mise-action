@@ -44,6 +44,10 @@ inputs:
     required: false
     default: "false"
     description: if true, will use experimental features
+  log_level:
+    required: false
+    default: "info"
+    description: The log level to use for the action
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.

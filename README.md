@@ -21,6 +21,7 @@ jobs:
           cache: true # [default: true] cache mise using GitHub's cache
           # automatically write this .tool-versions file
           experimental: true # [default: false] enable experimental features
+          log_level: debug # [default: info] log level
           tool_versions: |
             shellcheck 0.9.0
           # or, if you prefer .mise.toml format:
