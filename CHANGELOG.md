@@ -1,7 +1,22 @@
 # Changelog
 
 ---
-## [2.0.5](https://github.com/jdx/mise-action/compare/v2.0.4..2.0.5) - 2024-06-01
+## [2.0.6](https://github.com/jdx/mise-action/compare/v2.0.5..2.0.6) - 2024-06-01
+
+### 🚀 Features
+
+- added config filenames to hashFiles (#86) by [@risu729](https://github.com/risu729) in [#86](https://github.com/jdx/mise-action/pull/86)
+
+### ⚙️ Miscellaneous Tasks
+
+- rebuild by [@jdx](https://github.com/jdx) in [d0dc8c8](https://github.com/jdx/mise-action/commit/d0dc8c81e39f1b4571ed0668cd7fa6be57534ad2)
+
+### New Contributors
+
+* @risu729 made their first contribution in [#86](https://github.com/jdx/mise-action/pull/86)
+
+---
+## [2.0.5](https://github.com/jdx/mise-action/compare/v2.0.4..v2.0.5) - 2024-06-01
 
 ### 🚀 Features
 
@@ -12,6 +27,10 @@
 
 - fix: rename "install_dir" config to "working_directory" by [@jdx](https://github.com/jdx) in [4541e25](https://github.com/jdx/mise-action/commit/4541e25ef8810d37ad00a583c84cc582701049c0)
 - deprecated install_dir by [@jdx](https://github.com/jdx) in [2e6a26b](https://github.com/jdx/mise-action/commit/2e6a26bb550e828ee46768dd1507028b4e2b8702)
+
+### 🔍 Other Changes
+
+- 2.0.5 by [@jdx](https://github.com/jdx) in [b02b057](https://github.com/jdx/mise-action/commit/b02b0576a303103155c986ce4e0ee322dcda8f72)
 
 ### 📚 Documentation
 
