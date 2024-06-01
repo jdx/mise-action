@@ -1,11 +1,19 @@
 # Changelog
 
 ---
-## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.4..2.0.4) - 2024-05-12
+## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.4..2.0.4) - 2024-06-01
 
 ### 🚀 Features
 
 - added log level config by [@jdx](https://github.com/jdx) in [b42d5a2](https://github.com/jdx/mise-action/commit/b42d5a2f42c60b8fcda7dbb04e14982328412af8)
+
+### 🐛 Bug Fixes
+
+- fix: rename "install_dir" config to "working_directory" by [@jdx](https://github.com/jdx) in [4541e25](https://github.com/jdx/mise-action/commit/4541e25ef8810d37ad00a583c84cc582701049c0)
+
+### 📚 Documentation
+
+- changelog by [@jdx](https://github.com/jdx) in [f8de9e3](https://github.com/jdx/mise-action/commit/f8de9e38d34fe5aee1b8430c404c6f9a08379f90)
 
 ---
 ## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.3..v2.0.4) - 2024-04-13
