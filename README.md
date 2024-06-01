@@ -18,6 +18,7 @@ jobs:
         with:
           version: 2023.12.0 # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
+          install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
           # automatically write this .tool-versions file
           experimental: true # [default: false] enable experimental features

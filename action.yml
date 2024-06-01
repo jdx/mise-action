@@ -24,6 +24,9 @@ inputs:
     required: false
     default: "true"
     description: if false, will not run `mise install`
+  install_args:
+    required: false
+    description: Arguments to pass to `mise install` such as "bun" to only install bun
   cache:
     required: false
     default: "true"

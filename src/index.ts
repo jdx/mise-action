@@ -126,14 +126,19 @@ function getOS(): string {
 }
 
 const testMise = async (): Promise<number> => mise(['--version'])
-const miseInstall = async (): Promise<number> => mise(['install'])
+const miseInstall = async (): Promise<number> =>
+  mise([`install ${core.getInput('install_args')}`])
 const mise = async (args: string[]): Promise<number> =>
   core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd =
       core.getInput('working_directory') ||
       core.getInput('install_dir') ||
       process.cwd()
-    return exec.exec('mise', args, { cwd })
+    if (args.length === 1) {
+      return exec.exec(`mise ${args}`, [], { cwd })
+    } else {
+      return exec.exec('mise', args, { cwd })
+    }
   })
 
 const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
