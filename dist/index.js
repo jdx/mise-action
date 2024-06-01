@@ -80258,7 +80258,9 @@ function getOS() {
 const testMise = async () => mise(['--version']);
 const miseInstall = async () => mise(['install']);
 const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
-    const cwd = core.getInput('install_dir') || process.cwd();
+    const cwd = core.getInput('working_directory') ||
+        core.getInput('install_dir') ||
+        process.cwd();
     return exec.exec('mise', args, { cwd });
 });
 const writeFile = async (p, body) => core.group(`Writing ${p}`, async () => {

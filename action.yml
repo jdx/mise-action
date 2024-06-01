@@ -24,10 +24,6 @@ inputs:
     required: false
     default: "true"
     description: if false, will not run `mise install`
-  install_dir:
-    required: false
-    default: "."
-    description: The directory that `mise install` will be executed in
   cache:
     required: false
     default: "true"
@@ -48,6 +44,10 @@ inputs:
     required: false
     default: "info"
     description: The log level to use for the action
+  working_directory:
+    required: false
+    default: "."
+    description: The directory that mise runs in
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.

@@ -28,6 +28,7 @@ jobs:
           mise_toml: |
             [tools]
             shellcheck = "0.9.0"
+          working_directory: app # [default: .] directory to run mise in
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest

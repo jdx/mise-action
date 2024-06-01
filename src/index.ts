@@ -129,7 +129,10 @@ const testMise = async (): Promise<number> => mise(['--version'])
 const miseInstall = async (): Promise<number> => mise(['install'])
 const mise = async (args: string[]): Promise<number> =>
   core.group(`Running mise ${args.join(' ')}`, async () => {
-    const cwd = core.getInput('install_dir') || process.cwd()
+    const cwd =
+      core.getInput('working_directory') ||
+      core.getInput('install_dir') ||
+      process.cwd()
     return exec.exec('mise', args, { cwd })
   })
 
