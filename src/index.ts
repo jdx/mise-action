@@ -55,9 +55,17 @@ async function restoreMiseCache(): Promise<void> {
   const fileHash = await glob.hashFiles(
     [
       `**/.config/mise/config.toml`,
-      `**/.mise.*.toml`,
-      `**/.mise.toml`,
+      `**/.config/mise/config.*.toml`,
+      `**/.config/mise.toml`,
+      `**/.config/mise.*.toml`,
       `**/.mise/config.toml`,
+      `**/.mise/config.*.toml`,
+      `**/mise/config.toml`,
+      `**/mise/config.*.toml`,
+      `**/.mise.toml`,
+      `**/.mise.*.toml`,
+      `**/mise.toml`,
+      `**/mise.*.toml`,
       `**/.tool-versions`
     ].join('\n')
   )
