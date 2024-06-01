@@ -6,14 +6,20 @@
 ### 🚀 Features
 
 - added log level config by [@jdx](https://github.com/jdx) in [b42d5a2](https://github.com/jdx/mise-action/commit/b42d5a2f42c60b8fcda7dbb04e14982328412af8)
+- allow passing args to install (#87) by [@jdx](https://github.com/jdx) in [#87](https://github.com/jdx/mise-action/pull/87)
 
 ### 🐛 Bug Fixes
 
 - fix: rename "install_dir" config to "working_directory" by [@jdx](https://github.com/jdx) in [4541e25](https://github.com/jdx/mise-action/commit/4541e25ef8810d37ad00a583c84cc582701049c0)
+- deprecated install_dir by [@jdx](https://github.com/jdx) in [2e6a26b](https://github.com/jdx/mise-action/commit/2e6a26bb550e828ee46768dd1507028b4e2b8702)
 
 ### 📚 Documentation
 
 - changelog by [@jdx](https://github.com/jdx) in [f8de9e3](https://github.com/jdx/mise-action/commit/f8de9e38d34fe5aee1b8430c404c6f9a08379f90)
+
+### ⚙️ Miscellaneous Tasks
+
+- updated CHANGELOG by [@jdx](https://github.com/jdx) in [1f3aa7e](https://github.com/jdx/mise-action/commit/1f3aa7e01037d3be488c9ebd643d8fb3e1692bc3)
 
 ---
 ## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.3..v2.0.4) - 2024-04-13
