@@ -1,7 +1,7 @@
 # Changelog
 
 ---
-## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.4..2.0.4) - 2024-06-01
+## [2.0.5](https://github.com/jdx/mise-action/compare/v2.0.4..2.0.5) - 2024-06-01
 
 ### 🚀 Features
 
@@ -16,6 +16,7 @@
 ### 📚 Documentation
 
 - changelog by [@jdx](https://github.com/jdx) in [f8de9e3](https://github.com/jdx/mise-action/commit/f8de9e38d34fe5aee1b8430c404c6f9a08379f90)
+- updated CHANGELOG.md by [@jdx](https://github.com/jdx) in [0e1d477](https://github.com/jdx/mise-action/commit/0e1d477af13b406bb837581f7d9ae8df5283427c)
 
 ### ⚙️ Miscellaneous Tasks
 
