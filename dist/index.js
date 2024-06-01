@@ -80256,12 +80256,17 @@ function getOS() {
     }
 }
 const testMise = async () => mise(['--version']);
-const miseInstall = async () => mise(['install']);
+const miseInstall = async () => mise([`install ${core.getInput('install_args')}`]);
 const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('working_directory') ||
         core.getInput('install_dir') ||
         process.cwd();
-    return exec.exec('mise', args, { cwd });
+    if (args.length === 1) {
+        return exec.exec(`mise ${args}`, [], { cwd });
+    }
+    else {
+        return exec.exec('mise', args, { cwd });
+    }
 });
 const writeFile = async (p, body) => core.group(`Writing ${p}`, async () => {
     core.info(`Body:\n${body}`);
