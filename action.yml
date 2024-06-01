@@ -27,6 +27,9 @@ inputs:
   install_args:
     required: false
     description: Arguments to pass to `mise install` such as "bun" to only install bun
+  install_dir:
+    required: false
+    description: deprecated
   cache:
     required: false
     default: "true"
@@ -49,7 +52,6 @@ inputs:
     description: The log level to use for the action
   working_directory:
     required: false
-    default: "."
     description: The directory that mise runs in
 outputs:
   cache-hit:
