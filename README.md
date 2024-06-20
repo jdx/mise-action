@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: jdx/mise-action@v1
+      - uses: jdx/mise-action@v2
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
