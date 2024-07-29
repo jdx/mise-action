@@ -26,7 +26,7 @@
     "package:watch": "npm run package -- --watch",
     "version": "./scripts/version.sh",
     "postversion": "./scripts/postversion.sh",
-    "prepare": "husky install"
+    "prepare": "husky"
   },
   "license": "MIT",
   "dependencies": {
