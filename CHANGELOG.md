@@ -1,11 +1,37 @@
 # Changelog
 
 ---
-## [2.0.6](https://github.com/jdx/mise-action/compare/v2.0.5..2.0.6) - 2024-06-01
+## [2.1.0](https://github.com/jdx/mise-action/compare/v2.0.6..2.1.0) - 2024-09-25
+
+### 🚀 Features
+
+- support windows (#122) by [@jdx](https://github.com/jdx) in [#122](https://github.com/jdx/mise-action/pull/122)
+
+### 🔍 Other Changes
+
+- Update README.md to refer to v2 consistently (#96) by [@ericmatthys](https://github.com/ericmatthys) in [#96](https://github.com/jdx/mise-action/pull/96)
+
+### ⚙️ Miscellaneous Tasks
+
+- automatically rebuild with renovate by [@jdx](https://github.com/jdx) in [227736a](https://github.com/jdx/mise-action/commit/227736a40e984c2e42a85e7a6510cc7e6224e340)
+- automatically rebuild with renovate by [@jdx](https://github.com/jdx) in [4400109](https://github.com/jdx/mise-action/commit/4400109e6e725bab3c202b84a14b7610d222c43a)
+- husky deprecation by [@jdx](https://github.com/jdx) in [da1c427](https://github.com/jdx/mise-action/commit/da1c427f6eede946da99ca50d5b5e2cdb7803a27)
+- eslint@9 by [@jdx](https://github.com/jdx) in [b0dcf03](https://github.com/jdx/mise-action/commit/b0dcf03524c2969a1045920604661c79fa02e881)
+
+### New Contributors
+
+* @ericmatthys made their first contribution in [#96](https://github.com/jdx/mise-action/pull/96)
+
+---
+## [2.0.6](https://github.com/jdx/mise-action/compare/v2.0.5..v2.0.6) - 2024-06-01
 
 ### 🚀 Features
 
 - added config filenames to hashFiles (#86) by [@risu729](https://github.com/risu729) in [#86](https://github.com/jdx/mise-action/pull/86)
+
+### 🔍 Other Changes
+
+- 2.0.6 by [@jdx](https://github.com/jdx) in [d6e32c1](https://github.com/jdx/mise-action/commit/d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd)
 
 ### ⚙️ Miscellaneous Tasks
 
