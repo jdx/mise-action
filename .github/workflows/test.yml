@@ -25,34 +25,36 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - ubuntu-latest
           - macos-latest
-        tool_versions:
-          - |
-            nodejs 20
-          - |
-            nodejs 18
+          - ubuntu-latest
+          - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: ./
+      - name: Setup mise
+        uses: ./
         with:
-          tool_versions: ${{ matrix.tool_versions }}
+          mise_toml: |
+            [tools]
+            node = "22.0.0"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise --version
-      - run: mise exec -- node --version
+      - run: mise x node -- node -v
       - run: which node
-      - run: node -v
+      - run: node --version
+      - run: . scripts/test.sh
+        shell: bash
   specific_version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: ./
+      - name: Setup mise
+        uses: ./
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
-          version: 2024.1.6
+          version: 2024.9.6
           install_args: bun
           mise_toml: |
             [tools]

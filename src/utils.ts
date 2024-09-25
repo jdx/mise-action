@@ -6,9 +6,11 @@ export function miseDir(): string {
   const dir = core.getState('MISE_DIR')
   if (dir) return dir
 
-  const { MISE_DATA_DIR, XDG_DATA_HOME } = process.env
+  const { MISE_DATA_DIR, XDG_DATA_HOME, LOCALAPPDATA } = process.env
   if (MISE_DATA_DIR) return MISE_DATA_DIR
   if (XDG_DATA_HOME) return path.join(XDG_DATA_HOME, 'mise')
+  if (process.platform === 'win32' && LOCALAPPDATA)
+    return path.join(LOCALAPPDATA, 'mise')
 
-  return path.join(os.homedir(), '.local/share/mise')
+  return path.join(os.homedir(), '.local', 'share', 'mise')
 }

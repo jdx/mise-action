@@ -21,7 +21,7 @@
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
-    "lint": "npx eslint . -c ./.github/linters/.eslintrc.yml",
+    "lint": "npx eslint . && npm run format:check",
     "package": "ncc build -s src/index.ts --license licenses.txt && ncc -s build src/cache-save.ts -o dist/cache-save/",
     "package:watch": "npm run package -- --watch",
     "version": "./scripts/version.sh",
@@ -33,12 +33,13 @@
     "@actions/cache": "^3.2.2",
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
-    "@actions/glob": "^0.4.0"
+    "@actions/glob": "^0.5.0",
+    "typescript-eslint": "^8.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
     "@types/eslint__js": "^8.42.3",
-    "@types/node": "^20.10.6",
+    "@types/node": "^22.7.0",
     "@vercel/ncc": "^0.38.1",
     "eslint-plugin-github": "^5.0.0",
     "eslint-plugin-jest": "^28.0.0",
