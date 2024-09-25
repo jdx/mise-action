@@ -1,4 +1,5 @@
 import * as cache from '@actions/cache'
+import * as io from '@actions/io'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
@@ -91,23 +92,29 @@ async function restoreMiseCache(): Promise<void> {
 async function setupMise(version: string | undefined): Promise<void> {
   core.startGroup(version ? `Setup mise@${version}` : 'Setup mise')
   const miseBinDir = path.join(miseDir(), 'bin')
+  await fs.promises.mkdir(miseBinDir, { recursive: true })
   const url = version
     ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}`
     : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}`
-  await fs.promises.mkdir(miseBinDir, { recursive: true })
-  await exec.exec('curl', [
-    '-fsSL',
-    url,
-    '--output',
-    path.join(miseBinDir, 'mise')
-  ])
-  await exec.exec('chmod', ['+x', path.join(miseBinDir, 'mise')])
+  if (getOS() === 'windows') {
+    const zipPath = path.join(os.tmpdir(), 'mise.zip')
+    await exec.exec('curl', ['-fsSL', `${url}.zip`, '--output', zipPath])
+    await exec.exec('unzip', [zipPath, '-d', os.tmpdir()])
+    await io.mv(
+      path.join(os.tmpdir(), 'mise/bin/mise.exe'),
+      path.join(miseBinDir, 'mise.exe')
+    )
+  } else {
+    const output = path.join(miseBinDir, 'mise')
+    await exec.exec('curl', ['-fsSL', url, '--output', output])
+    await exec.exec('chmod', ['+x', path.join(miseBinDir, 'mise')])
+  }
   core.addPath(miseBinDir)
 }
 
 function getExperimental(): boolean {
   const experimentalString = core.getInput('experimental')
-  return experimentalString === 'true' ? true : false
+  return experimentalString === 'true'
 }
 
 async function setToolVersions(): Promise<void> {
@@ -120,7 +127,7 @@ async function setToolVersions(): Promise<void> {
 async function setMiseToml(): Promise<void> {
   const toml = core.getInput('mise_toml')
   if (toml) {
-    await writeFile('.mise.toml', toml)
+    await writeFile('mise.toml', toml)
   }
 }
 
@@ -128,6 +135,8 @@ function getOS(): string {
   switch (process.platform) {
     case 'darwin':
       return 'macos'
+    case 'win32':
+      return 'windows'
     default:
       return process.platform
   }
