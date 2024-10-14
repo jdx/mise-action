@@ -62976,7 +62976,10 @@ async function setEnvVars() {
     };
     if (getExperimental())
         set('MISE_EXPERIMENTAL', '1');
-    set('MISE_LOG_LEVEL', core.getInput('log_level') || 'info');
+    const logLevel = core.isDebug()
+        ? 'debug'
+        : core.getInput('log_level') || 'info';
+    set('MISE_LOG_LEVEL', logLevel);
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
     set('MISE_YES', '1');
     const shimsDir = path.join((0, utils_1.miseDir)(), 'shims');
