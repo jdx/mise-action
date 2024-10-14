@@ -94,7 +94,7 @@ async function restoreMiseCache(): Promise<void> {
   core.info(`mise cache restored from key: ${cacheKey}`)
 }
 
-async function setupMise(version: string | undefined): Promise<void> {
+async function setupMise(version: string): Promise<void> {
   core.startGroup(version ? `Setup mise@${version}` : 'Setup mise')
   const miseBinDir = path.join(miseDir(), 'bin')
   await fs.promises.mkdir(miseBinDir, { recursive: true })
