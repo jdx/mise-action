@@ -62974,7 +62974,7 @@ async function setEnvVars() {
             core.exportVariable(k, v);
         }
     };
-    if (getExperimental())
+    if (core.getBooleanInput('experimental'))
         set('MISE_EXPERIMENTAL', '1');
     const logLevel = core.isDebug()
         ? 'debug'
@@ -63037,10 +63037,6 @@ async function setupMise(version) {
         await exec.exec('chmod', ['+x', path.join(miseBinDir, 'mise')]);
     }
     core.addPath(miseBinDir);
-}
-function getExperimental() {
-    const experimentalString = core.getInput('experimental');
-    return experimentalString === 'true';
 }
 async function setToolVersions() {
     const toolVersions = core.getInput('tool_versions');

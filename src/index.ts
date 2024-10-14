@@ -40,7 +40,7 @@ async function setEnvVars(): Promise<void> {
       core.exportVariable(k, v)
     }
   }
-  if (getExperimental()) set('MISE_EXPERIMENTAL', '1')
+  if (core.getBooleanInput('experimental')) set('MISE_EXPERIMENTAL', '1')
 
   const logLevel = core.isDebug()
     ? 'debug'
@@ -115,11 +115,6 @@ async function setupMise(version: string | undefined): Promise<void> {
     await exec.exec('chmod', ['+x', path.join(miseBinDir, 'mise')])
   }
   core.addPath(miseBinDir)
-}
-
-function getExperimental(): boolean {
-  const experimentalString = core.getInput('experimental')
-  return experimentalString === 'true'
 }
 
 async function setToolVersions(): Promise<void> {
