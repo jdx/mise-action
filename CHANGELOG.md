@@ -1,7 +1,18 @@
 # Changelog
 
 ---
-## [2.1.0](https://github.com/jdx/mise-action/compare/v2.0.6..2.1.0) - 2024-09-25
+## [2.1.1](https://github.com/jdx/mise-action/compare/v2.1.0..2.1.1) - 2024-10-24
+
+### 🐛 Bug Fixes
+
+- cache mise bin (#134) by [@jdx](https://github.com/jdx) in [#134](https://github.com/jdx/mise-action/pull/134)
+
+### ⚙️ Miscellaneous Tasks
+
+- migrate away from deprecated git-cliff syntax by [@jdx](https://github.com/jdx) in [9395297](https://github.com/jdx/mise-action/commit/9395297141532d18a614dde9f37875907cf2b5a6)
+
+---
+## [2.1.0](https://github.com/jdx/mise-action/compare/v2.0.6..v2.1.0) - 2024-09-25
 
 ### 🚀 Features
 
@@ -10,6 +21,7 @@
 ### 🔍 Other Changes
 
 - Update README.md to refer to v2 consistently (#96) by [@ericmatthys](https://github.com/ericmatthys) in [#96](https://github.com/jdx/mise-action/pull/96)
+- 2.1.0 by [@jdx](https://github.com/jdx) in [f8dfbcc](https://github.com/jdx/mise-action/commit/f8dfbcc150159126838e44b882bf34bd98fd90f3)
 
 ### ⚙️ Miscellaneous Tasks
 
