@@ -52,6 +52,7 @@ async function setEnvVars(): Promise<void> {
 
 async function restoreMiseCache(): Promise<void> {
   core.startGroup('Restoring mise cache')
+  const version = core.getInput('version')
   const cachePath = miseDir()
   const fileHash = await glob.hashFiles(
     [
@@ -71,7 +72,10 @@ async function restoreMiseCache(): Promise<void> {
     ].join('\n')
   )
   const prefix = core.getInput('cache_key_prefix') || 'mise-v0'
-  const primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`
+  let primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`
+  if (version) {
+    primaryKey = `${primaryKey}-${version}`
+  }
 
   core.saveState('CACHE', core.getBooleanInput('cache_save') ?? true)
   core.saveState('PRIMARY_KEY', primaryKey)
@@ -90,24 +94,26 @@ async function restoreMiseCache(): Promise<void> {
 }
 
 async function setupMise(version: string | undefined): Promise<void> {
-  core.startGroup(version ? `Setup mise@${version}` : 'Setup mise')
   const miseBinDir = path.join(miseDir(), 'bin')
-  await fs.promises.mkdir(miseBinDir, { recursive: true })
-  const url = version
-    ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}`
-    : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}`
-  if (getOS() === 'windows') {
-    const zipPath = path.join(os.tmpdir(), 'mise.zip')
-    await exec.exec('curl', ['-fsSL', `${url}.zip`, '--output', zipPath])
-    await exec.exec('unzip', [zipPath, '-d', os.tmpdir()])
-    await io.mv(
-      path.join(os.tmpdir(), 'mise/bin/mise.exe'),
-      path.join(miseBinDir, 'mise.exe')
-    )
-  } else {
-    const output = path.join(miseBinDir, 'mise')
-    await exec.exec('curl', ['-fsSL', url, '--output', output])
-    await exec.exec('chmod', ['+x', path.join(miseBinDir, 'mise')])
+  const miseBinPath = path.join(
+    miseBinDir,
+    getOS() === 'windows' ? 'mise.exe' : 'mise'
+  )
+  if (!fs.existsSync(path.join(miseBinPath))) {
+    core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
+    await fs.promises.mkdir(miseBinDir, { recursive: true })
+    const url = version
+      ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}`
+      : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}`
+    if (getOS() === 'windows') {
+      const zipPath = path.join(os.tmpdir(), 'mise.zip')
+      await exec.exec('curl', ['-fsSL', `${url}.zip`, '--output', zipPath])
+      await exec.exec('unzip', [zipPath, '-d', os.tmpdir()])
+      await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath)
+    } else {
+      await exec.exec('curl', ['-fsSL', url, '--output', miseBinPath])
+      await exec.exec('chmod', ['+x', miseBinPath])
+    }
   }
   core.addPath(miseBinDir)
 }
