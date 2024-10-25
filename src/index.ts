@@ -77,7 +77,7 @@ async function restoreMiseCache(): Promise<void> {
     primaryKey = `${primaryKey}-${version}`
   }
 
-  core.saveState('CACHE', core.getBooleanInput('cache_save') ?? true)
+  core.saveState('CACHE', core.getBooleanInput('cache_save'))
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
 
