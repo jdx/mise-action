@@ -1,11 +1,31 @@
 # Changelog
 
 ---
-## [2.1.1](https://github.com/jdx/mise-action/compare/v2.1.0..2.1.1) - 2024-10-24
+## [2.1.2](https://github.com/jdx/mise-action/compare/v2.1.1..2.1.2) - 2024-10-25
+
+### 🚀 Features
+
+- use debug logging when in debug mode (#128) (#129) by [@xremming](https://github.com/xremming) in [#129](https://github.com/jdx/mise-action/pull/129)
+
+### 🐛 Bug Fixes
+
+- cache_save boolean bug (#135) by [@jdx](https://github.com/jdx) in [#135](https://github.com/jdx/mise-action/pull/135)
+- renovate artifact updates by [@jdx](https://github.com/jdx) in [e3088a5](https://github.com/jdx/mise-action/commit/e3088a551cec0996df9a8c8865dd72bde3ce9db0)
+
+### New Contributors
+
+* @xremming made their first contribution in [#129](https://github.com/jdx/mise-action/pull/129)
+
+---
+## [2.1.1](https://github.com/jdx/mise-action/compare/v2.1.0..v2.1.1) - 2024-10-24
 
 ### 🐛 Bug Fixes
 
 - cache mise bin (#134) by [@jdx](https://github.com/jdx) in [#134](https://github.com/jdx/mise-action/pull/134)
+
+### 🔍 Other Changes
+
+- 2.1.1 by [@jdx](https://github.com/jdx) in [c160601](https://github.com/jdx/mise-action/commit/c1606014a9b1b7cd3e7c7f5fc607a25351fdffec)
 
 ### ⚙️ Miscellaneous Tasks
 
