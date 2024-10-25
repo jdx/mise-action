@@ -62462,9 +62462,11 @@ async function setEnvVars() {
             core.exportVariable(k, v);
         }
     };
-    if (getExperimental())
+    if (core.getBooleanInput('experimental'))
         set('MISE_EXPERIMENTAL', '1');
-    set('MISE_LOG_LEVEL', core.getInput('log_level') || 'info');
+    const logLevel = core.getInput('log_level');
+    if (logLevel)
+        set('MISE_LOG_LEVEL', logLevel);
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
     set('MISE_YES', '1');
     const shimsDir = path.join((0, utils_1.miseDir)(), 'shims');
@@ -62529,10 +62531,6 @@ async function setupMise(version) {
     }
     core.addPath(miseBinDir);
 }
-function getExperimental() {
-    const experimentalString = core.getInput('experimental');
-    return experimentalString === 'true';
-}
 async function setToolVersions() {
     const toolVersions = core.getInput('tool_versions');
     if (toolVersions) {
@@ -62561,11 +62559,17 @@ const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async 
     const cwd = core.getInput('working_directory') ||
         core.getInput('install_dir') ||
         process.cwd();
+    const env = core.isDebug()
+        ? { MISE_LOG_LEVEL: 'debug', ...process.env }
+        : undefined;
     if (args.length === 1) {
-        return exec.exec(`mise ${args}`, [], { cwd });
+        return exec.exec(`mise ${args}`, [], {
+            cwd,
+            env
+        });
     }
     else {
-        return exec.exec('mise', args, { cwd });
+        return exec.exec('mise', args, { cwd, env });
     }
 });
 const writeFile = async (p, body) => core.group(`Writing ${p}`, async () => {
