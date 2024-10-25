@@ -42,11 +42,9 @@ async function setEnvVars(): Promise<void> {
   }
   if (core.getBooleanInput('experimental')) set('MISE_EXPERIMENTAL', '1')
 
-  const logLevel = core.isDebug()
-    ? 'debug'
-    : core.getInput('log_level') || 'info'
+  const logLevel = core.getInput('log_level')
+  if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
-  set('MISE_LOG_LEVEL', logLevel)
   set('MISE_TRUSTED_CONFIG_PATHS', process.cwd())
   set('MISE_YES', '1')
 
@@ -151,10 +149,17 @@ const mise = async (args: string[]): Promise<number> =>
       core.getInput('working_directory') ||
       core.getInput('install_dir') ||
       process.cwd()
+    const env = core.isDebug()
+      ? { MISE_LOG_LEVEL: 'debug', ...process.env }
+      : undefined
+
     if (args.length === 1) {
-      return exec.exec(`mise ${args}`, [], { cwd })
+      return exec.exec(`mise ${args}`, [], {
+        cwd,
+        env
+      })
     } else {
-      return exec.exec('mise', args, { cwd })
+      return exec.exec('mise', args, { cwd, env })
     }
   })
 
