@@ -85,6 +85,7 @@ async function restoreMiseCache(): Promise<void> {
     const tools = installArgs
       .split(' ')
       .filter(arg => !arg.startsWith('-'))
+      .sort()
       .join(' ')
     if (tools) {
       const toolsHash = crypto.createHash('sha256').update(tools).digest('hex')
