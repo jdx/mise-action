@@ -62425,6 +62425,7 @@ const io = __importStar(__nccwpck_require__(4994));
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const glob = __importStar(__nccwpck_require__(7206));
+const crypto = __importStar(__nccwpck_require__(6982));
 const fs = __importStar(__nccwpck_require__(9896));
 const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(6928));
@@ -62476,6 +62477,7 @@ async function setEnvVars() {
 async function restoreMiseCache() {
     core.startGroup('Restoring mise cache');
     const version = core.getInput('version');
+    const installArgs = core.getInput('install_args');
     const cachePath = (0, utils_1.miseDir)();
     const fileHash = await glob.hashFiles([
         `**/.config/mise/config.toml`,
@@ -62496,6 +62498,16 @@ async function restoreMiseCache() {
     let primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`;
     if (version) {
         primaryKey = `${primaryKey}-${version}`;
+    }
+    if (installArgs) {
+        const tools = installArgs
+            .split(' ')
+            .filter(arg => !arg.startsWith('-'))
+            .join(' ');
+        if (tools) {
+            const toolsHash = crypto.createHash('sha256').update(tools).digest('hex');
+            primaryKey = `${primaryKey}-${toolsHash}`;
+        }
     }
     core.saveState('CACHE', core.getBooleanInput('cache_save'));
     core.saveState('PRIMARY_KEY', primaryKey);

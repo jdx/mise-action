@@ -3,6 +3,7 @@ import * as io from '@actions/io'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
+import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
@@ -56,6 +57,7 @@ async function setEnvVars(): Promise<void> {
 async function restoreMiseCache(): Promise<void> {
   core.startGroup('Restoring mise cache')
   const version = core.getInput('version')
+  const installArgs = core.getInput('install_args')
   const cachePath = miseDir()
   const fileHash = await glob.hashFiles(
     [
@@ -78,6 +80,16 @@ async function restoreMiseCache(): Promise<void> {
   let primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`
   if (version) {
     primaryKey = `${primaryKey}-${version}`
+  }
+  if (installArgs) {
+    const tools = installArgs
+      .split(' ')
+      .filter(arg => !arg.startsWith('-'))
+      .join(' ')
+    if (tools) {
+      const toolsHash = crypto.createHash('sha256').update(tools).digest('hex')
+      primaryKey = `${primaryKey}-${toolsHash}`
+    }
   }
 
   core.saveState('CACHE', core.getBooleanInput('cache_save'))
