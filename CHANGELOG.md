@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [2.1.2](https://github.com/jdx/mise-action/compare/v2.1.1..2.1.2) - 2024-10-25
+## [2.1.3](https://github.com/jdx/mise-action/compare/v2.1.2..2.1.3) - 2024-10-26
+
+### 🐛 Bug Fixes
+
+- add `install_args` hash to cache key (#136) by [@risu729](https://github.com/risu729) in [#136](https://github.com/jdx/mise-action/pull/136)
+
+---
+## [2.1.2](https://github.com/jdx/mise-action/compare/v2.1.1..v2.1.2) - 2024-10-25
 
 ### 🚀 Features
 
@@ -11,6 +18,10 @@
 
 - cache_save boolean bug (#135) by [@jdx](https://github.com/jdx) in [#135](https://github.com/jdx/mise-action/pull/135)
 - renovate artifact updates by [@jdx](https://github.com/jdx) in [e3088a5](https://github.com/jdx/mise-action/commit/e3088a551cec0996df9a8c8865dd72bde3ce9db0)
+
+### 🔍 Other Changes
+
+- 2.1.2 by [@jdx](https://github.com/jdx) in [4d056cf](https://github.com/jdx/mise-action/commit/4d056cf31b20dbda64e7e44dc5da5565707b00d3)
 
 ### New Contributors
 
@@ -68,10 +79,6 @@
 ### ⚙️ Miscellaneous Tasks
 
 - rebuild by [@jdx](https://github.com/jdx) in [d0dc8c8](https://github.com/jdx/mise-action/commit/d0dc8c81e39f1b4571ed0668cd7fa6be57534ad2)
-
-### New Contributors
-
-* @risu729 made their first contribution in [#86](https://github.com/jdx/mise-action/pull/86)
 
 ---
 ## [2.0.5](https://github.com/jdx/mise-action/compare/v2.0.4..v2.0.5) - 2024-06-01
