@@ -13,10 +13,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
         with:
-          version: 2023.12.0 # [default: latest] mise version to install
+          version: 2024.10.0 # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
@@ -34,7 +34,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: jdx/mise-action@v2
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
@@ -47,7 +47,7 @@ jobs:
   build:
     steps:
     - run: |
-        curl https://mise.jdx.dev/install.sh | sh
+        curl https://mise.run | sh
         echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
         echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
 ```
