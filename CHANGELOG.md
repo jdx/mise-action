@@ -1,11 +1,24 @@
 # Changelog
 
 ---
-## [2.1.3](https://github.com/jdx/mise-action/compare/v2.1.2..2.1.3) - 2024-10-26
+## [2.1.4](https://github.com/jdx/mise-action/compare/v2.1.3..2.1.4) - 2024-10-28
+
+### ⚙️ Miscellaneous Tasks
+
+- fetch mise compressed by [@jdx](https://github.com/jdx) in [c20c9eb](https://github.com/jdx/mise-action/commit/c20c9ebb8b821ea3a64ef94f4144321702665fc4)
+- fetch mise compressed by [@jdx](https://github.com/jdx) in [86b003e](https://github.com/jdx/mise-action/commit/86b003e69f7ac106f303afe7cf016b87641704d0)
+- npm update by [@jdx](https://github.com/jdx) in [534e1f8](https://github.com/jdx/mise-action/commit/534e1f8448d3180fb23336b416d07e78ee67b9b7)
+
+---
+## [2.1.3](https://github.com/jdx/mise-action/compare/v2.1.2..v2.1.3) - 2024-10-26
 
 ### 🐛 Bug Fixes
 
 - add `install_args` hash to cache key (#136) by [@risu729](https://github.com/risu729) in [#136](https://github.com/jdx/mise-action/pull/136)
+
+### 🔍 Other Changes
+
+- 2.1.3 by [@jdx](https://github.com/jdx) in [943808f](https://github.com/jdx/mise-action/commit/943808f3f14bac3770a312c0bb13666971d502c1)
 
 ---
 ## [2.1.2](https://github.com/jdx/mise-action/compare/v2.1.1..v2.1.2) - 2024-10-25
