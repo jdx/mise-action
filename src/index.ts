@@ -133,7 +133,13 @@ async function setupMise(version: string): Promise<void> {
       await exec.exec('unzip', [zipPath, '-d', os.tmpdir()])
       await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath)
     } else {
-      await exec.exec('curl', ['-fsSL', url, '--output', miseBinPath])
+      await exec.exec('curl', [
+        '--compressed',
+        '-fsSL',
+        url,
+        '--output',
+        miseBinPath
+      ])
       await exec.exec('chmod', ['+x', miseBinPath])
     }
   }
