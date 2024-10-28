@@ -123,7 +123,13 @@ async function setupMise(version: string): Promise<void> {
       : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}`
     if (getOS() === 'windows') {
       const zipPath = path.join(os.tmpdir(), 'mise.zip')
-      await exec.exec('curl', ['-fsSL', `${url}.zip`, '--output', zipPath])
+      await exec.exec('curl', [
+        '--compressed',
+        '-fsSL',
+        `${url}.zip`,
+        '--output',
+        zipPath
+      ])
       await exec.exec('unzip', [zipPath, '-d', os.tmpdir()])
       await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath)
     } else {
