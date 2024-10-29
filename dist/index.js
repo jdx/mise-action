@@ -62585,7 +62585,7 @@ const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async 
         core.getInput('install_dir') ||
         process.cwd();
     const env = core.isDebug()
-        ? { MISE_LOG_LEVEL: 'debug', ...process.env }
+        ? { ...process.env, MISE_LOG_LEVEL: 'debug' }
         : undefined;
     if (args.length === 1) {
         return exec.exec(`mise ${args}`, [], {
