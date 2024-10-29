@@ -181,7 +181,7 @@ const mise = async (args: string[]): Promise<number> =>
       core.getInput('install_dir') ||
       process.cwd()
     const env = core.isDebug()
-      ? { MISE_LOG_LEVEL: 'debug', ...process.env }
+      ? { ...process.env, MISE_LOG_LEVEL: 'debug' }
       : undefined
 
     if (args.length === 1) {
