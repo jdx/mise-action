@@ -62480,18 +62480,18 @@ async function restoreMiseCache() {
     const installArgs = core.getInput('install_args');
     const cachePath = (0, utils_1.miseDir)();
     const fileHash = await glob.hashFiles([
-        `**/.config/mise/config.toml`,
-        `**/.config/mise/config.*.toml`,
-        `**/.config/mise.toml`,
-        `**/.config/mise.*.toml`,
-        `**/.mise/config.toml`,
-        `**/.mise/config.*.toml`,
-        `**/mise/config.toml`,
-        `**/mise/config.*.toml`,
-        `**/.mise.toml`,
-        `**/.mise.*.toml`,
-        `**/mise.toml`,
-        `**/mise.*.toml`,
+        `**/.config/mise/config.{toml,lock}`,
+        `**/.config/mise/config.*.{toml,lock}`,
+        `**/.config/mise.{toml,lock}`,
+        `**/.config/mise.*.{toml,lock}`,
+        `**/.mise/config.{toml,lock}`,
+        `**/.mise/config.*.{toml,lock}`,
+        `**/mise/config.{toml,lock}`,
+        `**/mise/config.*.{toml,lock}`,
+        `**/.mise.{toml,lock}`,
+        `**/.mise.*.{toml,lock}`,
+        `**/mise.{toml,lock}`,
+        `**/mise.*.{toml,lock}`,
         `**/.tool-versions`
     ].join('\n'));
     const prefix = core.getInput('cache_key_prefix') || 'mise-v0';
