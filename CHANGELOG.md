@@ -1,7 +1,27 @@
 # Changelog
 
 ---
-## [2.1.4](https://github.com/jdx/mise-action/compare/v2.1.3..2.1.4) - 2024-10-28
+## [2.1.5](https://github.com/jdx/mise-action/compare/v2.1.4..2.1.5) - 2024-11-04
+
+### 🐛 Bug Fixes
+
+- overwrite MISE_LOG_LEVEL when in debug mode (#138) by [@xremming](https://github.com/xremming) in [#138](https://github.com/jdx/mise-action/pull/138)
+- use lockfile for cache key by [@jdx](https://github.com/jdx) in [57eda1a](https://github.com/jdx/mise-action/commit/57eda1a45f7d845430bae3b1767b84cf842802c9)
+
+### 📚 Documentation
+
+- updated README by [@jdx](https://github.com/jdx) in [12823cc](https://github.com/jdx/mise-action/commit/12823cc980f4f0814006dfbc26812972f3029d2a)
+
+### ⚙️ Miscellaneous Tasks
+
+- update deps by [@jdx](https://github.com/jdx) in [239a5da](https://github.com/jdx/mise-action/commit/239a5da37ca9a5534f590a6f92901c199714391f)
+
+---
+## [2.1.4](https://github.com/jdx/mise-action/compare/v2.1.3..v2.1.4) - 2024-10-28
+
+### 🔍 Other Changes
+
+- 2.1.4 by [@jdx](https://github.com/jdx) in [a4cfebd](https://github.com/jdx/mise-action/commit/a4cfebde9ceb9b49b54db1d148fa86a52e1b7fab)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -35,10 +55,6 @@
 ### 🔍 Other Changes
 
 - 2.1.2 by [@jdx](https://github.com/jdx) in [4d056cf](https://github.com/jdx/mise-action/commit/4d056cf31b20dbda64e7e44dc5da5565707b00d3)
-
-### New Contributors
-
-* @xremming made their first contribution in [#129](https://github.com/jdx/mise-action/pull/129)
 
 ---
 ## [2.1.1](https://github.com/jdx/mise-action/compare/v2.1.0..v2.1.1) - 2024-10-24
