@@ -1,12 +1,27 @@
 # Changelog
 
 ---
-## [2.1.5](https://github.com/jdx/mise-action/compare/v2.1.4..2.1.5) - 2024-11-04
+## [2.1.6](https://github.com/jdx/mise-action/compare/v2.1.5..2.1.6) - 2024-11-06
+
+### 🐛 Bug Fixes
+
+- use correct glob format for cache key file hash (#139) by [@Syquel](https://github.com/Syquel) in [#139](https://github.com/jdx/mise-action/pull/139)
+
+### New Contributors
+
+* @Syquel made their first contribution in [#139](https://github.com/jdx/mise-action/pull/139)
+
+---
+## [2.1.5](https://github.com/jdx/mise-action/compare/v2.1.4..v2.1.5) - 2024-11-04
 
 ### 🐛 Bug Fixes
 
 - overwrite MISE_LOG_LEVEL when in debug mode (#138) by [@xremming](https://github.com/xremming) in [#138](https://github.com/jdx/mise-action/pull/138)
 - use lockfile for cache key by [@jdx](https://github.com/jdx) in [57eda1a](https://github.com/jdx/mise-action/commit/57eda1a45f7d845430bae3b1767b84cf842802c9)
+
+### 🔍 Other Changes
+
+- 2.1.5 by [@jdx](https://github.com/jdx) in [3cea416](https://github.com/jdx/mise-action/commit/3cea416127de5a8efd9642eb725267750e5c09b7)
 
 ### 📚 Documentation
 
