@@ -3,4 +3,4 @@ tasks."lint:fix" = "bun run format:write"
 tasks.version = "npm version"
 
 [tools]
-node = '20.18.0'
+node = '22.11.0'
