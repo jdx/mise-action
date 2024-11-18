@@ -1,11 +1,27 @@
 # Changelog
 
 ---
-## [2.1.6](https://github.com/jdx/mise-action/compare/v2.1.5..2.1.6) - 2024-11-06
+## [2.1.7](https://github.com/jdx/mise-action/compare/v2.1.6..2.1.7) - 2024-11-18
+
+### 🐛 Bug Fixes
+
+- fix cache_save option (#144) by [@risu729](https://github.com/risu729) in [#144](https://github.com/jdx/mise-action/pull/144)
+
+### ⚙️ Miscellaneous Tasks
+
+- updated deps by [@jdx](https://github.com/jdx) in [6c29640](https://github.com/jdx/mise-action/commit/6c296408362b673546bb400d2ab09f8aabf439b8)
+- added pre-commit task by [@jdx](https://github.com/jdx) in [793f8df](https://github.com/jdx/mise-action/commit/793f8df48436e9c0f72668b834ee7847dfdea74b)
+
+---
+## [2.1.6](https://github.com/jdx/mise-action/compare/v2.1.5..v2.1.6) - 2024-11-06
 
 ### 🐛 Bug Fixes
 
 - use correct glob format for cache key file hash (#139) by [@Syquel](https://github.com/Syquel) in [#139](https://github.com/jdx/mise-action/pull/139)
+
+### 🔍 Other Changes
+
+- 2.1.6 by [@jdx](https://github.com/jdx) in [53d027c](https://github.com/jdx/mise-action/commit/53d027c2e96fed8f955f5d95bff910a3e031cc58)
 
 ### New Contributors
 
