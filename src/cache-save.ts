@@ -13,7 +13,7 @@ export async function run(): Promise<void> {
 }
 
 async function cacheMiseTools(): Promise<void> {
-  if (!core.getState('CACHE')) {
+  if (core.getState('CACHE') !== 'true') {
     core.info('Skipping saving cache')
     return
   }
