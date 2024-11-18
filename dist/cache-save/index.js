@@ -60998,7 +60998,7 @@ async function run() {
     }
 }
 async function cacheMiseTools() {
-    if (!core.getState('CACHE')) {
+    if (core.getState('CACHE') !== 'true') {
         core.info('Skipping saving cache');
         return;
     }
