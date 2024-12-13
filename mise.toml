@@ -1,4 +1,6 @@
 tasks.pre-commit = ["npm run all", "git add dist"]
+tasks.test.alias = ["t"]
+tasks.test.run = ["npm run all"]
 tasks.lint = "bun run lint"
 tasks."lint:fix" = "bun run format:write"
 tasks.version = "npm version"
