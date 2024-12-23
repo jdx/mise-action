@@ -42855,6 +42855,7 @@ function readDocType(xmlData, i){
             if (xmlData[i] === '<' && !comment) { //Determine the tag type
                 if( hasBody && isEntity(xmlData, i)){
                     i += 7; 
+                    let entityName, val;
                     [entityName, val,i] = readEntityExp(xmlData,i+1);
                     if(val.indexOf("&") === -1) //Parameter entities are not supported
                         entities[ validateEntityName(entityName) ] = {
@@ -71591,30 +71592,31 @@ async function setupMise(version) {
     if (!fs.existsSync(path.join(miseBinPath))) {
         core.startGroup(version ? `Download mise@${version}` : 'Setup mise');
         await fs.promises.mkdir(miseBinDir, { recursive: true });
+        const ext = getOS() === 'windows'
+            ? '.zip'
+            : version && version.startsWith('2024')
+                ? ''
+                : '.tar.zst';
         const url = version
-            ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}`
-            : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}`;
+            ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}${ext}`
+            : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}${ext}`;
+        const archivePath = path.join(os.tmpdir(), `mise${ext}`);
         if (getOS() === 'windows') {
-            const zipPath = path.join(os.tmpdir(), 'mise.zip');
-            await exec.exec('curl', [
-                '--compressed',
-                '-fsSL',
-                `${url}.zip`,
-                '--output',
-                zipPath
-            ]);
-            await exec.exec('unzip', [zipPath, '-d', os.tmpdir()]);
+            await exec.exec('curl', ['-fsSL', url, '--output', archivePath]);
+            await exec.exec('unzip', [archivePath, '-d', os.tmpdir()]);
             await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath);
         }
         else {
-            await exec.exec('curl', [
-                '--compressed',
-                '-fsSL',
-                url,
-                '--output',
-                miseBinPath
-            ]);
-            await exec.exec('chmod', ['+x', miseBinPath]);
+            if (ext === '') {
+                await exec.exec('sh', ['-c', `curl -fsSL ${url} > ${miseBinPath}`]);
+                await exec.exec('chmod', ['+x', miseBinPath]);
+            }
+            else {
+                await exec.exec('sh', [
+                    '-c',
+                    `curl -fsSL ${url} | tar --zstd -xf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
+                ]);
+            }
         }
     }
     core.addPath(miseBinDir);
