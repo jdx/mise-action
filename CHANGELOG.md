@@ -1,11 +1,22 @@
 # Changelog
 
 ---
-## [2.1.9](https://github.com/jdx/mise-action/compare/v2.1.8..2.1.9) - 2024-12-23
+## [2.1.10](https://github.com/jdx/mise-action/compare/v2.1.9..2.1.10) - 2024-12-23
+
+### ⚙️ Miscellaneous Tasks
+
+- use github releases (#154) by [@jdx](https://github.com/jdx) in [#154](https://github.com/jdx/mise-action/pull/154)
+
+---
+## [2.1.9](https://github.com/jdx/mise-action/compare/v2.1.8..v2.1.9) - 2024-12-23
 
 ### 🚀 Features
 
 - fetch tarball with zst compression (#153) by [@jdx](https://github.com/jdx) in [#153](https://github.com/jdx/mise-action/pull/153)
+
+### 🔍 Other Changes
+
+- 2.1.9 by [@jdx](https://github.com/jdx) in [26caef8](https://github.com/jdx/mise-action/commit/26caef848708cd0517ce543fd46fffab8203a2a0)
 
 ### ⚙️ Miscellaneous Tasks
 
