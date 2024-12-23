@@ -71597,9 +71597,8 @@ async function setupMise(version) {
             : version && version.startsWith('2024')
                 ? ''
                 : '.tar.zst';
-        const url = version
-            ? `https://mise.jdx.dev/v${version}/mise-v${version}-${getOS()}-${os.arch()}${ext}`
-            : `https://mise.jdx.dev/mise-latest-${getOS()}-${os.arch()}${ext}`;
+        version = (version || (await latestMiseVersion())).replace(/^v/, '');
+        const url = `https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-${getOS()}-${os.arch()}${ext}`;
         const archivePath = path.join(os.tmpdir(), `mise${ext}`);
         if (getOS() === 'windows') {
             await exec.exec('curl', ['-fsSL', url, '--output', archivePath]);
@@ -71620,6 +71619,13 @@ async function setupMise(version) {
         }
     }
     core.addPath(miseBinDir);
+}
+async function latestMiseVersion() {
+    const rsp = await exec.getExecOutput('curl', [
+        '-fsSL',
+        'https://mise.jdx.dev/VERSION'
+    ]);
+    return rsp.stdout.trim();
 }
 async function setToolVersions() {
     const toolVersions = core.getInput('tool_versions');
