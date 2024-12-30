@@ -71596,29 +71596,46 @@ async function setupMise(version) {
             ? '.zip'
             : version && version.startsWith('2024')
                 ? ''
-                : '.tar.zst';
+                : (await zstdInstalled())
+                    ? '.tar.zst'
+                    : '.tar.gz';
         version = (version || (await latestMiseVersion())).replace(/^v/, '');
         const url = `https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-${getOS()}-${os.arch()}${ext}`;
         const archivePath = path.join(os.tmpdir(), `mise${ext}`);
-        if (getOS() === 'windows') {
-            await exec.exec('curl', ['-fsSL', url, '--output', archivePath]);
-            await exec.exec('unzip', [archivePath, '-d', os.tmpdir()]);
-            await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath);
-        }
-        else {
-            if (ext === '') {
-                await exec.exec('sh', ['-c', `curl -fsSL ${url} > ${miseBinPath}`]);
-                await exec.exec('chmod', ['+x', miseBinPath]);
-            }
-            else {
+        switch (ext) {
+            case '.zip':
+                await exec.exec('curl', ['-fsSL', url, '--output', archivePath]);
+                await exec.exec('unzip', [archivePath, '-d', os.tmpdir()]);
+                await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath);
+                break;
+            case '.tar.zst':
                 await exec.exec('sh', [
                     '-c',
                     `curl -fsSL ${url} | tar --zstd -xf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
                 ]);
-            }
+                break;
+            case '.tar.gz':
+                await exec.exec('sh', [
+                    '-c',
+                    `curl -fsSL ${url} | tar -xzf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
+                ]);
+                break;
+            default:
+                await exec.exec('sh', ['-c', `curl -fsSL ${url} > ${miseBinPath}`]);
+                await exec.exec('chmod', ['+x', miseBinPath]);
+                break;
         }
     }
     core.addPath(miseBinDir);
+}
+async function zstdInstalled() {
+    try {
+        await exec.exec('zstd', ['--version']);
+        return true;
+    }
+    catch {
+        return false;
+    }
 }
 async function latestMiseVersion() {
     const rsp = await exec.getExecOutput('curl', [
