@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   build: # make sure build/ci work properly
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - run: |
@@ -25,9 +25,13 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
+          # Do not use latest as we have zero control regarding when it does
+          # change. OK to add multiple versions of the same OS when needed,
+          # especially as new ones are added rarely.
+          # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for--private-repositories
+          - macos-15
+          - ubuntu-24.04
+          - windows-2022
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -46,7 +50,7 @@ jobs:
       - run: . scripts/test.sh
         shell: bash
   specific_version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: Setup mise
