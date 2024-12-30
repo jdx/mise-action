@@ -1,7 +1,18 @@
 # Changelog
 
 ---
-## [2.1.10](https://github.com/jdx/mise-action/compare/v2.1.9..2.1.10) - 2024-12-23
+## [2.1.11](https://github.com/jdx/mise-action/compare/v2.1.10..2.1.11) - 2024-12-30
+
+### 🐛 Bug Fixes
+
+- use tar.gz if zstd is not available (#159) by [@jdx](https://github.com/jdx) in [#159](https://github.com/jdx/mise-action/pull/159)
+
+---
+## [2.1.10](https://github.com/jdx/mise-action/compare/v2.1.9..v2.1.10) - 2024-12-23
+
+### 🔍 Other Changes
+
+- 2.1.10 by [@jdx](https://github.com/jdx) in [249c01b](https://github.com/jdx/mise-action/commit/249c01ba271e19fa76eede7f766161cc95ace489)
 
 ### ⚙️ Miscellaneous Tasks
 
