@@ -71472,6 +71472,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getOS = getOS;
 const cache = __importStar(__nccwpck_require__(5116));
 const io = __importStar(__nccwpck_require__(4994));
 const core = __importStar(__nccwpck_require__(7484));
@@ -71640,13 +71641,14 @@ async function setMiseToml() {
     }
 }
 function getOS() {
-    switch (process.platform) {
+    const platform = process.env.FORCE_OS ?? process.platform;
+    switch (platform) {
         case 'darwin':
             return 'macos';
         case 'win32':
             return 'windows';
         default:
-            return process.platform;
+            return platform;
     }
 }
 const testMise = async () => mise(['--version']);
@@ -71720,6 +71722,7 @@ exports.miseDir = miseDir;
 const core = __importStar(__nccwpck_require__(7484));
 const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(6928));
+const index_1 = __nccwpck_require__(9407);
 function miseDir() {
     const dir = core.getState('MISE_DIR');
     if (dir)
@@ -71729,7 +71732,7 @@ function miseDir() {
         return MISE_DATA_DIR;
     if (XDG_DATA_HOME)
         return path.join(XDG_DATA_HOME, 'mise');
-    if (process.platform === 'win32' && LOCALAPPDATA)
+    if ((0, index_1.getOS)() === 'windows' && LOCALAPPDATA)
         return path.join(LOCALAPPDATA, 'mise');
     return path.join(os.homedir(), '.local', 'share', 'mise');
 }

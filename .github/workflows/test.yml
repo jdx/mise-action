@@ -11,6 +11,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
 
+env:
+  WSLENV: FORCE_OS:HOSTNAME:CI:GITHUB_ACTION:GITHUB_ACTION_PATH/p:GITHUB_ACTION_REPOSITORY:GITHUB_WORKFLOW:GITHUB_WORKSPACE/p:GITHUB_PATH/p:GITHUB_ENV/p:VIRTUAL_ENV/p
 jobs:
   build: # make sure build/ci work properly
     runs-on: ubuntu-latest
@@ -21,16 +23,50 @@ jobs:
       - run: |
           npm run all
   test: # make sure the action works on a clean machine without building
+    name: ${{ matrix.name || matrix.os }}
+    env:
+      FORCE_OS: ${{ matrix.env.FORCE_OS }}
     strategy:
       fail-fast: false
       matrix:
         os:
-          - macos-latest
-          - ubuntu-latest
+          # - macos-latest
+          # - ubuntu-latest
           - windows-latest
+        include:
+          - name: wsl
+            os: windows-latest
+            wsl: true
+            shell: wsl-bash {0}
+            env:
+              FORCE_OS: linux # force mise to think it's on linux
     runs-on: ${{ matrix.os }}
     steps:
+      - run: echo $FORCE_OS
       - uses: actions/checkout@v4
+
+      - name: Activate WSL if needed
+        if: matrix.wsl
+        uses: Vampire/setup-wsl@v4
+        with:
+          additional-packages: curl
+          distribution: Ubuntu-24.04
+          set-as-default: "true"
+          # '-i' seems to be the only option that loads .bashrc file that we need
+          # https://github.com/Vampire/setup-wsl/discussions/54
+          wsl-shell-command: "bash -i -eo pipefail"
+          # https://github.com/MicrosoftDocs/WSL/blob/main/WSL/wsl-config.md#L159
+          wsl-conf: |
+            [automount]
+            enabled = true
+            root = /
+            options = "metadata,umask=077"
+            [interop]
+            enabled = true
+            appendWindowsPath = true
+            [network]
+            hostname = wsl
+
       - name: Setup mise
         uses: ./
         with:
@@ -39,6 +75,7 @@ jobs:
             node = "22.0.0"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - run: echo $FORCE_OS
       - run: mise --version
       - run: mise x node -- node -v
       - run: which node

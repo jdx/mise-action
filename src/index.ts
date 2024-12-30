@@ -180,14 +180,15 @@ async function setMiseToml(): Promise<void> {
   }
 }
 
-function getOS(): string {
-  switch (process.platform) {
+export function getOS(): string {
+  const platform = process.env.FORCE_OS ?? process.platform
+  switch (platform) {
     case 'darwin':
       return 'macos'
     case 'win32':
       return 'windows'
     default:
-      return process.platform
+      return platform
   }
 }
 
