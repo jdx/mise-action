@@ -27,6 +27,7 @@ async function run(): Promise<void> {
     if (core.getBooleanInput('install')) {
       await miseInstall()
     }
+    await miseLs()
   } catch (err) {
     if (err instanceof Error) core.setFailed(err.message)
     else throw err
@@ -213,6 +214,7 @@ function getOS(): string {
 const testMise = async (): Promise<number> => mise(['--version'])
 const miseInstall = async (): Promise<number> =>
   mise([`install ${core.getInput('install_args')}`])
+const miseLs = async (): Promise<number> => mise([`ls`])
 const mise = async (args: string[]): Promise<number> =>
   core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd =
