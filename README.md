@@ -20,9 +20,9 @@ jobs:
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
-          # automatically write this .tool-versions file
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
+          # automatically write this .tool-versions file
           tool_versions: |
             shellcheck 0.9.0
           # or, if you prefer .mise.toml format:
