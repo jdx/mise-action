@@ -18,10 +18,6 @@
 
 - save cache when build fails by [@jdx](https://github.com/jdx) in [81d53cf](https://github.com/jdx/mise-action/commit/81d53cf96809b887a4903446d5466da5e25ffe37)
 
-### 🔍 Other Changes
-
-- 2.2.0 by [@jdx](https://github.com/jdx) in [746b22c](https://github.com/jdx/mise-action/commit/746b22c6c6dd7f2abdd64976771834445a844e60)
-
 ### 📚 Documentation
 
 - restore estranged comment for tool_versions (#164) by [@mfilej](https://github.com/mfilej) in [#164](https://github.com/jdx/mise-action/pull/164)
@@ -43,16 +39,8 @@
 
 - use tar.gz if zstd is not available (#159) by [@jdx](https://github.com/jdx) in [#159](https://github.com/jdx/mise-action/pull/159)
 
-### 🔍 Other Changes
-
-- 2.1.11 by [@jdx](https://github.com/jdx) in [5083fe4](https://github.com/jdx/mise-action/commit/5083fe46898c414b2475087cc79da59e7da859e8)
-
 ---
 ## [2.1.10](https://github.com/jdx/mise-action/compare/v2.1.9..v2.1.10) - 2024-12-23
-
-### 🔍 Other Changes
-
-- 2.1.10 by [@jdx](https://github.com/jdx) in [249c01b](https://github.com/jdx/mise-action/commit/249c01ba271e19fa76eede7f766161cc95ace489)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -65,20 +53,12 @@
 
 - fetch tarball with zst compression (#153) by [@jdx](https://github.com/jdx) in [#153](https://github.com/jdx/mise-action/pull/153)
 
-### 🔍 Other Changes
-
-- 2.1.9 by [@jdx](https://github.com/jdx) in [26caef8](https://github.com/jdx/mise-action/commit/26caef848708cd0517ce543fd46fffab8203a2a0)
-
 ### ⚙️ Miscellaneous Tasks
 
 - loosen node version by [@jdx](https://github.com/jdx) in [5f7b5f7](https://github.com/jdx/mise-action/commit/5f7b5f779deed7c1cf8a300d07d84f8524941f6e)
 
 ---
 ## [2.1.8](https://github.com/jdx/mise-action/compare/v2.1.7..v2.1.8) - 2024-12-13
-
-### 🔍 Other Changes
-
-- 2.1.8 by [@jdx](https://github.com/jdx) in [5bb8f8c](https://github.com/jdx/mise-action/commit/5bb8f8c1911837cf42064e6490e7634fc842ee7e)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -92,10 +72,6 @@
 
 - fix cache_save option (#144) by [@risu729](https://github.com/risu729) in [#144](https://github.com/jdx/mise-action/pull/144)
 
-### 🔍 Other Changes
-
-- 2.1.7 by [@jdx](https://github.com/jdx) in [63a6738](https://github.com/jdx/mise-action/commit/63a673876c7072c1d6ecb2049c0d572976c83b22)
-
 ### ⚙️ Miscellaneous Tasks
 
 - updated deps by [@jdx](https://github.com/jdx) in [6c29640](https://github.com/jdx/mise-action/commit/6c296408362b673546bb400d2ab09f8aabf439b8)
@@ -107,10 +83,6 @@
 ### 🐛 Bug Fixes
 
 - use correct glob format for cache key file hash (#139) by [@Syquel](https://github.com/Syquel) in [#139](https://github.com/jdx/mise-action/pull/139)
-
-### 🔍 Other Changes
-
-- 2.1.6 by [@jdx](https://github.com/jdx) in [53d027c](https://github.com/jdx/mise-action/commit/53d027c2e96fed8f955f5d95bff910a3e031cc58)
 
 ### New Contributors
 
@@ -124,10 +96,6 @@
 - overwrite MISE_LOG_LEVEL when in debug mode (#138) by [@xremming](https://github.com/xremming) in [#138](https://github.com/jdx/mise-action/pull/138)
 - use lockfile for cache key by [@jdx](https://github.com/jdx) in [57eda1a](https://github.com/jdx/mise-action/commit/57eda1a45f7d845430bae3b1767b84cf842802c9)
 
-### 🔍 Other Changes
-
-- 2.1.5 by [@jdx](https://github.com/jdx) in [3cea416](https://github.com/jdx/mise-action/commit/3cea416127de5a8efd9642eb725267750e5c09b7)
-
 ### 📚 Documentation
 
 - updated README by [@jdx](https://github.com/jdx) in [12823cc](https://github.com/jdx/mise-action/commit/12823cc980f4f0814006dfbc26812972f3029d2a)
@@ -138,10 +106,6 @@
 
 ---
 ## [2.1.4](https://github.com/jdx/mise-action/compare/v2.1.3..v2.1.4) - 2024-10-28
-
-### 🔍 Other Changes
-
-- 2.1.4 by [@jdx](https://github.com/jdx) in [a4cfebd](https://github.com/jdx/mise-action/commit/a4cfebde9ceb9b49b54db1d148fa86a52e1b7fab)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -156,10 +120,6 @@
 
 - add `install_args` hash to cache key (#136) by [@risu729](https://github.com/risu729) in [#136](https://github.com/jdx/mise-action/pull/136)
 
-### 🔍 Other Changes
-
-- 2.1.3 by [@jdx](https://github.com/jdx) in [943808f](https://github.com/jdx/mise-action/commit/943808f3f14bac3770a312c0bb13666971d502c1)
-
 ---
 ## [2.1.2](https://github.com/jdx/mise-action/compare/v2.1.1..v2.1.2) - 2024-10-25
 
@@ -172,10 +132,6 @@
 - cache_save boolean bug (#135) by [@jdx](https://github.com/jdx) in [#135](https://github.com/jdx/mise-action/pull/135)
 - renovate artifact updates by [@jdx](https://github.com/jdx) in [e3088a5](https://github.com/jdx/mise-action/commit/e3088a551cec0996df9a8c8865dd72bde3ce9db0)
 
-### 🔍 Other Changes
-
-- 2.1.2 by [@jdx](https://github.com/jdx) in [4d056cf](https://github.com/jdx/mise-action/commit/4d056cf31b20dbda64e7e44dc5da5565707b00d3)
-
 ### New Contributors
 
 * @xremming made their first contribution in [#129](https://github.com/jdx/mise-action/pull/129)
@@ -186,10 +142,6 @@
 ### 🐛 Bug Fixes
 
 - cache mise bin (#134) by [@jdx](https://github.com/jdx) in [#134](https://github.com/jdx/mise-action/pull/134)
-
-### 🔍 Other Changes
-
-- 2.1.1 by [@jdx](https://github.com/jdx) in [c160601](https://github.com/jdx/mise-action/commit/c1606014a9b1b7cd3e7c7f5fc607a25351fdffec)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -205,7 +157,6 @@
 ### 🔍 Other Changes
 
 - Update README.md to refer to v2 consistently (#96) by [@ericmatthys](https://github.com/ericmatthys) in [#96](https://github.com/jdx/mise-action/pull/96)
-- 2.1.0 by [@jdx](https://github.com/jdx) in [f8dfbcc](https://github.com/jdx/mise-action/commit/f8dfbcc150159126838e44b882bf34bd98fd90f3)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -224,10 +175,6 @@
 ### 🚀 Features
 
 - added config filenames to hashFiles (#86) by [@risu729](https://github.com/risu729) in [#86](https://github.com/jdx/mise-action/pull/86)
-
-### 🔍 Other Changes
-
-- 2.0.6 by [@jdx](https://github.com/jdx) in [d6e32c1](https://github.com/jdx/mise-action/commit/d6e32c1796099e0f1f3ac741c220a8b7eae9e5dd)
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -250,10 +197,6 @@
 - fix: rename "install_dir" config to "working_directory" by [@jdx](https://github.com/jdx) in [4541e25](https://github.com/jdx/mise-action/commit/4541e25ef8810d37ad00a583c84cc582701049c0)
 - deprecated install_dir by [@jdx](https://github.com/jdx) in [2e6a26b](https://github.com/jdx/mise-action/commit/2e6a26bb550e828ee46768dd1507028b4e2b8702)
 
-### 🔍 Other Changes
-
-- 2.0.5 by [@jdx](https://github.com/jdx) in [b02b057](https://github.com/jdx/mise-action/commit/b02b0576a303103155c986ce4e0ee322dcda8f72)
-
 ### 📚 Documentation
 
 - changelog by [@jdx](https://github.com/jdx) in [f8de9e3](https://github.com/jdx/mise-action/commit/f8de9e38d34fe5aee1b8430c404c6f9a08379f90)
@@ -266,10 +209,6 @@
 ---
 ## [2.0.4](https://github.com/jdx/mise-action/compare/v2.0.3..v2.0.4) - 2024-04-13
 
-### 🔍 Other Changes
-
-- 2.0.4 by [@jdx](https://github.com/jdx) in [0c39a52](https://github.com/jdx/mise-action/commit/0c39a522dfbced3ed83924152c45804a71ce216f)
-
 ### ⚙️ Miscellaneous Tasks
 
 - **(eslint)** updated eslint@8 by [@jdx](https://github.com/jdx) in [0f558f8](https://github.com/jdx/mise-action/commit/0f558f87e146e155e5bd79c9f134bc09e95090a5)
@@ -281,7 +220,6 @@
 
 - recompile by [@jdx](https://github.com/jdx) in [5173b58](https://github.com/jdx/mise-action/commit/5173b58ce80d4fcb06718136d9549d8180441a91)
 - npm update by [@jdx](https://github.com/jdx) in [e1f00a0](https://github.com/jdx/mise-action/commit/e1f00a0bf8dfe2cc7167344fde559956e187e92a)
-- 2.0.3 by [@jdx](https://github.com/jdx) in [3e282fc](https://github.com/jdx/mise-action/commit/3e282fcd55c8de21f232397e9fb876cd33e612f1)
 
 ### 📚 Documentation
 
@@ -310,7 +248,6 @@
 - added more config filenames to cache key by [@jdx](https://github.com/jdx) in [5424b1f](https://github.com/jdx/mise-action/commit/5424b1f50b5bd5e9c7f2cfe5d56c523694e2ab9b)
 - mise task by [@jdx](https://github.com/jdx) in [c80fa4f](https://github.com/jdx/mise-action/commit/c80fa4f4ef8ad8389663596a388f9f57cba1f9cf)
 - mise task by [@jdx](https://github.com/jdx) in [5e6031b](https://github.com/jdx/mise-action/commit/5e6031b380e8dc1e2a1c60f53fd15233762a5056)
-- 2.0.2 by [@jdx](https://github.com/jdx) in [3bc8539](https://github.com/jdx/mise-action/commit/3bc85396a273ed82bba5e53a15174bbf9dba095c)
 
 ### 🧪 Testing
 
@@ -325,7 +262,6 @@
 - Merge pull request #2 from jdx/dependabot/npm_and_yarn/typescript-eslint/eslint-plugin-6.17.0 by [@jdx](https://github.com/jdx) in [#2](https://github.com/jdx/mise-action/pull/2)
 - remove dependabot by [@jdx](https://github.com/jdx) in [a1a7a37](https://github.com/jdx/mise-action/commit/a1a7a3754501cc8ce7668c6e1bef0d5d29e94d36)
 - npm update by [@jdx](https://github.com/jdx) in [5f39af9](https://github.com/jdx/mise-action/commit/5f39af9fe65adde21286731b4c5e462c3b008ac9)
-- 2.0.1 by [@jdx](https://github.com/jdx) in [052520c](https://github.com/jdx/mise-action/commit/052520c41a328779551db19a76697ffa34f3eabc)
 
 ---
 ## [2.0.0](https://github.com/jdx/mise-action/compare/v1.3.2..v2.0.0) - 2024-01-02
@@ -363,7 +299,6 @@
 - **(deps-dev)** bump @types/node from 20.10.4 to 20.10.5 (#216) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [867a9c3](https://github.com/jdx/mise-action/commit/867a9c3ff59c3ae0c40cfe2e431b556b72a0dbb6)
 - push changes to github by [@jdx](https://github.com/jdx) in [1d64270](https://github.com/jdx/mise-action/commit/1d64270fb5326ff37631ab8130c8e2ae80012f1c)
 - Add API to enable the experimental features (#220) by [@pepicrft](https://github.com/pepicrft) in [10161a1](https://github.com/jdx/mise-action/commit/10161a135f813482311399a5fc1bf495d7ea3f4a)
-- 1.3.2 by [@jdx](https://github.com/jdx) in [61c1bfb](https://github.com/jdx/mise-action/commit/61c1bfbed63c70a82ff0ce3301bde41875b17844)
 
 ### New Contributors
 
@@ -378,7 +313,6 @@
 - **(deps)** bump github/codeql-action from 2 to 3 (#218) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [77393f7](https://github.com/jdx/mise-action/commit/77393f73ad0500e669f6bb4a65d137a786899320)
 - updated postversion script by [@jdx](https://github.com/jdx) in [015cd77](https://github.com/jdx/mise-action/commit/015cd77f75642e852fef408ca29ae2c9a24316b8)
 - updated postversion script by [@jdx](https://github.com/jdx) in [0e7eb33](https://github.com/jdx/mise-action/commit/0e7eb33465b60c603a9537cdcc7eae4f20421c87)
-- 1.3.1 by [@jdx](https://github.com/jdx) in [53fcce4](https://github.com/jdx/mise-action/commit/53fcce409295cd0a23a8818cd8c0e1758aece4c8)
 
 ---
 ## [1.3.0](https://github.com/jdx/mise-action/compare/v1.2.7..v1.3.0) - 2023-12-14
@@ -389,7 +323,6 @@
 - pinning (#213) by [@jdx](https://github.com/jdx) in [a545a9b](https://github.com/jdx/mise-action/commit/a545a9b90a525848406ce775c92be4002e823ed7)
 - added rtx_toml support (#214) by [@jdx](https://github.com/jdx) in [5ac4684](https://github.com/jdx/mise-action/commit/5ac46849accbeea2af455874c27379b56c4c89b6)
 - added rtx_dir config (#215) by [@jdx](https://github.com/jdx) in [55e5d18](https://github.com/jdx/mise-action/commit/55e5d18e746f7ad88a10e22c4fb18b87b44b4000)
-- 1.3.0 by [@jdx](https://github.com/jdx) in [0551aa6](https://github.com/jdx/mise-action/commit/0551aa6fd429bfb44a37cdd384fc9916765eaceb)
 
 ### New Contributors
 
@@ -629,7 +562,6 @@
 - Bump @types/node from 18.14.0 to 18.14.6 by [@dependabot[bot]](https://github.com/dependabot[bot]) in [6ceb321](https://github.com/jdx/mise-action/commit/6ceb3218c97906cd335f1872a762c6c84242fc4a)
 - Merge pull request #34 from jdxcode/dependabot/npm_and_yarn/types/node-18.14.6 by [@jdx](https://github.com/jdx) in [aec7905](https://github.com/jdx/mise-action/commit/aec7905dc83cf86e64228729bc45862ea4c3c076)
 - Clobber rtx binary if it already exists (#36) by [@mark-thm](https://github.com/mark-thm) in [c8026e2](https://github.com/jdx/mise-action/commit/c8026e294c36de62d50e4b0375cbac4d762bfc15)
-- 1.1.1 by [@jdx](https://github.com/jdx) in [69d9eb2](https://github.com/jdx/mise-action/commit/69d9eb201d34b9e85fd9038054b1ae79f5041f8c)
 - Bump @types/node from 18.14.6 to 18.15.1 (#37) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [0051557](https://github.com/jdx/mise-action/commit/00515574a33c758902c6d230c0b637afd58b3f5c)
 - Bump eslint from 8.35.0 to 8.36.0 (#38) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [961863c](https://github.com/jdx/mise-action/commit/961863c724e4c85f42320c43344901819c34df50)
 - Bump @typescript-eslint/parser from 5.54.0 to 5.54.1 (#39) by [@dependabot[bot]](https://github.com/dependabot[bot]) in [99a2e29](https://github.com/jdx/mise-action/commit/99a2e2983bd31f708843c3bf37a0a440b5cb411c)
