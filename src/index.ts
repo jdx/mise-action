@@ -7,15 +7,15 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { miseDir } from './utils'
 
 async function run(): Promise<void> {
   try {
     await setToolVersions()
     await setMiseToml()
 
+    let cacheKey: string | undefined
     if (core.getBooleanInput('cache')) {
-      await restoreMiseCache()
+      cacheKey = await restoreMiseCache()
     } else {
       core.setOutput('cache-hit', false)
     }
@@ -26,6 +26,9 @@ async function run(): Promise<void> {
     await testMise()
     if (core.getBooleanInput('install')) {
       await miseInstall()
+      if (cacheKey && core.getBooleanInput('cache_save')) {
+        await saveCache(cacheKey)
+      }
     }
     await miseLs()
   } catch (err) {
@@ -55,7 +58,7 @@ async function setEnvVars(): Promise<void> {
   core.addPath(shimsDir)
 }
 
-async function restoreMiseCache(): Promise<void> {
+async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
@@ -106,7 +109,6 @@ async function restoreMiseCache(): Promise<void> {
     }
   }
 
-  core.saveState('CACHE', core.getBooleanInput('cache_save'))
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
 
@@ -115,10 +117,9 @@ async function restoreMiseCache(): Promise<void> {
 
   if (!cacheKey) {
     core.info(`mise cache not found for ${primaryKey}`)
-    return
+    return primaryKey
   }
 
-  core.saveState('CACHE_KEY', cacheKey)
   core.info(`mise cache restored from key: ${cacheKey}`)
 }
 
@@ -242,3 +243,29 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
   })
 
 run()
+
+function miseDir(): string {
+  const dir = core.getState('MISE_DIR')
+  if (dir) return dir
+
+  const { MISE_DATA_DIR, XDG_DATA_HOME, LOCALAPPDATA } = process.env
+  if (MISE_DATA_DIR) return MISE_DATA_DIR
+  if (XDG_DATA_HOME) return path.join(XDG_DATA_HOME, 'mise')
+  if (process.platform === 'win32' && LOCALAPPDATA)
+    return path.join(LOCALAPPDATA, 'mise')
+
+  return path.join(os.homedir(), '.local', 'share', 'mise')
+}
+
+async function saveCache(cacheKey: string): Promise<void> {
+  const cachePath = miseDir()
+
+  if (!fs.existsSync(cachePath)) {
+    throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
+  }
+
+  const cacheId = await cache.saveCache([cachePath], cacheKey)
+  if (cacheId === -1) return
+
+  core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+}

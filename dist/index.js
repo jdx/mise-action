@@ -66534,13 +66534,13 @@ const crypto = __importStar(__nccwpck_require__(6982));
 const fs = __importStar(__nccwpck_require__(9896));
 const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(6928));
-const utils_1 = __nccwpck_require__(1798);
 async function run() {
     try {
         await setToolVersions();
         await setMiseToml();
+        let cacheKey;
         if (core.getBooleanInput('cache')) {
-            await restoreMiseCache();
+            cacheKey = await restoreMiseCache();
         }
         else {
             core.setOutput('cache-hit', false);
@@ -66551,6 +66551,9 @@ async function run() {
         await testMise();
         if (core.getBooleanInput('install')) {
             await miseInstall();
+            if (cacheKey && core.getBooleanInput('cache_save')) {
+                await saveCache(cacheKey);
+            }
         }
         await miseLs();
     }
@@ -66576,7 +66579,7 @@ async function setEnvVars() {
         set('MISE_LOG_LEVEL', logLevel);
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
     set('MISE_YES', '1');
-    const shimsDir = path.join((0, utils_1.miseDir)(), 'shims');
+    const shimsDir = path.join(miseDir(), 'shims');
     core.info(`Adding ${shimsDir} to PATH`);
     core.addPath(shimsDir);
 }
@@ -66584,7 +66587,7 @@ async function restoreMiseCache() {
     core.startGroup('Restoring mise cache');
     const version = core.getInput('version');
     const installArgs = core.getInput('install_args');
-    const cachePath = (0, utils_1.miseDir)();
+    const cachePath = miseDir();
     const fileHash = await glob.hashFiles([
         `**/.config/mise/config.toml`,
         `**/.config/mise/config.lock`,
@@ -66628,20 +66631,18 @@ async function restoreMiseCache() {
             primaryKey = `${primaryKey}-${toolsHash}`;
         }
     }
-    core.saveState('CACHE', core.getBooleanInput('cache_save'));
     core.saveState('PRIMARY_KEY', primaryKey);
     core.saveState('MISE_DIR', cachePath);
     const cacheKey = await cache.restoreCache([cachePath], primaryKey);
     core.setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
         core.info(`mise cache not found for ${primaryKey}`);
-        return;
+        return primaryKey;
     }
-    core.saveState('CACHE_KEY', cacheKey);
     core.info(`mise cache restored from key: ${cacheKey}`);
 }
 async function setupMise(version) {
-    const miseBinDir = path.join((0, utils_1.miseDir)(), 'bin');
+    const miseBinDir = path.join(miseDir(), 'bin');
     const miseBinPath = path.join(miseBinDir, getOS() === 'windows' ? 'mise.exe' : 'mise');
     if (!fs.existsSync(path.join(miseBinPath))) {
         core.startGroup(version ? `Download mise@${version}` : 'Setup mise');
@@ -66745,53 +66746,6 @@ const writeFile = async (p, body) => core.group(`Writing ${p}`, async () => {
     await fs.promises.writeFile(p, body, { encoding: 'utf8' });
 });
 run();
-
-
-/***/ }),
-
-/***/ 1798:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.miseDir = miseDir;
-const core = __importStar(__nccwpck_require__(7484));
-const os = __importStar(__nccwpck_require__(857));
-const path = __importStar(__nccwpck_require__(6928));
 function miseDir() {
     const dir = core.getState('MISE_DIR');
     if (dir)
@@ -66804,6 +66758,16 @@ function miseDir() {
     if (process.platform === 'win32' && LOCALAPPDATA)
         return path.join(LOCALAPPDATA, 'mise');
     return path.join(os.homedir(), '.local', 'share', 'mise');
+}
+async function saveCache(cacheKey) {
+    const cachePath = miseDir();
+    if (!fs.existsSync(cachePath)) {
+        throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
+    }
+    const cacheId = await cache.saveCache([cachePath], cacheKey);
+    if (cacheId === -1)
+        return;
+    core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
 }
 
 
