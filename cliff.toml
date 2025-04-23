@@ -88,6 +88,7 @@ commit_preprocessors = [
 ]
 # regex for parsing and grouping commits
 commit_parsers = [
+    { message = '^\d+\.\d+\.\d+$', skip = true },
     { message = '^(chore|fix)\(deps.*\):', skip = true },
     { message = '^feat', group = "<!-- 0 -->🚀 Features" },
     { message = '^fix', group = "<!-- 1 -->🐛 Bug Fixes" },
