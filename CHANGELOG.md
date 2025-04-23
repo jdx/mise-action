@@ -1,11 +1,40 @@
 # Changelog
 
 ---
-## [2.1.11](https://github.com/jdx/mise-action/compare/v2.1.10..2.1.11) - 2024-12-30
+## [2.2.0](https://github.com/jdx/mise-action/compare/v2.1.11..2.2.0) - 2025-04-23
+
+### 🚀 Features
+
+- run mise ls (#163) by [@scop](https://github.com/scop) in [#163](https://github.com/jdx/mise-action/pull/163)
+
+### 🐛 Bug Fixes
+
+- save cache when build fails by [@jdx](https://github.com/jdx) in [81d53cf](https://github.com/jdx/mise-action/commit/81d53cf96809b887a4903446d5466da5e25ffe37)
+
+### 📚 Documentation
+
+- restore estranged comment for tool_versions (#164) by [@mfilej](https://github.com/mfilej) in [#164](https://github.com/jdx/mise-action/pull/164)
+
+### ⚙️ Miscellaneous Tasks
+
+- updated deps by [@jdx](https://github.com/jdx) in [ff329b7](https://github.com/jdx/mise-action/commit/ff329b72aca0adb59abbbf545f488bac2a11bda9)
+- renovate by [@jdx](https://github.com/jdx) in [83232dd](https://github.com/jdx/mise-action/commit/83232dd5706c1ad3d58a22ac8b0e9852c80eb748)
+
+### New Contributors
+
+* @mfilej made their first contribution in [#164](https://github.com/jdx/mise-action/pull/164)
+* @scop made their first contribution in [#163](https://github.com/jdx/mise-action/pull/163)
+
+---
+## [2.1.11](https://github.com/jdx/mise-action/compare/v2.1.10..v2.1.11) - 2024-12-30
 
 ### 🐛 Bug Fixes
 
 - use tar.gz if zstd is not available (#159) by [@jdx](https://github.com/jdx) in [#159](https://github.com/jdx/mise-action/pull/159)
+
+### 🔍 Other Changes
+
+- 2.1.11 by [@jdx](https://github.com/jdx) in [5083fe4](https://github.com/jdx/mise-action/commit/5083fe46898c414b2475087cc79da59e7da859e8)
 
 ---
 ## [2.1.10](https://github.com/jdx/mise-action/compare/v2.1.9..v2.1.10) - 2024-12-23
