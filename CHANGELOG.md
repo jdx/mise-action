@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [2.2.0](https://github.com/jdx/mise-action/compare/v2.1.11..2.2.0) - 2025-04-23
+## [2.2.1](https://github.com/jdx/mise-action/compare/v2.2.0..2.2.1) - 2025-04-23
+
+### 🐛 Bug Fixes
+
+- show message when saving cache by [@jdx](https://github.com/jdx) in [4a07a7c](https://github.com/jdx/mise-action/commit/4a07a7ced07f3f5ba2bcafcfe1954eef43fda3c0)
+
+---
+## [2.2.0](https://github.com/jdx/mise-action/compare/v2.1.11..v2.2.0) - 2025-04-23
 
 ### 🚀 Features
 
@@ -10,6 +17,10 @@
 ### 🐛 Bug Fixes
 
 - save cache when build fails by [@jdx](https://github.com/jdx) in [81d53cf](https://github.com/jdx/mise-action/commit/81d53cf96809b887a4903446d5466da5e25ffe37)
+
+### 🔍 Other Changes
+
+- 2.2.0 by [@jdx](https://github.com/jdx) in [746b22c](https://github.com/jdx/mise-action/commit/746b22c6c6dd7f2abdd64976771834445a844e60)
 
 ### 📚 Documentation
 
