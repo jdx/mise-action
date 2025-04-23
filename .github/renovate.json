@@ -8,7 +8,7 @@
     "fileFilters": ["dist/**/*"],
     "executionMode": "branch"
   },
-  "allowedPostUpgradeCommands": [
+  "allowedCommands": [
     ".*"
   ]
 }
