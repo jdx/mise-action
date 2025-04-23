@@ -66760,14 +66760,16 @@ function miseDir() {
     return path.join(os.homedir(), '.local', 'share', 'mise');
 }
 async function saveCache(cacheKey) {
-    const cachePath = miseDir();
-    if (!fs.existsSync(cachePath)) {
-        throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
-    }
-    const cacheId = await cache.saveCache([cachePath], cacheKey);
-    if (cacheId === -1)
-        return;
-    core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
+    core.group(`Saving mise cache`, async () => {
+        const cachePath = miseDir();
+        if (!fs.existsSync(cachePath)) {
+            throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
+        }
+        const cacheId = await cache.saveCache([cachePath], cacheKey);
+        if (cacheId === -1)
+            return;
+        core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
+    });
 }
 
 

@@ -258,14 +258,16 @@ function miseDir(): string {
 }
 
 async function saveCache(cacheKey: string): Promise<void> {
-  const cachePath = miseDir()
+  core.group(`Saving mise cache`, async () => {
+    const cachePath = miseDir()
 
-  if (!fs.existsSync(cachePath)) {
-    throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
-  }
+    if (!fs.existsSync(cachePath)) {
+      throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
+    }
 
-  const cacheId = await cache.saveCache([cachePath], cacheKey)
-  if (cacheId === -1) return
+    const cacheId = await cache.saveCache([cachePath], cacheKey)
+    if (cacheId === -1) return
 
-  core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+    core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+  })
 }
