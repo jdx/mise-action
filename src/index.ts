@@ -93,7 +93,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
     ].join('\n')
   )
   const prefix = core.getInput('cache_key_prefix') || 'mise-v0'
-  let primaryKey = `${prefix}-${getOS()}-${os.arch()}-${fileHash}`
+  let primaryKey = `${prefix}-${await getTarget()}-${fileHash}`
   if (version) {
     primaryKey = `${primaryKey}-${version}`
   }
@@ -127,13 +127,13 @@ async function setupMise(version: string): Promise<void> {
   const miseBinDir = path.join(miseDir(), 'bin')
   const miseBinPath = path.join(
     miseBinDir,
-    getOS() === 'windows' ? 'mise.exe' : 'mise'
+    process.platform === 'win32' ? 'mise.exe' : 'mise'
   )
   if (!fs.existsSync(path.join(miseBinPath))) {
     core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
     await fs.promises.mkdir(miseBinDir, { recursive: true })
     const ext =
-      getOS() === 'windows'
+      process.platform === 'win32'
         ? '.zip'
         : version && version.startsWith('2024')
           ? ''
@@ -141,7 +141,7 @@ async function setupMise(version: string): Promise<void> {
             ? '.tar.zst'
             : '.tar.gz'
     version = (version || (await latestMiseVersion())).replace(/^v/, '')
-    const url = `https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-${getOS()}-${os.arch()}${ext}`
+    const url = `https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-${await getTarget()}${ext}`
     const archivePath = path.join(os.tmpdir(), `mise${ext}`)
     switch (ext) {
       case '.zip':
@@ -198,17 +198,6 @@ async function setMiseToml(): Promise<void> {
   const toml = core.getInput('mise_toml')
   if (toml) {
     await writeFile('mise.toml', toml)
-  }
-}
-
-function getOS(): string {
-  switch (process.platform) {
-    case 'darwin':
-      return 'macos'
-    case 'win32':
-      return 'windows'
-    default:
-      return process.platform
   }
 }
 
@@ -270,4 +259,34 @@ async function saveCache(cacheKey: string): Promise<void> {
 
     core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
   })
+}
+
+async function getTarget(): Promise<string> {
+  let { arch } = process
+
+  // quick overwrite to abide by release format
+  if (arch === 'arm') arch = 'armv7' as NodeJS.Architecture
+
+  switch (process.platform) {
+    case 'darwin':
+      return `macos-${arch}`
+    case 'win32':
+      return `windows-${arch}`
+    case 'linux':
+      return `linux-${arch}${(await isMusl()) ? '-musl' : ''}`
+    default:
+      throw new Error(`Unsupported platform ${process.platform}`)
+  }
+}
+
+async function isMusl() {
+  core.startGroup('Checking musl')
+  // `ldd --version` always returns 1 and print to stderr
+  const { stderr } = await exec.getExecOutput('ldd', ['--version'], {
+    failOnStdErr: false,
+    ignoreReturnCode: true
+  })
+  core.info(`stderr ldd ${stderr}`)
+  core.info(`musl? ${stderr.indexOf('musl') > -1}`)
+  return stderr.indexOf('musl') > -1
 }

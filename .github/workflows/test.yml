@@ -24,12 +24,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+        env:
+          - { name: ubuntu, runs-on: ubuntu-latest }
+          - { name: macos, runs-on: macos-latest }
+          - { name: alpine, runs-on: ubuntu-latest, container: alpine:latest, requirements: apk add --no-cache curl bash }
+    name: ${{ matrix.env.name }}
+    runs-on: ${{ matrix.env.runs-on }}
+    container: ${{ matrix.env.container }}
     steps:
+      - name: Install requirements
+        if: ${{ matrix.env.requirements }}
+        run: ${{ matrix.env.requirements }}
       - uses: actions/checkout@v4
       - name: Setup mise
         uses: ./
