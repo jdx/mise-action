@@ -36,13 +36,13 @@ jobs:
         with:
           mise_toml: |
             [tools]
-            node = "22.0.0"
+            jq = "1.7.1"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise --version
-      - run: mise x node -- node -v
-      - run: which node
-      - run: node --version
+      - run: mise x jq -- jq --version
+      - run: which jq
+      - run: jq --version
       - run: . scripts/test.sh
         shell: bash
   specific_version:
