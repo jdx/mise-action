@@ -280,13 +280,10 @@ async function getTarget(): Promise<string> {
 }
 
 async function isMusl() {
-  core.startGroup('Checking musl')
   // `ldd --version` always returns 1 and print to stderr
   const { stderr } = await exec.getExecOutput('ldd', ['--version'], {
     failOnStdErr: false,
     ignoreReturnCode: true
   })
-  core.info(`stderr ldd ${stderr}`)
-  core.info(`musl? ${stderr.indexOf('musl') > -1}`)
   return stderr.indexOf('musl') > -1
 }
