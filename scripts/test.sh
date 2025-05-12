@@ -7,11 +7,12 @@ function assert_equal() {
     return 1
   fi
 }
+EXPECTED_OUTPUT="jq-1.7.1"
 
-assert_equal "v22.0.0" "$(mise exec -- node --version)"
-which node
+assert_equal "$EXPECTED_OUTPUT" "$(mise exec -- jq --version)"
+which jq
 
 # windows bash does not seem to work with shims
 if [[ "$(uname)" != "MINGW"* ]]; then
-  assert_equal "v22.0.0" "$(node --version)"
+  assert_equal "$EXPECTED_OUTPUT" "$(jq --version)"
 fi

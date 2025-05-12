@@ -24,27 +24,40 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - ubuntu-latest
-          - windows-latest
-    runs-on: ${{ matrix.os }}
+        include:
+          - name: ubuntu
+            runs-on: ubuntu-latest
+          - name: macos
+            runs-on: macos-latest
+          - name: windows
+            runs-on: windows-latest
+          - name: alpine
+            runs-on: ubuntu-latest
+            container: alpine:latest
+            requirements: apk add --no-cache curl bash
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runs-on }}
+    container: ${{ matrix.container }}
     steps:
+      - name: Install requirements
+        if: ${{ matrix.requirements }}
+        run: ${{ matrix.requirements }}
       - uses: actions/checkout@v4
       - name: Setup mise
         uses: ./
         with:
           mise_toml: |
             [tools]
-            node = "22.0.0"
+            jq = "1.7.1"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise --version
-      - run: mise x node -- node -v
-      - run: which node
-      - run: node --version
+      - run: mise x jq -- jq --version
+      - run: which jq
+      - run: jq --version
       - run: . scripts/test.sh
         shell: bash
+
   specific_version:
     runs-on: ubuntu-latest
     steps:
