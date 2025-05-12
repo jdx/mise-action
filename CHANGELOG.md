@@ -1,7 +1,27 @@
 # Changelog
 
 ---
-## [2.2.1](https://github.com/jdx/mise-action/compare/v2.2.0..2.2.1) - 2025-04-23
+## [2.2.2](https://github.com/jdx/mise-action/compare/v2.2.1..v2.2.2) - 2025-05-12
+
+### 🔍 Other Changes
+
+- Fix alpine container installation (#189) by [@vic1707](https://github.com/vic1707) in [#189](https://github.com/jdx/mise-action/pull/189)
+
+### 📚 Documentation
+
+- hide version commits in CHANGELOG by [@jdx](https://github.com/jdx) in [570a9c6](https://github.com/jdx/mise-action/commit/570a9c6467a0d2735b79d8a719a75229adc179e6)
+- hide version commits in CHANGELOG by [@jdx](https://github.com/jdx) in [d20b46e](https://github.com/jdx/mise-action/commit/d20b46e041ee9e28e7b67d713f4df93a72358b54)
+
+### ⚙️ Miscellaneous Tasks
+
+- updated deps by [@jdx](https://github.com/jdx) in [69bf3f1](https://github.com/jdx/mise-action/commit/69bf3f1a1ff387ad74d841595f9c5f9e4d8816be)
+
+### New Contributors
+
+* @vic1707 made their first contribution in [#189](https://github.com/jdx/mise-action/pull/189)
+
+---
+## [2.2.1](https://github.com/jdx/mise-action/compare/v2.2.0..v2.2.1) - 2025-04-23
 
 ### 🐛 Bug Fixes
 
