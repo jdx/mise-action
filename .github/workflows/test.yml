@@ -29,6 +29,8 @@ jobs:
             runs-on: ubuntu-latest
           - name: macos
             runs-on: macos-latest
+          - name: windows
+            runs-on: windows-latest
           - name: alpine
             runs-on: ubuntu-latest
             container: alpine:latest
