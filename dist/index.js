@@ -66524,10 +66524,10 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const cache = __importStar(__nccwpck_require__(5116));
-const io = __importStar(__nccwpck_require__(4994));
 const core = __importStar(__nccwpck_require__(7484));
 const exec = __importStar(__nccwpck_require__(5236));
 const glob = __importStar(__nccwpck_require__(7206));
+const io = __importStar(__nccwpck_require__(4994));
 const crypto = __importStar(__nccwpck_require__(6982));
 const fs = __importStar(__nccwpck_require__(9896));
 const os = __importStar(__nccwpck_require__(857));
@@ -66545,6 +66545,9 @@ async function run() {
         }
         const version = core.getInput('version');
         await setupMise(version);
+        if (core.getMultilineInput('settings')) {
+            await setSettings();
+        }
         await setEnvVars();
         await testMise();
         if (core.getBooleanInput('install')) {
@@ -66560,6 +66563,13 @@ async function run() {
             core.setFailed(err.message);
         else
             throw err;
+    }
+}
+async function setSettings() {
+    core.startGroup('Setting settings');
+    for (const setting of core.getMultilineInput('settings')) {
+        core.info(`Setting ${setting}`);
+        await mise([`settings ${setting}`]);
     }
 }
 async function setEnvVars() {

@@ -74,3 +74,15 @@ jobs:
             bun = "1"
       - run: which bun
       - run: bun -v
+
+  with_settings:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup mise
+        uses: ./
+        with:
+          settings: |
+            always_keep_download=true
+
+      - run: mise settings always_keep_download
