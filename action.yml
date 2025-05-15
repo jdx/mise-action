@@ -53,6 +53,9 @@ inputs:
   working_directory:
     required: false
     description: The directory that mise runs in
+  settings:
+    required: false
+    description: A multiline string containing mise settings; the format should match `mise settings` command
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.

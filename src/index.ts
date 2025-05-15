@@ -22,6 +22,9 @@ async function run(): Promise<void> {
 
     const version = core.getInput('version')
     await setupMise(version)
+    if (core.getMultilineInput('settings')) {
+      await setSettings()
+    }
     await setEnvVars()
     await testMise()
     if (core.getBooleanInput('install')) {
@@ -34,6 +37,14 @@ async function run(): Promise<void> {
   } catch (err) {
     if (err instanceof Error) core.setFailed(err.message)
     else throw err
+  }
+}
+
+async function setSettings(): Promise<void> {
+  core.startGroup('Setting settings')
+  for (const setting of core.getMultilineInput('settings')) {
+    core.info(`Setting ${setting}`)
+    await mise([`settings ${setting}`])
   }
 }
 
