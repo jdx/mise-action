@@ -30,6 +30,8 @@ jobs:
             [tools]
             shellcheck = "0.9.0"
           working_directory: app # [default: .] directory to run mise in
+          enable_tools: "java,node" # tools to enable - by default all tools are enabled
+          disable_tools: "python" # tools to disable - by default no tools are disabled - is overridden by enable_tools
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest

@@ -53,6 +53,12 @@ inputs:
   working_directory:
     required: false
     description: The directory that mise runs in
+  enable_tools:
+    required: false
+    description: A comma separated list of tools to enable - all other tools will be disabled
+  disable_tools:
+    required: false
+    description: A comma separated list of tools to disable
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.

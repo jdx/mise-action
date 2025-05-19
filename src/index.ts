@@ -47,6 +47,11 @@ async function setEnvVars(): Promise<void> {
   }
   if (core.getBooleanInput('experimental')) set('MISE_EXPERIMENTAL', '1')
 
+  const enable = core.getInput('enable_tools')
+  if (enable) set('MISE_ENABLE_TOOLS', enable)
+  const disable = core.getInput('disable_tools')
+  if (disable) set('MISE_DISABLE_TOOLS', disable)
+
   const logLevel = core.getInput('log_level')
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
