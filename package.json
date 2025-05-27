@@ -1,7 +1,7 @@
 {
   "name": "mise-action",
   "description": "mise tool setup action",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "author": "jdx",
   "private": true,
   "repository": {

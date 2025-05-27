@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [2.2.3](https://github.com/jdx/mise-action/compare/v2.2.2..v2.2.3) - 2025-05-27
+
+### 🔍 Other Changes
+
+- Add MISE_ENV to cache key if set (#196) by [@prashantv](https://github.com/prashantv) in [#196](https://github.com/jdx/mise-action/pull/196)
+
+### New Contributors
+
+* @prashantv made their first contribution in [#196](https://github.com/jdx/mise-action/pull/196)
+
+---
 ## [2.2.2](https://github.com/jdx/mise-action/compare/v2.2.1..v2.2.2) - 2025-05-12
 
 ### 🔍 Other Changes
