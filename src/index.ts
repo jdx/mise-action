@@ -62,6 +62,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
+  const { MISE_ENV } = process.env
   const cachePath = miseDir()
   const fileHash = await glob.hashFiles(
     [
@@ -96,6 +97,9 @@ async function restoreMiseCache(): Promise<string | undefined> {
   let primaryKey = `${prefix}-${await getTarget()}-${fileHash}`
   if (version) {
     primaryKey = `${primaryKey}-${version}`
+  }
+  if (MISE_ENV) {
+    primaryKey = `${primaryKey}-${MISE_ENV}`
   }
   if (installArgs) {
     const tools = installArgs
