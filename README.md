@@ -30,6 +30,7 @@ jobs:
             [tools]
             shellcheck = "0.9.0"
           working_directory: app # [default: .] directory to run mise in
+          reshim: false # [default: false] run `mise reshim --all`
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest

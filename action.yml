@@ -53,6 +53,10 @@ inputs:
   working_directory:
     required: false
     description: The directory that mise runs in
+  reshim:
+    required: false
+    default: "false"
+    description: if true, will run `mise reshim --all` after setting up mise
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
