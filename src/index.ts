@@ -23,6 +23,9 @@ async function run(): Promise<void> {
     const version = core.getInput('version')
     await setupMise(version)
     await setEnvVars()
+    if (core.getBooleanInput('reshim')) {
+      await miseReshim()
+    }
     await testMise()
     if (core.getBooleanInput('install')) {
       await miseInstall()
@@ -216,6 +219,7 @@ const testMise = async (): Promise<number> => mise(['--version'])
 const miseInstall = async (): Promise<number> =>
   mise([`install ${core.getInput('install_args')}`])
 const miseLs = async (): Promise<number> => mise([`ls`])
+const miseReshim = async (): Promise<number> => mise([`reshim`, `--all`])
 const mise = async (args: string[]): Promise<number> =>
   core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd =
