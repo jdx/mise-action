@@ -66588,7 +66588,10 @@ async function restoreMiseCache() {
     core.startGroup('Restoring mise cache');
     const version = core.getInput('version');
     const installArgs = core.getInput('install_args');
-    const { MISE_ENV } = process.env;
+    // all env vars that start with MISE_ are used in the cache key
+    // this allows users to set MISE_ENV or other variables that affect the cache
+    // without having to modify the cache key prefix
+    const env_key = JSON.stringify(Object.fromEntries(Object.entries(process.env).filter(([key]) => key.startsWith('MISE_'))));
     const cachePath = miseDir();
     const fileHash = await glob.hashFiles([
         `**/.config/mise/config.toml`,
@@ -66622,8 +66625,8 @@ async function restoreMiseCache() {
     if (version) {
         primaryKey = `${primaryKey}-${version}`;
     }
-    if (MISE_ENV) {
-        primaryKey = `${primaryKey}-${MISE_ENV}`;
+    if (env_key) {
+        primaryKey = `${primaryKey}-${env_key}`;
     }
     if (installArgs) {
         const tools = installArgs
