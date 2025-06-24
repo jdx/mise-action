@@ -53,6 +53,15 @@ async function setEnvVars(): Promise<void> {
   const logLevel = core.getInput('log_level')
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
+  const githubToken = core.getInput('github_token')
+  if (githubToken) {
+    set('GITHUB_TOKEN', githubToken)
+  } else {
+    core.warning(
+      'No GITHUB_TOKEN provided. You may hit GitHub API rate limits when installing tools from GitHub.'
+    )
+  }
+
   set('MISE_TRUSTED_CONFIG_PATHS', process.cwd())
   set('MISE_YES', '1')
 

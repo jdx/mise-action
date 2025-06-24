@@ -31,6 +31,7 @@ jobs:
             shellcheck = "0.9.0"
           working_directory: app # [default: .] directory to run mise in
           reshim: false # [default: false] run `mise reshim --all`
+          github_token: ${{ secrets.GITHUB_TOKEN }} # [default: ${{ github.token }}] GitHub token for API authentication
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest
@@ -40,6 +41,21 @@ jobs:
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
+
+## GitHub API Rate Limits
+
+When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
+
+```yaml
+- uses: jdx/mise-action@v2
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    # your other configuration
+```
+
+**Note:** The action automatically uses `${{ github.token }}` as the default, so in most cases you don't need to explicitly provide it. However, if you encounter rate limit errors, make sure the token is being passed correctly.
+
+## Alternative Installation
 
 Alternatively, mise is easy to use in GitHub Actions even without this:
 
