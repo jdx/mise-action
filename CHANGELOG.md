@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [2.3.1](https://github.com/jdx/mise-action/compare/v2.3.0..v2.3.1) - 2025-06-25
+
+### 🔍 Other Changes
+
+- Revert "add all MISE_ env vars to cache key (#197)" by [@jdx](https://github.com/jdx) in [233d283](https://github.com/jdx/mise-action/commit/233d283dd63662f6e6072a0de98feba374d69616)
+
+---
 ## [2.3.0](https://github.com/jdx/mise-action/compare/v2.2.3..v2.3.0) - 2025-06-25
 
 ### 🚀 Features
