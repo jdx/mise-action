@@ -57,6 +57,12 @@ inputs:
     required: false
     default: "false"
     description: if true, will run `mise reshim --all` after setting up mise
+  github_token:
+    required: false
+    description: |
+      GitHub token for API authentication to avoid rate limits when installing GitHub-hosted tools.
+      Defaults to the automatic GitHub token.
+    default: ${{ github.token }}
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
