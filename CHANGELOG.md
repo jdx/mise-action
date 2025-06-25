@@ -1,6 +1,30 @@
 # Changelog
 
 ---
+## [2.3.0](https://github.com/jdx/mise-action/compare/v2.2.3..v2.3.0) - 2025-06-25
+
+### 🚀 Features
+
+- pass github token for mise calls (#205) by [@matemoln](https://github.com/matemoln) in [#205](https://github.com/jdx/mise-action/pull/205)
+
+### 🔍 Other Changes
+
+- Add `reshim` flag to reshim after setup (#202) by [@andrewdriggs](https://github.com/andrewdriggs) in [#202](https://github.com/jdx/mise-action/pull/202)
+- add all MISE_ env vars to cache key (#197) by [@zeitlinger](https://github.com/zeitlinger) in [#197](https://github.com/jdx/mise-action/pull/197)
+
+### ⚙️ Miscellaneous Tasks
+
+- node-24 by [@jdx](https://github.com/jdx) in [ec352a8](https://github.com/jdx/mise-action/commit/ec352a89164842ea9cc8b6f67d1829660d9f1f78)
+- update deps (#203) by [@jdx](https://github.com/jdx) in [#203](https://github.com/jdx/mise-action/pull/203)
+- updated deps by [@jdx](https://github.com/jdx) in [7e5e321](https://github.com/jdx/mise-action/commit/7e5e321e56397b1b54f112ae65ce0c8f1d5dd8ca)
+
+### New Contributors
+
+* @matemoln made their first contribution in [#205](https://github.com/jdx/mise-action/pull/205)
+* @zeitlinger made their first contribution in [#197](https://github.com/jdx/mise-action/pull/197)
+* @andrewdriggs made their first contribution in [#202](https://github.com/jdx/mise-action/pull/202)
+
+---
 ## [2.2.3](https://github.com/jdx/mise-action/compare/v2.2.2..v2.2.3) - 2025-05-27
 
 ### 🔍 Other Changes
