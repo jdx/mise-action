@@ -140,7 +140,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
 }
 
 async function setupMise(version: string): Promise<void> {
-  const miseBinDir = path.join(miseDir(), 'bin')
+  const miseBinDir = path.join(os.homedir(), '.local', 'bin')
   const miseBinPath = path.join(
     miseBinDir,
     process.platform === 'win32' ? 'mise.exe' : 'mise'
