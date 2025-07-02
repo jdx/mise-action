@@ -66656,7 +66656,7 @@ async function restoreMiseCache() {
     core.info(`mise cache restored from key: ${cacheKey}`);
 }
 async function setupMise(version) {
-    const miseBinDir = path.join(miseDir(), 'bin');
+    const miseBinDir = path.join(os.homedir(), '.local', 'bin');
     const miseBinPath = path.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     if (!fs.existsSync(path.join(miseBinPath))) {
         core.startGroup(version ? `Download mise@${version}` : 'Setup mise');
