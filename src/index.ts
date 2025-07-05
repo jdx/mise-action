@@ -111,7 +111,8 @@ async function restoreMiseCache(): Promise<string | undefined> {
     primaryKey = `${primaryKey}-${version}`
   }
   if (MISE_ENV) {
-    primaryKey = `${primaryKey}-${MISE_ENV}`
+    const sanitizedMiseEnv = MISE_ENV.replace(",", "-")
+    primaryKey = `${primaryKey}-${sanitizedMiseEnv}`
   }
   if (installArgs) {
     const tools = installArgs
