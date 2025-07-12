@@ -184,10 +184,17 @@ async function setupMise(version: string): Promise<void> {
     }
   }
   // compare with provided hash
-  await exec.exec('sh', [
-    '-c',
-    `sha256sum ${miseBinPath} | grep -q '${core.getInput('sha256')}' || (echo "SHA256 mismatch" && exit 1)`
-  ])
+  const want = core.getInput('sha256')
+  if (want) {
+    const hash = crypto.createHash('sha256')
+    const fileBuffer = await fs.promises.readFile(miseBinPath)
+    const got = hash.update(fileBuffer).digest('hex')
+    if (got !== want) {
+      throw new Error(
+        `SHA256 mismatch: expected ${want}, got ${got} for ${miseBinPath}`
+      )
+    }
+  }
 
   core.addPath(miseBinDir)
 }

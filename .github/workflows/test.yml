@@ -58,7 +58,7 @@ jobs:
       - run: . scripts/test.sh
         shell: bash
 
-  specific_version:
+  specific_version_with_sha256:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
