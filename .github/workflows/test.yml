@@ -58,7 +58,7 @@ jobs:
       - run: . scripts/test.sh
         shell: bash
 
-  specific_version_with_sha256:
+  specific_version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -90,5 +90,7 @@ jobs:
         run: echo "Failed as expected"
         if: job.steps.bad.status == failure()
       - name: not failed as expected
-        run: exit 1
+        run: |
+          echo "Expected failure but the job was {{ job.steps.bad.status }}"
+          exit 1
         if: job.steps.bad.status == success()
