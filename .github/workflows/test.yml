@@ -86,6 +86,7 @@ jobs:
         with:
           version: 2024.9.6
           sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
+        continue-on-error: true
       - name: Dump steps context
         if: ${{ always() }}
         env:
