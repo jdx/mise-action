@@ -68,9 +68,20 @@ jobs:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
           version: 2024.9.6
+          sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
           install_args: bun
           mise_toml: |
             [tools]
             bun = "1"
       - run: which bun
       - run: bun -v
+
+  checksum_failure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup mise
+        uses: ./
+        with:
+          version: 2024.9.6
+          sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t

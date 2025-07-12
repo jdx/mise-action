@@ -183,6 +183,12 @@ async function setupMise(version: string): Promise<void> {
         break
     }
   }
+  // compare with provided hash
+  await exec.exec('sh', [
+    '-c',
+    `sha256sum ${miseBinPath} | grep -q  + ${core.getInput('sha256')}`
+  ])
+
   core.addPath(miseBinDir)
 }
 
