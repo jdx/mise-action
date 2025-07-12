@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [2.4.0](https://github.com/jdx/mise-action/compare/v2.3.1..v2.4.0) - 2025-07-12
+
+### 🔍 Other Changes
+
+- support checksum (#218) by [@zeitlinger](https://github.com/zeitlinger) in [#218](https://github.com/jdx/mise-action/pull/218)
+
+### ⚙️ Miscellaneous Tasks
+
+- updated deps (#219) by [@jdx](https://github.com/jdx) in [#219](https://github.com/jdx/mise-action/pull/219)
+
+---
 ## [2.3.1](https://github.com/jdx/mise-action/compare/v2.3.0..v2.3.1) - 2025-06-25
 
 ### 🔍 Other Changes
