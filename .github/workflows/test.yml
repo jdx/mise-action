@@ -93,9 +93,9 @@ jobs:
         run: echo "$STEPS_CONTEXT"
       - name: expect failure
         run: echo "Failed as expected"
-        if: ${{ job.steps.bad.status == 'failure' }}
+        if: ${{ job.steps.bad.outcome == 'failure' }}
       - name: not failed as expected
         run: |
           echo "Expected failure but the job was ${{ job.steps.bad.outcome }}"
           exit 1
-        if: ${{ job.steps.bad.status != 'failure' }}
+        if: ${{ job.steps.bad.outcome != 'failure' }}
