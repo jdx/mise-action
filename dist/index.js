@@ -66695,6 +66695,16 @@ async function setupMise(version) {
                 break;
         }
     }
+    // compare with provided hash
+    const want = core.getInput('sha256');
+    if (want) {
+        const hash = crypto.createHash('sha256');
+        const fileBuffer = await fs.promises.readFile(miseBinPath);
+        const got = hash.update(fileBuffer).digest('hex');
+        if (got !== want) {
+            throw new Error(`SHA256 mismatch: expected ${want}, got ${got} for ${miseBinPath}`);
+        }
+    }
     core.addPath(miseBinDir);
 }
 async function zstdInstalled() {
