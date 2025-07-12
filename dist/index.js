@@ -66696,7 +66696,7 @@ async function setupMise(version) {
     // compare with provided hash
     await exec.exec('sh', [
         '-c',
-        `sha256sum ${miseBinPath} | grep -q '${core.getInput('sha256')}'`
+        `sha256sum ${miseBinPath} | grep -q '${core.getInput('sha256')}' || (echo "SHA256 mismatch" && exit 1)`
     ]);
     core.addPath(miseBinDir);
 }
