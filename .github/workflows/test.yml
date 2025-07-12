@@ -87,11 +87,15 @@ jobs:
         with:
           version: 2024.9.6
           sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
+      - name: Dump job context
+        env:
+          JOB_CONTEXT: ${{ toJson(job) }}
+        run: echo "$JOB_CONTEXT"
       - name: expect failure
         run: echo "Failed as expected"
-        if: job.steps.bad.outcome == 'failure'
+        if: ${{ job.steps.bad.outcome == 'failure' }}
       - name: not failed as expected
         run: |
-          echo "Expected failure but the job was {{ job.steps.bad.outcome }}"
+          echo "Expected failure but the job was ${{ job.steps.bad.outcome }}"
           exit 1
-        if: job.steps.bad.outcome == 'success'
+        if: ${{ job.steps.bad.outcome != 'failure' }}
