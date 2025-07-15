@@ -8,6 +8,9 @@ inputs:
   version:
     required: false
     description: The version of mise to use. If not specified, will use the latest release.
+  sha256:
+    required: false
+    description: The SHA256 checksum of the mise binary to verify the download.
   mise_dir:
     required: false
     description: |

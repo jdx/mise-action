@@ -67,10 +67,36 @@ jobs:
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
-          version: 2024.9.6
+          version: 2025.7.3
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
           install_args: bun
           mise_toml: |
             [tools]
             bun = "1"
       - run: which bun
       - run: bun -v
+
+  checksum_failure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup mise
+        id: bad
+        uses: ./
+        with:
+          version: 2024.9.6
+          sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
+        continue-on-error: true
+      - name: Dump steps context
+        if: ${{ always() }}
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: expect failure
+        run: echo "Failed as expected"
+        if: ${{ steps.bad.outcome == 'failure' }}
+      - name: not failed as expected
+        run: |
+          echo "Expected failure but the job was ${{ steps.bad.outcome }}"
+          exit 1
+        if: ${{ steps.bad.outcome != 'failure' }}
