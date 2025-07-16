@@ -25,7 +25,6 @@
     "package": "ncc build -s src/index.ts --license licenses.txt",
     "package:watch": "npm run package -- --watch",
     "version": "./scripts/version.sh",
-    "postversion": "./scripts/postversion.sh",
     "prepare": "husky"
   },
   "license": "MIT",

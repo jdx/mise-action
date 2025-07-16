@@ -30,4 +30,5 @@ jobs:
       - uses: jdx/mise-action@v2
       - run: mise run release-plz
         env:
+          DRY_RUN: 0
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
