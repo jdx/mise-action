@@ -31,4 +31,4 @@ jobs:
       - run: mise run release-plz
         env:
           DRY_RUN: 0
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_GITHUB_TOKEN }}
