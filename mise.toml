@@ -4,6 +4,9 @@ tasks.test.run = ["npm run all"]
 tasks.lint = "bun run lint"
 tasks."lint:fix" = "bun run format:write"
 tasks.version = "npm version"
+tasks.release-plz = "./scripts/release-plz.sh"
 
 [tools]
 node = '24'
+git-cliff = 'latest'
+gh = 'latest'
