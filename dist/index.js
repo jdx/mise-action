@@ -66736,7 +66736,7 @@ async function setMiseToml() {
 const testMise = async () => mise(['--version']);
 const miseInstall = async () => mise([`install ${core.getInput('install_args')}`]);
 const miseLs = async () => mise([`ls`]);
-const miseReshim = async () => mise([`reshim`, `--all`]);
+const miseReshim = async () => mise([`reshim`, `-f`]);
 const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('working_directory') ||
         core.getInput('install_dir') ||

@@ -30,7 +30,7 @@ jobs:
             [tools]
             shellcheck = "0.9.0"
           working_directory: app # [default: .] directory to run mise in
-          reshim: false # [default: false] run `mise reshim --all`
+          reshim: false # [default: false] run `mise reshim -f`
           github_token: ${{ secrets.GITHUB_TOKEN }} # [default: ${{ github.token }}] GitHub token for API authentication
       - run: shellcheck scripts/*.sh
   test:
