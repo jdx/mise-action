@@ -14,7 +14,7 @@ fi
 
 # Get the next version and changelog from git-cliff
 version="$(git cliff --bumped-version)"
-changelog="$(git cliff --bump --unreleased --strip all)"
+changelog="$(git cliff --bump --unreleased | tail -n +2)"
 
 if [ "${DRY_RUN:-1}" == 1 ]; then
   echo "version: $version"
