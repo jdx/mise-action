@@ -1,6 +1,22 @@
 # Changelog
 
 ---
+## [2.4.1](https://github.com/jdx/mise-action/compare/v2.4.0..v2.4.1) - 2025-07-17
+
+### 🔍 Other Changes
+
+- Fix flag passed to `mise reshim` (#208) by [@andrewdriggs](https://github.com/andrewdriggs) in [#208](https://github.com/jdx/mise-action/pull/208)
+
+### ⚙️ Miscellaneous Tasks
+
+- add semantic-pr-lint (#220) by [@jdx](https://github.com/jdx) in [#220](https://github.com/jdx/mise-action/pull/220)
+- added release-plz by [@jdx](https://github.com/jdx) in [bd8ba20](https://github.com/jdx/mise-action/commit/bd8ba20c5611a6ebc508d3c263444c97c5483bd1)
+- get postversion to work by [@jdx](https://github.com/jdx) in [954e13d](https://github.com/jdx/mise-action/commit/954e13db3e9329a8373a5d6cfa3718f7bc607149)
+- set release token by [@jdx](https://github.com/jdx) in [6d3ca74](https://github.com/jdx/mise-action/commit/6d3ca74ece306fcd7f501bd95086deaf8d0c3552)
+- use new release-plz token by [@jdx](https://github.com/jdx) in [1c87378](https://github.com/jdx/mise-action/commit/1c87378f400e5957e22607e2c938eac904a3e233)
+- fix check-dist by [@jdx](https://github.com/jdx) in [4dfd63f](https://github.com/jdx/mise-action/commit/4dfd63f0279a3418b93cbbfc4bc132ace1da2481)
+
+---
 ## [2.4.0](https://github.com/jdx/mise-action/compare/v2.3.1..v2.4.0) - 2025-07-12
 
 ### 🔍 Other Changes
