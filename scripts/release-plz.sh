@@ -29,6 +29,9 @@ git config user.email 123107610+mise-en-dev@users.noreply.github.com
 # Update package.json version
 npm version "${version#v}" --no-git-tag-version
 
+git add package.json package-lock.json
+git status
+
 # Create release branch and commit
 git checkout -B release
 git commit -m "chore: release $version"
