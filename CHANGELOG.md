@@ -15,6 +15,13 @@
 - set release token by [@jdx](https://github.com/jdx) in [6d3ca74](https://github.com/jdx/mise-action/commit/6d3ca74ece306fcd7f501bd95086deaf8d0c3552)
 - use new release-plz token by [@jdx](https://github.com/jdx) in [1c87378](https://github.com/jdx/mise-action/commit/1c87378f400e5957e22607e2c938eac904a3e233)
 - fix check-dist by [@jdx](https://github.com/jdx) in [4dfd63f](https://github.com/jdx/mise-action/commit/4dfd63f0279a3418b93cbbfc4bc132ace1da2481)
+- release v2.4.1 (#221) by [@github-actions[bot]](https://github.com/github-actions[bot]) in [#221](https://github.com/jdx/mise-action/pull/221)
+- add git add and git status commands to release script by [@jdx](https://github.com/jdx) in [0c56699](https://github.com/jdx/mise-action/commit/0c56699aa697e50cf8d17b7c07976b7c1e550c23)
+- update changelog extraction in release script to skip the section break line by [@jdx](https://github.com/jdx) in [714aa25](https://github.com/jdx/mise-action/commit/714aa2569b8097f175d58290710a86eefe2098d0)
+
+### New Contributors
+
+* @github-actions[bot] made their first contribution in [#221](https://github.com/jdx/mise-action/pull/221)
 
 ---
 ## [2.4.0](https://github.com/jdx/mise-action/compare/v2.3.1..v2.4.0) - 2025-07-12
