@@ -16,7 +16,7 @@ jobs:
   build: # make sure build/ci work properly
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - run: |
           npm install
       - run: |
@@ -43,7 +43,7 @@ jobs:
       - name: Install requirements
         if: ${{ matrix.requirements }}
         run: ${{ matrix.requirements }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: Setup mise
         uses: ./
         with:
@@ -62,7 +62,7 @@ jobs:
   specific_version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: Setup mise
         uses: ./
         with:
@@ -80,7 +80,7 @@ jobs:
   checksum_failure:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
       - name: Setup mise
         id: bad
         uses: ./
