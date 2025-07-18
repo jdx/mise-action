@@ -21,12 +21,12 @@ jobs:
   release-plz:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           fetch-depth: 0
           submodules: recursive
           token: ${{ secrets.RELEASE_PLZ_GITHUB_TOKEN }}
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@bfb9fa0b029db830a8c570757cee683df207a6c5 # v2
       - run: mise run release-plz
         env:
           DRY_RUN: 0
