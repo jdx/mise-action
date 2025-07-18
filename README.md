@@ -17,6 +17,7 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           version: 2024.10.0 # [default: latest] mise version to install
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948 # [default: null] verify the checksum if the mise binary if set
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
