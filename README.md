@@ -17,6 +17,7 @@ jobs:
       - uses: jdx/mise-action@v2
         with:
           version: 2024.10.0 # [default: latest] mise version to install
+          sha256: "d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948" # [default: null] verify the checksum if the mise binary if set
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
@@ -68,3 +69,50 @@ jobs:
         echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
         echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
 ```
+
+## Renovate
+
+If you use [Renovate](https://docs.renovatebot.com/), you can configure it to update the `mise-action` version automatically. Here's an example configuration:
+
+First, set the mise version and sha256 in your GitHub action workflow file.
+- The `sha256` is the checksum of the mise binary for the architecture you are using (e.g., `linux-x64`, `macos-arm64`).
+- The `version` and `sha256` must be the first entries in the `with` block of the `jdx/mise-action` step:
+
+```yaml
+
+permissions: {}
+
+jobs:
+  lint:
+    permissions: {}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        with:
+          persist-credentials: false
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: jdx/mise-action@bfb9fa0b029db830a8c570757cee683df207a6c5 # v2.4.0
+        with:
+          version: v2025.7.11
+          sha256: fe2d4c5c681c942b2f52bf0c71d04429ba4a5e090973514bde466a411190cd00
+```
+
+Then, add a custom manager to your Renovate configuration file (e.g., `renovate.json5`):
+
+```json5
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  customManagers: [
+    {
+      customType: "regex",
+      description: "update mise",
+      managerFilePatterns: ["/(^|/)(workflow-templates|\\.(?:github|gitea|forgejo)/(?:workflows|actions))/.+\\.ya?ml$/", "/(^|/)action\\.ya?ml$/"],
+      datasourceTemplate: "github-release-attachments",
+      packageNameTemplate: "jdx/mise",
+      depNameTemplate: "mise",
+      matchStrings: ["jdx/mise-action.*\\n\\s*with:\\s*\\n\\s*version: [\"']?(?<currentValue>v[.\\d]+)[\"']?\\s*\\n\\s*sha256: [\"']?(?<currentDigest>\\w+)[\"']?"],
+    },
+  ],
+}
+```
+
