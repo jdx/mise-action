@@ -1,7 +1,11 @@
 # Changelog
 
 ---
-## [2.4.1](https://github.com/jdx/mise-action/compare/v2.4.0..v2.4.1) - 2025-07-17
+## [2.4.2](https://github.com/jdx/mise-action/compare/v2.4.0..v2.4.2) - 2025-07-24
+
+### 🚀 Features
+
+- allow fetching binary from mise.jdx.dev (#227) by [@jdx](https://github.com/jdx) in [#227](https://github.com/jdx/mise-action/pull/227)
 
 ### 🔍 Other Changes
 
@@ -18,6 +22,7 @@
 - release v2.4.1 (#221) by [@github-actions[bot]](https://github.com/github-actions[bot]) in [#221](https://github.com/jdx/mise-action/pull/221)
 - add git add and git status commands to release script by [@jdx](https://github.com/jdx) in [0c56699](https://github.com/jdx/mise-action/commit/0c56699aa697e50cf8d17b7c07976b7c1e550c23)
 - update changelog extraction in release script to skip the section break line by [@jdx](https://github.com/jdx) in [714aa25](https://github.com/jdx/mise-action/commit/714aa2569b8097f175d58290710a86eefe2098d0)
+- release v2.4.1 (#222) by [@jdx](https://github.com/jdx) in [#222](https://github.com/jdx/mise-action/pull/222)
 
 ### New Contributors
 
