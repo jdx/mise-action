@@ -66544,7 +66544,8 @@ async function run() {
             core.setOutput('cache-hit', false);
         }
         const version = core.getInput('version');
-        await setupMise(version);
+        const fetchFromGitHub = core.getBooleanInput('fetch_from_github');
+        await setupMise(version, fetchFromGitHub);
         await setEnvVars();
         if (core.getBooleanInput('reshim')) {
             await miseReshim();
@@ -66653,7 +66654,7 @@ async function restoreMiseCache() {
     }
     core.info(`mise cache restored from key: ${cacheKey}`);
 }
-async function setupMise(version) {
+async function setupMise(version, fetchFromGitHub = false) {
     const miseBinDir = path.join(miseDir(), 'bin');
     const miseBinPath = path.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     if (!fs.existsSync(path.join(miseBinPath))) {
@@ -66666,8 +66667,16 @@ async function setupMise(version) {
                 : (await zstdInstalled())
                     ? '.tar.zst'
                     : '.tar.gz';
-        version = (version || (await latestMiseVersion())).replace(/^v/, '');
-        const url = `https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-${await getTarget()}${ext}`;
+        let resolvedVersion = version || (await latestMiseVersion());
+        resolvedVersion = resolvedVersion.replace(/^v/, '');
+        let url;
+        if (!fetchFromGitHub && !version) {
+            // Only for latest version
+            url = `https://mise.jdx.dev/mise-latest-${await getTarget()}${ext}`;
+        }
+        else {
+            url = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/mise-v${resolvedVersion}-${await getTarget()}${ext}`;
+        }
         const archivePath = path.join(os.tmpdir(), `mise${ext}`);
         switch (ext) {
             case '.zip':

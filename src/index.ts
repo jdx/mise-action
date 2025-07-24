@@ -21,7 +21,8 @@ async function run(): Promise<void> {
     }
 
     const version = core.getInput('version')
-    await setupMise(version)
+    const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
+    await setupMise(version, fetchFromGitHub)
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
@@ -139,7 +140,10 @@ async function restoreMiseCache(): Promise<string | undefined> {
   core.info(`mise cache restored from key: ${cacheKey}`)
 }
 
-async function setupMise(version: string): Promise<void> {
+async function setupMise(
+  version: string,
+  fetchFromGitHub = false
+): Promise<void> {
   const miseBinDir = path.join(miseDir(), 'bin')
   const miseBinPath = path.join(
     miseBinDir,
@@ -156,8 +160,15 @@ async function setupMise(version: string): Promise<void> {
           : (await zstdInstalled())
             ? '.tar.zst'
             : '.tar.gz'
-    version = (version || (await latestMiseVersion())).replace(/^v/, '')
-    const url = `https://github.com/jdx/mise/releases/download/v${version}/mise-v${version}-${await getTarget()}${ext}`
+    let resolvedVersion = version || (await latestMiseVersion())
+    resolvedVersion = resolvedVersion.replace(/^v/, '')
+    let url: string
+    if (!fetchFromGitHub && !version) {
+      // Only for latest version
+      url = `https://mise.jdx.dev/mise-latest-${await getTarget()}${ext}`
+    } else {
+      url = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/mise-v${resolvedVersion}-${await getTarget()}${ext}`
+    }
     const archivePath = path.join(os.tmpdir(), `mise${ext}`)
     switch (ext) {
       case '.zip':
