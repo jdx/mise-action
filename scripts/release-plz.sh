@@ -36,7 +36,12 @@ git config user.name mise-en-dev
 git config user.email 123107610+mise-en-dev@users.noreply.github.com
 
 # Update package.json version
-npm version "${version#v}" --no-git-tag-version
+cur_pkg_version="$(jq -r .version package.json)"
+if [ "$cur_pkg_version" != "${version#v}" ]; then
+  npm version "${version#v}" --no-git-tag-version
+else
+  echo "Package.json already at version ${version#v}"
+fi
 
 git add package.json package-lock.json
 git status
