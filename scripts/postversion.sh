@@ -4,6 +4,9 @@ set -euxo pipefail
 VERSION=$(jq -r .version package.json)
 MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
 
+# create the version tag
+git tag "v$VERSION"
+
 # push changes to github
 git push
 # push the current tag to github
