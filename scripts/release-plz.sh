@@ -2,14 +2,17 @@
 # shellcheck shell=bash
 set -euxo pipefail
 
-# Get current version from package.json
-cur_version="$(jq -r .version package.json)"
+# Get the latest released version
+latest_tag="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$' | sort -V | tail -1)"
 
-# Check if this version has already been released
-released_versions="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$')"
-if echo "$released_versions" | grep -q "^v$cur_version$"; then
-  echo "Version v$cur_version already released"
-  exit 0
+# Check if there are commits since the last release
+if [ -n "$latest_tag" ]; then
+  commits_since_release="$(git rev-list "$latest_tag"..HEAD --count)"
+  if [ "$commits_since_release" -eq 0 ]; then
+    echo "No commits since last release $latest_tag"
+    exit 0
+  fi
+  echo "Found $commits_since_release commits since $latest_tag"
 fi
 
 # Get the next version and changelog from git-cliff
