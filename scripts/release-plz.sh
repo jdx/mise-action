@@ -8,8 +8,8 @@ cur_version="$(jq -r .version package.json)"
 # Check if this version has already been released
 released_versions="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$')"
 if ! echo "$released_versions" | grep -q "^v$cur_version$"; then
-  git tag -d "v$cur_version"
-  node ./scripts/postversion.sh
+  git tag -d "v$cur_version" 2>/dev/null || true
+  ./scripts/postversion.sh
 fi
 
 # Get the next version and changelog from git-cliff
