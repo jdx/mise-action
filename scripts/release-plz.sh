@@ -7,9 +7,9 @@ cur_version="$(jq -r .version package.json)"
 
 # Check if this version has already been released
 released_versions="$(git tag --list | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?$')"
-if ! echo "$released_versions" | grep -q "^v$cur_version$"; then
-  git tag -d "v$cur_version" 2>/dev/null || true
-  ./scripts/postversion.sh
+if echo "$released_versions" | grep -q "^v$cur_version$"; then
+  echo "Version v$cur_version already released"
+  exit 0
 fi
 
 # Get the next version and changelog from git-cliff
@@ -40,5 +40,9 @@ git commit -m "chore: release $version"
 git push origin release --force
 
 # Create or update PR
-gh pr create --title "chore: release $version" --body "$changelog" --label "release" ||
-  gh pr edit --title "chore: release $version" --body "$changelog" 
+if gh pr create --title "chore: release $version" --body "$changelog" --label "release"; then
+  echo "Created new release PR"
+else
+  gh pr edit --title "chore: release $version" --body "$changelog"
+  echo "Updated existing release PR"
+fi 
