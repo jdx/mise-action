@@ -39,24 +39,25 @@ git config user.email 123107610+mise-en-dev@users.noreply.github.com
 cur_pkg_version="$(jq -r .version package.json)"
 if [ "$cur_pkg_version" != "${version#v}" ]; then
   npm version "${version#v}" --no-git-tag-version
+  
+  git add package.json package-lock.json
+  git status
+
+  # Create release branch and commit
+  git checkout -B release
+  git commit -m "chore: release $version"
+
+  # Push to release branch
+  git push origin release --force
+
+  # Create or update PR
+  if gh pr create --title "chore: release $version" --body "$changelog" --label "release"; then
+    echo "Created new release PR"
+  else
+    gh pr edit --title "chore: release $version" --body "$changelog"
+    echo "Updated existing release PR"
+  fi
 else
-  echo "Package.json already at version ${version#v}"
-fi
-
-git add package.json package-lock.json
-git status
-
-# Create release branch and commit
-git checkout -B release
-git commit -m "chore: release $version"
-
-# Push to release branch
-git push origin release --force
-
-# Create or update PR
-if gh pr create --title "chore: release $version" --body "$changelog" --label "release"; then
-  echo "Created new release PR"
-else
-  gh pr edit --title "chore: release $version" --body "$changelog"
-  echo "Updated existing release PR"
+  echo "Package.json already at version ${version#v}, running postversion"
+  ./scripts/postversion.sh
 fi 
