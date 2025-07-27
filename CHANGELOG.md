@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [2.4.3](https://github.com/jdx/mise-action/compare/v2.4.2..v2.4.3) - 2025-07-27
+
+### 🐛 Bug Fixes
+
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [5c24f96](https://github.com/jdx/mise-action/commit/5c24f96c0ff8577151a76e76344591427bcf28c5)
+
+---
 ## [2.4.2](https://github.com/jdx/mise-action/compare/v2.4.0..v2.4.2) - 2025-07-24
 
 ### 🚀 Features
