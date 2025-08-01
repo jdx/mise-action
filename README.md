@@ -42,6 +42,48 @@ jobs:
       - run: node ./my_app.js
 ```
 
+## Cache Configuration
+
+You can customize the cache key used by the action:
+
+```yaml
+- uses: jdx/mise-action@v2
+  with:
+    cache_key: "my-custom-cache-key"  # Override the entire cache key
+    cache_key_prefix: "mise-v1"       # Or just change the prefix (default: "mise-v0")
+```
+
+### Template Variables in Cache Keys
+
+When using `cache_key`, you can use template variables to reference internal values:
+
+```yaml
+- uses: jdx/mise-action@v2
+  with:
+    cache_key: "mise-{platform}-{version}-{fileHash}"
+    version: "2024.10.0"
+    install_args: "node python"
+```
+
+Available template variables:
+- `{version}` - The mise version (from the `version` input)
+- `{installArgs}` - The raw install arguments (from the `install_args` input)
+- `{installArgsHash}` - SHA256 hash of the sorted tools from install args
+- `{cacheKeyPrefix}` - The cache key prefix (from `cache_key_prefix` input or default)
+- `{platform}` - The target platform (e.g., "linux-x64", "macos-arm64")
+- `{fileHash}` - Hash of all mise configuration files
+- `{miseEnv}` - The MISE_ENV environment variable value
+
+Example using multiple variables:
+```yaml
+- uses: jdx/mise-action@v2
+  with:
+    cache_key: "mise-v1-{platform}-{installArgsHash}-{fileHash}"
+    install_args: "node@20 python@3.12"
+```
+
+This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
+
 ## GitHub API Rate Limits
 
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
