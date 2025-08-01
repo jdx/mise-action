@@ -78,56 +78,70 @@ async function setEnvVars(): Promise<void> {
 
 async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
-  const version = core.getInput('version')
-  const installArgs = core.getInput('install_args')
-  const { MISE_ENV } = process.env
   const cachePath = miseDir()
-  const fileHash = await glob.hashFiles(
-    [
-      `**/.config/mise/config.toml`,
-      `**/.config/mise/config.lock`,
-      `**/.config/mise/config.*.toml`,
-      `**/.config/mise/config.*.lock`,
-      `**/.config/mise.toml`,
-      `**/.config/mise.lock`,
-      `**/.config/mise.*.toml`,
-      `**/.config/mise.*.lock`,
-      `**/.mise/config.toml`,
-      `**/.mise/config.lock`,
-      `**/.mise/config.*.toml`,
-      `**/.mise/config.*.lock`,
-      `**/mise/config.toml`,
-      `**/mise/config.lock`,
-      `**/mise/config.*.toml`,
-      `**/mise/config.*.lock`,
-      `**/.mise.toml`,
-      `**/.mise.lock`,
-      `**/.mise.*.toml`,
-      `**/.mise.*.lock`,
-      `**/mise.toml`,
-      `**/mise.lock`,
-      `**/mise.*.toml`,
-      `**/mise.*.lock`,
-      `**/.tool-versions`
-    ].join('\n')
-  )
-  const prefix = core.getInput('cache_key_prefix') || 'mise-v0'
-  let primaryKey = `${prefix}-${await getTarget()}-${fileHash}`
-  if (version) {
-    primaryKey = `${primaryKey}-${version}`
-  }
-  if (MISE_ENV) {
-    primaryKey = `${primaryKey}-${MISE_ENV}`
-  }
-  if (installArgs) {
-    const tools = installArgs
-      .split(' ')
-      .filter(arg => !arg.startsWith('-'))
-      .sort()
-      .join(' ')
-    if (tools) {
-      const toolsHash = crypto.createHash('sha256').update(tools).digest('hex')
-      primaryKey = `${primaryKey}-${toolsHash}`
+
+  // Check if user provided a custom cache key
+  const customCacheKey = core.getInput('cache_key')
+  let primaryKey: string
+
+  if (customCacheKey) {
+    // Process template variables in custom cache key
+    primaryKey = await processCacheKeyTemplate(customCacheKey)
+  } else {
+    // Use default cache key generation
+    const version = core.getInput('version')
+    const installArgs = core.getInput('install_args')
+    const { MISE_ENV } = process.env
+    const fileHash = await glob.hashFiles(
+      [
+        `**/.config/mise/config.toml`,
+        `**/.config/mise/config.lock`,
+        `**/.config/mise/config.*.toml`,
+        `**/.config/mise/config.*.lock`,
+        `**/.config/mise.toml`,
+        `**/.config/mise.lock`,
+        `**/.config/mise.*.toml`,
+        `**/.config/mise.*.lock`,
+        `**/.mise/config.toml`,
+        `**/.mise/config.lock`,
+        `**/.mise/config.*.toml`,
+        `**/.mise/config.*.lock`,
+        `**/mise/config.toml`,
+        `**/mise/config.lock`,
+        `**/mise/config.*.toml`,
+        `**/mise/config.*.lock`,
+        `**/.mise.toml`,
+        `**/.mise.lock`,
+        `**/.mise.*.toml`,
+        `**/.mise.*.lock`,
+        `**/mise.toml`,
+        `**/mise.lock`,
+        `**/mise.*.toml`,
+        `**/mise.*.lock`,
+        `**/.tool-versions`
+      ].join('\n')
+    )
+    const prefix = core.getInput('cache_key_prefix') || 'mise-v0'
+    primaryKey = `${prefix}-${await getTarget()}-${fileHash}`
+    if (version) {
+      primaryKey = `${primaryKey}-${version}`
+    }
+    if (MISE_ENV) {
+      primaryKey = `${primaryKey}-${MISE_ENV}`
+    }
+    if (installArgs) {
+      const tools = installArgs
+        .split(' ')
+        .filter(arg => !arg.startsWith('-'))
+        .sort()
+        .join(' ')
+      if (tools) {
+        const toolsHash = crypto
+          .createHash('sha256')
+          .update(tools)
+          .digest('hex')
+        primaryKey = `${primaryKey}-${toolsHash}`
+      }
     }
   }
 
@@ -323,6 +337,71 @@ async function getTarget(): Promise<string> {
     default:
       throw new Error(`Unsupported platform ${process.platform}`)
   }
+}
+
+async function processCacheKeyTemplate(template: string): Promise<string> {
+  // Get all available variables
+  const version = core.getInput('version')
+  const installArgs = core.getInput('install_args')
+  const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0'
+  const { MISE_ENV } = process.env
+  const platform = await getTarget()
+
+  // Calculate file hash
+  const fileHash = await glob.hashFiles(
+    [
+      `**/.config/mise/config.toml`,
+      `**/.config/mise/config.lock`,
+      `**/.config/mise/config.*.toml`,
+      `**/.config/mise/config.*.lock`,
+      `**/.config/mise.toml`,
+      `**/.config/mise.lock`,
+      `**/.config/mise.*.toml`,
+      `**/.config/mise.*.lock`,
+      `**/.mise/config.toml`,
+      `**/.mise/config.lock`,
+      `**/.mise/config.*.toml`,
+      `**/.mise/config.*.lock`,
+      `**/mise/config.toml`,
+      `**/mise/config.lock`,
+      `**/mise/config.*.toml`,
+      `**/mise/config.*.lock`,
+      `**/.mise.toml`,
+      `**/.mise.lock`,
+      `**/.mise.*.toml`,
+      `**/.mise.*.lock`,
+      `**/mise.toml`,
+      `**/mise.lock`,
+      `**/mise.*.toml`,
+      `**/mise.*.lock`,
+      `**/.tool-versions`
+    ].join('\n')
+  )
+
+  // Calculate install args hash
+  let installArgsHash = ''
+  if (installArgs) {
+    const tools = installArgs
+      .split(' ')
+      .filter(arg => !arg.startsWith('-'))
+      .sort()
+      .join(' ')
+    if (tools) {
+      installArgsHash = crypto.createHash('sha256').update(tools).digest('hex')
+    }
+  }
+
+  // Replace template variables
+  let result = template
+  result = result.replace(/\{version\}/g, version || '')
+  result = result.replace(/\{installArgs\}/g, installArgs || '')
+  result = result.replace(/\{installArgsHash\}/g, installArgsHash)
+  result = result.replace(/\{cacheKeyPrefix\}/g, cacheKeyPrefix)
+  result = result.replace(/\{platform\}/g, platform)
+  result = result.replace(/\{fileHash\}/g, fileHash)
+  result = result.replace(/\{miseEnv\}/g, MISE_ENV || '')
+
+  return result
 }
 
 async function isMusl() {
