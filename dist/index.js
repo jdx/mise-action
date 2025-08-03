@@ -66532,6 +66532,36 @@ const crypto = __importStar(__nccwpck_require__(6982));
 const fs = __importStar(__nccwpck_require__(9896));
 const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(6928));
+// Configuration file patterns for cache key generation
+const MISE_CONFIG_FILE_PATTERNS = [
+    `**/.config/mise/config.toml`,
+    `**/.config/mise/config.lock`,
+    `**/.config/mise/config.*.toml`,
+    `**/.config/mise/config.*.lock`,
+    `**/.config/mise.toml`,
+    `**/.config/mise.lock`,
+    `**/.config/mise.*.toml`,
+    `**/.config/mise.*.lock`,
+    `**/.mise/config.toml`,
+    `**/.mise/config.lock`,
+    `**/.mise/config.*.toml`,
+    `**/.mise/config.*.lock`,
+    `**/mise/config.toml`,
+    `**/mise/config.lock`,
+    `**/mise/config.*.toml`,
+    `**/mise/config.*.lock`,
+    `**/.mise.toml`,
+    `**/.mise.lock`,
+    `**/.mise.*.toml`,
+    `**/.mise.*.lock`,
+    `**/mise.toml`,
+    `**/mise.lock`,
+    `**/mise.*.toml`,
+    `**/mise.*.lock`,
+    `**/.tool-versions`
+];
+// Default cache key template
+const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}';
 async function run() {
     try {
         await setToolVersions();
@@ -66594,56 +66624,10 @@ async function setEnvVars() {
 }
 async function restoreMiseCache() {
     core.startGroup('Restoring mise cache');
-    const version = core.getInput('version');
-    const installArgs = core.getInput('install_args');
-    const { MISE_ENV } = process.env;
     const cachePath = miseDir();
-    const fileHash = await glob.hashFiles([
-        `**/.config/mise/config.toml`,
-        `**/.config/mise/config.lock`,
-        `**/.config/mise/config.*.toml`,
-        `**/.config/mise/config.*.lock`,
-        `**/.config/mise.toml`,
-        `**/.config/mise.lock`,
-        `**/.config/mise.*.toml`,
-        `**/.config/mise.*.lock`,
-        `**/.mise/config.toml`,
-        `**/.mise/config.lock`,
-        `**/.mise/config.*.toml`,
-        `**/.mise/config.*.lock`,
-        `**/mise/config.toml`,
-        `**/mise/config.lock`,
-        `**/mise/config.*.toml`,
-        `**/mise/config.*.lock`,
-        `**/.mise.toml`,
-        `**/.mise.lock`,
-        `**/.mise.*.toml`,
-        `**/.mise.*.lock`,
-        `**/mise.toml`,
-        `**/mise.lock`,
-        `**/mise.*.toml`,
-        `**/mise.*.lock`,
-        `**/.tool-versions`
-    ].join('\n'));
-    const prefix = core.getInput('cache_key_prefix') || 'mise-v0';
-    let primaryKey = `${prefix}-${await getTarget()}-${fileHash}`;
-    if (version) {
-        primaryKey = `${primaryKey}-${version}`;
-    }
-    if (MISE_ENV) {
-        primaryKey = `${primaryKey}-${MISE_ENV}`;
-    }
-    if (installArgs) {
-        const tools = installArgs
-            .split(' ')
-            .filter(arg => !arg.startsWith('-'))
-            .sort()
-            .join(' ');
-        if (tools) {
-            const toolsHash = crypto.createHash('sha256').update(tools).digest('hex');
-            primaryKey = `${primaryKey}-${toolsHash}`;
-        }
-    }
+    // Use custom cache key if provided, otherwise use default template
+    const cacheKeyTemplate = core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
+    const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
     core.saveState('PRIMARY_KEY', primaryKey);
     core.saveState('MISE_DIR', cachePath);
     const cacheKey = await cache.restoreCache([cachePath], primaryKey);
@@ -66808,6 +66792,38 @@ async function getTarget() {
         default:
             throw new Error(`Unsupported platform ${process.platform}`);
     }
+}
+async function processCacheKeyTemplate(template) {
+    // Get all available variables
+    const version = core.getInput('version');
+    const installArgs = core.getInput('install_args');
+    const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0';
+    const { MISE_ENV } = process.env;
+    const platform = await getTarget();
+    // Calculate file hash
+    const fileHash = await glob.hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
+    // Calculate install args hash
+    let installArgsHash = '';
+    if (installArgs) {
+        const tools = installArgs
+            .split(' ')
+            .filter(arg => !arg.startsWith('-'))
+            .sort()
+            .join(' ');
+        if (tools) {
+            installArgsHash = crypto.createHash('sha256').update(tools).digest('hex');
+        }
+    }
+    // Replace template variables
+    let result = template;
+    result = result.replace(/\{version\}/g, version || '');
+    result = result.replace(/\{installArgs\}/g, installArgs || '');
+    result = result.replace(/\{installArgsHash\}/g, installArgsHash);
+    result = result.replace(/\{cacheKeyPrefix\}/g, cacheKeyPrefix);
+    result = result.replace(/\{platform\}/g, platform);
+    result = result.replace(/\{fileHash\}/g, fileHash);
+    result = result.replace(/\{miseEnv\}/g, MISE_ENV || '');
+    return result;
 }
 async function isMusl() {
     // `ldd --version` always returns 1 and print to stderr
