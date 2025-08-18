@@ -1,4 +1,4 @@
-name: 'build-test'
+name: "build-test"
 on: # rebuild any PRs and main branch changes
   pull_request:
     branches:
@@ -50,6 +50,9 @@ jobs:
           mise_toml: |
             [tools]
             jq = "1.7.1"
+
+            [env]
+            MY_ENV_VAR = "abc"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise --version
