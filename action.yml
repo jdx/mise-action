@@ -70,6 +70,10 @@ inputs:
     required: false
     default: "true"
     description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.
+  autoload-env:
+    description: "Automatically load mise env vars into GITHUB_ENV"
+    required: false
+    default: "false"
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
