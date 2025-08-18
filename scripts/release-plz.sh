@@ -68,15 +68,12 @@ if [ -n "$latest_release_version" ] && [ "$cur_pkg_version" = "$latest_release_v
 		echo "Updated existing release PR"
 	fi
 elif [ -n "$cur_pkg_version" ] && [ "$cur_pkg_version" != "$latest_release_version" ]; then
-	# Package version is different from latest release, so cut a release
-	echo "Package version v$cur_pkg_version is newer than latest release $latest_release. Creating release."
-
-	# Configure git for automated commits
-	git config user.name mise-en-dev
-	git config user.email 123107610+mise-en-dev@users.noreply.github.com
-
-	./scripts/postversion.sh
+	# Package version is different from latest release
+	echo "Package version v$cur_pkg_version is newer than latest release $latest_release."
+	echo "Release will be created by the release.yml workflow when the PR is merged."
+	# Exit successfully - the release.yml workflow handles actual release creation
+	exit 0
 else
-	echo "Could not determine release status"
-	exit 1
+	echo "No action needed"
+	exit 0
 fi
