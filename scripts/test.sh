@@ -16,3 +16,6 @@ which jq
 if [[ "$(uname)" != "MINGW"* ]]; then
   assert_equal "$EXPECTED_OUTPUT" "$(jq --version)"
 fi
+
+# checking that environment variables set in mise.toml are properly set
+assert_equal "${MY_ENV_VAR}" "abc"
