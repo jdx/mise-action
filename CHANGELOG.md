@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.0.0](https://github.com/jdx/mise-action/compare/v2.4.4..v3.0.0) - 2025-08-18
+
+### 🚀 Features
+
+- **breaking** export env vars from mise.toml (#241) by [@maelp](https://github.com/maelp) in [#241](https://github.com/jdx/mise-action/pull/241)
+
+### New Contributors
+
+* @maelp made their first contribution in [#241](https://github.com/jdx/mise-action/pull/241)
+
+---
 ## [2.4.4](https://github.com/jdx/mise-action/compare/v2.4.3..v2.4.4) - 2025-07-27
 
 ### 🐛 Bug Fixes
@@ -10,11 +21,15 @@
 - v2 release tag automation by [@jdx](https://github.com/jdx) in [75121b9](https://github.com/jdx/mise-action/commit/75121b9a3f21cd3b497f047d71a77d59099ff6b3)
 - v2 release tag automation by [@jdx](https://github.com/jdx) in [583fe7b](https://github.com/jdx/mise-action/commit/583fe7be9d688739c95cc32249344e9796f4eebe)
 - v2 release tag automation by [@jdx](https://github.com/jdx) in [7fa2a26](https://github.com/jdx/mise-action/commit/7fa2a26c1e3cf1b20bbf42f2d293912e90e71177)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [cf44a56](https://github.com/jdx/mise-action/commit/cf44a563b9a45de221b77d23cbc5621dc7e6b377)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [a35d5fc](https://github.com/jdx/mise-action/commit/a35d5fc6817dcb018e9e7a6613664fde7f5d4aaf)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [c37c932](https://github.com/jdx/mise-action/commit/c37c93293d6b742fc901e1406b8f764f6fb19dac)
 
 ### ⚙️ Miscellaneous Tasks
 
 - add release workflow by [@jdx](https://github.com/jdx) in [eccbf00](https://github.com/jdx/mise-action/commit/eccbf00da17ac7d1d18017ead61bc54a442f3a38)
 - skip release script if no changes by [@jdx](https://github.com/jdx) in [eba59a9](https://github.com/jdx/mise-action/commit/eba59a9eefc99963516a3ff8be4c372c656f0215)
+- release v2.4.4 (#232) by [@jdx](https://github.com/jdx) in [#232](https://github.com/jdx/mise-action/pull/232)
 
 ---
 ## [2.4.3](https://github.com/jdx/mise-action/compare/v2.4.2..v2.4.3) - 2025-07-27
