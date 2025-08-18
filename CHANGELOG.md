@@ -1,6 +1,19 @@
 # Changelog
 
 ---
+## [3.0.1](https://github.com/jdx/mise-action/compare/v3.0.0..v3.0.1) - 2025-08-18
+
+### 📚 Documentation
+
+- add CLAUDE.md by [@jdx](https://github.com/jdx) in [729161f](https://github.com/jdx/mise-action/commit/729161fe32f196174ff956fbe3ce8743567cb9e1)
+- hide release entries in CHANGELOG by [@jdx](https://github.com/jdx) in [96680f6](https://github.com/jdx/mise-action/commit/96680f666f91bbcb5b4d76ff2ac0f465bb941dd0)
+
+### ⚙️ Miscellaneous Tasks
+
+- fix release-plz by [@jdx](https://github.com/jdx) in [3600b64](https://github.com/jdx/mise-action/commit/3600b6410713f6187847c1eb2bde38315e844484)
+- updated deps (#244) by [@jdx](https://github.com/jdx) in [#244](https://github.com/jdx/mise-action/pull/244)
+
+---
 ## [3.0.0](https://github.com/jdx/mise-action/compare/v2.4.4..v3.0.0) - 2025-08-18
 
 ### 🚀 Features
@@ -29,7 +42,6 @@
 
 - add release workflow by [@jdx](https://github.com/jdx) in [eccbf00](https://github.com/jdx/mise-action/commit/eccbf00da17ac7d1d18017ead61bc54a442f3a38)
 - skip release script if no changes by [@jdx](https://github.com/jdx) in [eba59a9](https://github.com/jdx/mise-action/commit/eba59a9eefc99963516a3ff8be4c372c656f0215)
-- release v2.4.4 (#232) by [@jdx](https://github.com/jdx) in [#232](https://github.com/jdx/mise-action/pull/232)
 
 ---
 ## [2.4.3](https://github.com/jdx/mise-action/compare/v2.4.2..v2.4.3) - 2025-07-27
@@ -37,10 +49,6 @@
 ### 🐛 Bug Fixes
 
 - v2 release tag automation by [@jdx](https://github.com/jdx) in [5c24f96](https://github.com/jdx/mise-action/commit/5c24f96c0ff8577151a76e76344591427bcf28c5)
-
-### ⚙️ Miscellaneous Tasks
-
-- release v2.4.3 (#231) by [@jdx](https://github.com/jdx) in [#231](https://github.com/jdx/mise-action/pull/231)
 
 ---
 ## [2.4.2](https://github.com/jdx/mise-action/compare/v2.4.0..v2.4.2) - 2025-07-24
@@ -61,10 +69,8 @@
 - set release token by [@jdx](https://github.com/jdx) in [6d3ca74](https://github.com/jdx/mise-action/commit/6d3ca74ece306fcd7f501bd95086deaf8d0c3552)
 - use new release-plz token by [@jdx](https://github.com/jdx) in [1c87378](https://github.com/jdx/mise-action/commit/1c87378f400e5957e22607e2c938eac904a3e233)
 - fix check-dist by [@jdx](https://github.com/jdx) in [4dfd63f](https://github.com/jdx/mise-action/commit/4dfd63f0279a3418b93cbbfc4bc132ace1da2481)
-- release v2.4.1 (#221) by [@github-actions[bot]](https://github.com/github-actions[bot]) in [#221](https://github.com/jdx/mise-action/pull/221)
 - add git add and git status commands to release script by [@jdx](https://github.com/jdx) in [0c56699](https://github.com/jdx/mise-action/commit/0c56699aa697e50cf8d17b7c07976b7c1e550c23)
 - update changelog extraction in release script to skip the section break line by [@jdx](https://github.com/jdx) in [714aa25](https://github.com/jdx/mise-action/commit/714aa2569b8097f175d58290710a86eefe2098d0)
-- release v2.4.1 (#222) by [@jdx](https://github.com/jdx) in [#222](https://github.com/jdx/mise-action/pull/222)
 
 ### New Contributors
 
