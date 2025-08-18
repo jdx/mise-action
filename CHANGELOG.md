@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [3.0.2](https://github.com/jdx/mise-action/compare/v3.0.1..v3.0.2) - 2025-08-18
+
+### ⚙️ Miscellaneous Tasks
+
+- remove duplicate release-plz logic by [@jdx](https://github.com/jdx) in [7081572](https://github.com/jdx/mise-action/commit/70815728fdd7d32bad0deb6b33576cf791f1dafa)
+
+---
 ## [3.0.1](https://github.com/jdx/mise-action/compare/v3.0.0..v3.0.1) - 2025-08-18
 
 ### 📚 Documentation
