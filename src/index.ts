@@ -37,7 +37,7 @@ async function run(): Promise<void> {
     await miseLs()
     const autoloadEnv = core.getBooleanInput("autoload-env")
     if (autoloadEnv) {
-      const output = await getExecOutput("mise", ["env", "--dotenv"])
+      const output = await exec.getExecOutput("mise", ["env", "--dotenv"])
       fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
     }
   } catch (err) {
