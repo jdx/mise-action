@@ -358,6 +358,9 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 
+@azure/storage-common
+MIT
+
 @fastify/busboy
 MIT
 Copyright Brian White. All rights reserved.
