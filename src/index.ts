@@ -7,6 +7,7 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import * as Handlebars from 'handlebars'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -336,17 +337,29 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     }
   }
 
-  // Replace template variables
-  let result = template
-  result = result.replace(/\{version\}/g, version || '')
-  result = result.replace(/\{installArgs\}/g, installArgs || '')
-  result = result.replace(/\{installArgsHash\}/g, installArgsHash)
-  result = result.replace(/\{cacheKeyPrefix\}/g, cacheKeyPrefix)
-  result = result.replace(/\{platform\}/g, platform)
-  result = result.replace(/\{fileHash\}/g, fileHash)
-  result = result.replace(/\{miseEnv\}/g, MISE_ENV || '')
+  // Prepare base template data
+  const baseTemplateData = {
+    version,
+    cache_key_prefix: cacheKeyPrefix,
+    platform,
+    file_hash: fileHash,
+    mise_env: MISE_ENV,
+    install_args_hash: installArgsHash
+  }
 
-  return result
+  // Calculate the default cache key by processing the default template
+  const defaultTemplate = Handlebars.compile(DEFAULT_CACHE_KEY_TEMPLATE)
+  const defaultCacheKey = defaultTemplate(baseTemplateData)
+
+  // Prepare final template data including the default cache key
+  const templateData = {
+    ...baseTemplateData,
+    default: defaultCacheKey
+  }
+
+  // Compile and execute the user's template
+  const compiledTemplate = Handlebars.compile(template)
+  return compiledTemplate(templateData)
 }
 
 async function isMusl() {
