@@ -7,6 +7,40 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import * as Handlebars from 'handlebars'
+
+// Configuration file patterns for cache key generation
+const MISE_CONFIG_FILE_PATTERNS = [
+  `**/.config/mise/config.toml`,
+  `**/.config/mise/config.lock`,
+  `**/.config/mise/config.*.toml`,
+  `**/.config/mise/config.*.lock`,
+  `**/.config/mise.toml`,
+  `**/.config/mise.lock`,
+  `**/.config/mise.*.toml`,
+  `**/.config/mise.*.lock`,
+  `**/.mise/config.toml`,
+  `**/.mise/config.lock`,
+  `**/.mise/config.*.toml`,
+  `**/.mise/config.*.lock`,
+  `**/mise/config.toml`,
+  `**/mise/config.lock`,
+  `**/mise/config.*.toml`,
+  `**/mise/config.*.lock`,
+  `**/.mise.toml`,
+  `**/.mise.lock`,
+  `**/.mise.*.toml`,
+  `**/.mise.*.lock`,
+  `**/mise.toml`,
+  `**/mise.lock`,
+  `**/mise.*.toml`,
+  `**/mise.*.lock`,
+  `**/.tool-versions`
+]
+
+// Default cache key template
+const DEFAULT_CACHE_KEY_TEMPLATE =
+  '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}'
 
 async function run(): Promise<void> {
   try {
@@ -78,58 +112,12 @@ async function setEnvVars(): Promise<void> {
 
 async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
-  const version = core.getInput('version')
-  const installArgs = core.getInput('install_args')
-  const { MISE_ENV } = process.env
   const cachePath = miseDir()
-  const fileHash = await glob.hashFiles(
-    [
-      `**/.config/mise/config.toml`,
-      `**/.config/mise/config.lock`,
-      `**/.config/mise/config.*.toml`,
-      `**/.config/mise/config.*.lock`,
-      `**/.config/mise.toml`,
-      `**/.config/mise.lock`,
-      `**/.config/mise.*.toml`,
-      `**/.config/mise.*.lock`,
-      `**/.mise/config.toml`,
-      `**/.mise/config.lock`,
-      `**/.mise/config.*.toml`,
-      `**/.mise/config.*.lock`,
-      `**/mise/config.toml`,
-      `**/mise/config.lock`,
-      `**/mise/config.*.toml`,
-      `**/mise/config.*.lock`,
-      `**/.mise.toml`,
-      `**/.mise.lock`,
-      `**/.mise.*.toml`,
-      `**/.mise.*.lock`,
-      `**/mise.toml`,
-      `**/mise.lock`,
-      `**/mise.*.toml`,
-      `**/mise.*.lock`,
-      `**/.tool-versions`
-    ].join('\n')
-  )
-  const prefix = core.getInput('cache_key_prefix') || 'mise-v0'
-  let primaryKey = `${prefix}-${await getTarget()}-${fileHash}`
-  if (version) {
-    primaryKey = `${primaryKey}-${version}`
-  }
-  if (MISE_ENV) {
-    primaryKey = `${primaryKey}-${MISE_ENV}`
-  }
-  if (installArgs) {
-    const tools = installArgs
-      .split(' ')
-      .filter(arg => !arg.startsWith('-'))
-      .sort()
-      .join(' ')
-    if (tools) {
-      const toolsHash = crypto.createHash('sha256').update(tools).digest('hex')
-      primaryKey = `${primaryKey}-${toolsHash}`
-    }
-  }
+
+  // Use custom cache key if provided, otherwise use default template
+  const cacheKeyTemplate =
+    core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
+  const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
 
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
@@ -323,6 +311,55 @@ async function getTarget(): Promise<string> {
     default:
       throw new Error(`Unsupported platform ${process.platform}`)
   }
+}
+
+async function processCacheKeyTemplate(template: string): Promise<string> {
+  // Get all available variables
+  const version = core.getInput('version')
+  const installArgs = core.getInput('install_args')
+  const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0'
+  const { MISE_ENV } = process.env
+  const platform = await getTarget()
+
+  // Calculate file hash
+  const fileHash = await glob.hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'))
+
+  // Calculate install args hash
+  let installArgsHash = ''
+  if (installArgs) {
+    const tools = installArgs
+      .split(' ')
+      .filter(arg => !arg.startsWith('-'))
+      .sort()
+      .join(' ')
+    if (tools) {
+      installArgsHash = crypto.createHash('sha256').update(tools).digest('hex')
+    }
+  }
+
+  // Prepare base template data
+  const baseTemplateData = {
+    version,
+    cache_key_prefix: cacheKeyPrefix,
+    platform,
+    file_hash: fileHash,
+    mise_env: MISE_ENV,
+    install_args_hash: installArgsHash
+  }
+
+  // Calculate the default cache key by processing the default template
+  const defaultTemplate = Handlebars.compile(DEFAULT_CACHE_KEY_TEMPLATE)
+  const defaultCacheKey = defaultTemplate(baseTemplateData)
+
+  // Prepare final template data including the default cache key
+  const templateData = {
+    ...baseTemplateData,
+    default: defaultCacheKey
+  }
+
+  // Compile and execute the user's template
+  const compiledTemplate = Handlebars.compile(template)
+  return compiledTemplate(templateData)
 }
 
 async function isMusl() {

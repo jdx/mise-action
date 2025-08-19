@@ -45,6 +45,12 @@ inputs:
     required: false
     default: "mise-v0"
     description: The prefix key to use for the cache, change this to invalidate the cache
+  cache_key:
+    required: false
+    description: |
+      Override the complete cache key (ignores all other cache key options).
+      Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}}, 
+      {{mise_env}}, {{install_args_hash}}, {{default}} and conditional logic like {{#if version}}...{{/if}}
   experimental:
     required: false
     default: "false"
