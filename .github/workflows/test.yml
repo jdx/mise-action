@@ -112,7 +112,7 @@ jobs:
       - name: Setup mise with custom cache key
         uses: ./
         with:
-          cache_key: "custom-{platform}-{installArgsHash}-${{ github.run_id }}"
+          cache_key: "custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}"
           install_args: "jq@1.7.1"
           mise_toml: |
             [tools]

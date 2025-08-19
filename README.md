@@ -60,25 +60,35 @@ When using `cache_key`, you can use template variables to reference internal val
 ```yaml
 - uses: jdx/mise-action@v2
   with:
-    cache_key: "mise-{platform}-{version}-{fileHash}"
+    cache_key: "mise-{{platform}}-{{version}}-{{file_hash}}"
     version: "2024.10.0"
     install_args: "node python"
 ```
 
 Available template variables:
-- `{version}` - The mise version (from the `version` input)
-- `{installArgs}` - The raw install arguments (from the `install_args` input)
-- `{installArgsHash}` - SHA256 hash of the sorted tools from install args
-- `{cacheKeyPrefix}` - The cache key prefix (from `cache_key_prefix` input or default)
-- `{platform}` - The target platform (e.g., "linux-x64", "macos-arm64")
-- `{fileHash}` - Hash of all mise configuration files
-- `{miseEnv}` - The MISE_ENV environment variable value
+- `{{version}}` - The mise version (from the `version` input)
+- `{{cache_key_prefix}}` - The cache key prefix (from `cache_key_prefix` input or default)
+- `{{platform}}` - The target platform (e.g., "linux-x64", "macos-arm64")
+- `{{file_hash}}` - Hash of all mise configuration files
+- `{{mise_env}}` - The MISE_ENV environment variable value
+- `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
+- `{{default}}` - The processed default cache key (useful for extending)
+
+Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.
 
 Example using multiple variables:
 ```yaml
 - uses: jdx/mise-action@v2
   with:
-    cache_key: "mise-v1-{platform}-{installArgsHash}-{fileHash}"
+    cache_key: "mise-v1-{{platform}}-{{install_args_hash}}-{{file_hash}}"
+    install_args: "node@20 python@3.12"
+```
+
+You can also extend the default cache key:
+```yaml
+- uses: jdx/mise-action@v2
+  with:
+    cache_key: "{{default}}-custom-suffix"
     install_args: "node@20 python@3.12"
 ```
 
