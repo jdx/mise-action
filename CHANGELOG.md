@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [3.1.0](https://github.com/jdx/mise-action/compare/v3.0.2..v3.1.0) - 2025-08-19
+
+### 🚀 Features
+
+- add configurable cache key with template variable support (#246) by [@pepicrft](https://github.com/pepicrft) in [#246](https://github.com/jdx/mise-action/pull/246)
+
+---
 ## [3.0.2](https://github.com/jdx/mise-action/compare/v3.0.1..v3.0.2) - 2025-08-18
 
 ### ⚙️ Miscellaneous Tasks
