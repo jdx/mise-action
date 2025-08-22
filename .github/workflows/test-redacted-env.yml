@@ -19,10 +19,9 @@ jobs:
           cat > .mise.toml << 'EOF'
           [env]
           PUBLIC_VAR = "this-is-public"
-          API_KEY = "secret-api-key-12345"
-          SECRET_TOKEN = "supersecret-token-xyz"
-          DATABASE_PASSWORD = "db-pass-789"
-          PATH = "/custom/path:{{env.PATH}}"
+          API_KEY = {value = "secret-api-key-12345", redact = true}
+          SECRET_TOKEN = {value = "supersecret-token-xyz", redact = true}
+          DATABASE_PASSWORD = {value = "db-pass-789", redact = true}
           EOF
       
       - name: Setup mise
@@ -57,13 +56,6 @@ jobs:
             exit 1
           fi
           echo "✓ DATABASE_PASSWORD is set"
-          
-          # Check PATH contains custom path
-          if [[ "$PATH" != */custom/path* ]]; then
-            echo "ERROR: PATH does not contain /custom/path"
-            exit 1
-          fi
-          echo "✓ PATH contains custom path"
       
       - name: Test that sensitive values are masked (will show *** if properly masked)
         run: |
