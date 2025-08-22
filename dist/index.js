@@ -50269,10 +50269,11 @@ async function processCacheKeyTemplate(template) {
     // Calculate the default cache key by processing the default template
     const defaultTemplate = Handlebars.compile(DEFAULT_CACHE_KEY_TEMPLATE);
     const defaultCacheKey = defaultTemplate(baseTemplateData);
-    // Prepare final template data including the default cache key
+    // Prepare final template data including the default cache key and env variables
     const templateData = {
         ...baseTemplateData,
-        default: defaultCacheKey
+        default: defaultCacheKey,
+        env: process.env
     };
     // Compile and execute the user's template
     const compiledTemplate = Handlebars.compile(template);
