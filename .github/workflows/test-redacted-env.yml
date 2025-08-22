@@ -1,0 +1,80 @@
+name: Test Redacted Environment Variables
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test-redacted-env:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Create test mise config with sensitive values
+        run: |
+          cat > .mise.toml << 'EOF'
+          [env]
+          PUBLIC_VAR = "this-is-public"
+          API_KEY = "secret-api-key-12345"
+          SECRET_TOKEN = "supersecret-token-xyz"
+          DATABASE_PASSWORD = "db-pass-789"
+          PATH = "/custom/path:{{env.PATH}}"
+          EOF
+      
+      - name: Setup mise
+        uses: ./
+      
+      - name: Verify environment variables are exported
+        run: |
+          echo "Checking if environment variables are set..."
+          
+          # Check that public var is set
+          if [ "$PUBLIC_VAR" != "this-is-public" ]; then
+            echo "ERROR: PUBLIC_VAR not set correctly"
+            exit 1
+          fi
+          echo "✓ PUBLIC_VAR is set correctly"
+          
+          # Check that sensitive vars are set (but their values should be masked in logs)
+          if [ -z "$API_KEY" ]; then
+            echo "ERROR: API_KEY not set"
+            exit 1
+          fi
+          echo "✓ API_KEY is set"
+          
+          if [ -z "$SECRET_TOKEN" ]; then
+            echo "ERROR: SECRET_TOKEN not set"
+            exit 1
+          fi
+          echo "✓ SECRET_TOKEN is set"
+          
+          if [ -z "$DATABASE_PASSWORD" ]; then
+            echo "ERROR: DATABASE_PASSWORD not set"
+            exit 1
+          fi
+          echo "✓ DATABASE_PASSWORD is set"
+          
+          # Check PATH contains custom path
+          if [[ "$PATH" != */custom/path* ]]; then
+            echo "ERROR: PATH does not contain /custom/path"
+            exit 1
+          fi
+          echo "✓ PATH contains custom path"
+      
+      - name: Test that sensitive values are masked (will show *** if properly masked)
+        run: |
+          echo "Testing value masking..."
+          echo "API_KEY value: $API_KEY"
+          echo "SECRET_TOKEN value: $SECRET_TOKEN"
+          echo "DATABASE_PASSWORD value: $DATABASE_PASSWORD"
+          echo "PUBLIC_VAR value: $PUBLIC_VAR"
+          
+          # This should show the actual values in the step output,
+          # but GitHub Actions should mask them if core.setSecret was called
+      
+      - name: Verify mise version
+        run: mise --version
