@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.2.0](https://github.com/jdx/mise-action/compare/v3.1.0..v3.2.0) - 2025-08-22
+
+### 🚀 Features
+
+- add environment variable support to cache key templates (#250) by [@pepicrft](https://github.com/pepicrft) in [#250](https://github.com/jdx/mise-action/pull/250)
+
+### 🐛 Bug Fixes
+
+- redact secret values from env (#252) by [@jdx](https://github.com/jdx) in [#252](https://github.com/jdx/mise-action/pull/252)
+
+---
 ## [3.1.0](https://github.com/jdx/mise-action/compare/v3.0.2..v3.1.0) - 2025-08-19
 
 ### 🚀 Features
