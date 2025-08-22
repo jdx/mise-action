@@ -50028,8 +50028,7 @@ async function run() {
         await miseLs();
         const loadEnv = core.getBooleanInput('env');
         if (loadEnv) {
-            const output = await exec.getExecOutput('mise', ['env', '--dotenv']);
-            fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+            await exportMiseEnv();
         }
     }
     catch (err) {
@@ -50038,6 +50037,72 @@ async function run() {
         else
             throw err;
     }
+}
+async function exportMiseEnv() {
+    core.startGroup('Exporting mise environment variables');
+    // Check if mise supports --redacted flags based on version input
+    const supportsRedacted = checkMiseSupportsRedacted();
+    if (supportsRedacted) {
+        try {
+            // First, get the redacted values to identify what needs masking
+            const redactedOutput = await exec.getExecOutput('mise', ['env', '--redacted', '--json'], { silent: true });
+            const redactedVars = JSON.parse(redactedOutput.stdout);
+            // Mask sensitive values in GitHub Actions
+            for (const [key, actualValue] of Object.entries(redactedVars)) {
+                core.setSecret(actualValue);
+                core.info(`Masked sensitive value for: ${key}`);
+            }
+            // Then get the actual values
+            const actualOutput = await exec.getExecOutput('mise', ['env', '--json']);
+            const actualVars = JSON.parse(actualOutput.stdout);
+            // Export all environment variables
+            for (const [key, value] of Object.entries(actualVars)) {
+                if (typeof value === 'string') {
+                    core.exportVariable(key, value);
+                }
+            }
+        }
+        catch {
+            // Fall back to dotenv format if the redacted command fails
+            core.info('Falling back to dotenv format');
+            const output = await exec.getExecOutput('mise', ['env', '--dotenv']);
+            fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+        }
+    }
+    else {
+        // Fall back to the old --dotenv format for older versions
+        const output = await exec.getExecOutput('mise', ['env', '--dotenv']);
+        fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+    }
+    core.endGroup();
+}
+function checkMiseSupportsRedacted() {
+    const version = core.getInput('version');
+    // If no version is specified, assume latest which supports redacted
+    if (!version) {
+        return true;
+    }
+    // Parse the version string (remove 'v' prefix if present)
+    const cleanVersion = version.replace(/^v/, '');
+    const versionMatch = cleanVersion.match(/^(\d+)\.(\d+)\.(\d+)/);
+    if (!versionMatch) {
+        // If we can't parse the version, assume it supports redacted
+        return true;
+    }
+    const [, year, month, patch] = versionMatch;
+    const yearNum = parseInt(year, 10);
+    const monthNum = parseInt(month, 10);
+    const patchNum = parseInt(patch, 10);
+    // Check if version is >= 2025.8.17
+    if (yearNum > 2025)
+        return true;
+    if (yearNum === 2025) {
+        if (monthNum > 8)
+            return true;
+        if (monthNum === 8 && patchNum >= 17)
+            return true;
+    }
+    return false;
 }
 async function setEnvVars() {
     core.startGroup('Setting env vars');
