@@ -50045,11 +50045,7 @@ async function exportMiseEnv() {
     if (supportsRedacted) {
         try {
             // First, get the redacted values to identify what needs masking
-            const redactedOutput = await exec.getExecOutput('mise', [
-                'env',
-                '--redacted',
-                '--json'
-            ]);
+            const redactedOutput = await exec.getExecOutput('mise', ['env', '--redacted', '--json'], { silent: true });
             const redactedVars = JSON.parse(redactedOutput.stdout);
             // Mask sensitive values in GitHub Actions
             for (const [key, actualValue] of Object.entries(redactedVars)) {
