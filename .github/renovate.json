@@ -21,7 +21,7 @@
       }
     }
   ],
-  "allowedCommands": [
-    ".*"
+  "allowedPostUpgradeCommands": [
+    "^npm run all$"
   ]
 }
