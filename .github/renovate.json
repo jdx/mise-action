@@ -1,8 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "github>jdx/renovate-config"
-  ],
+  "extends": ["github>jdx/renovate-config"],
   "packageRules": [
     {
       "matchManagers": ["github-actions"],
@@ -21,7 +19,5 @@
       }
     }
   ],
-  "allowedPostUpgradeCommands": [
-    "^npm run all$"
-  ]
+  "allowedCommands": ["^npm run all$"]
 }
