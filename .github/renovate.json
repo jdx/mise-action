@@ -3,12 +3,25 @@
   "extends": [
     "github>jdx/renovate-config"
   ],
-  "postUpgradeTasks": {
-    "commands": ["npm run all"],
-    "fileFilters": ["dist/**/*"],
-    "executionMode": "branch"
-  },
-  "allowedCommands": [
-    ".*"
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "postUpgradeTasks": {
+        "commands": [],
+        "fileFilters": [],
+        "executionMode": "branch"
+      }
+    },
+    {
+      "matchManagers": ["npm"],
+      "postUpgradeTasks": {
+        "commands": ["npm run all"],
+        "fileFilters": ["dist/**/*"],
+        "executionMode": "branch"
+      }
+    }
+  ],
+  "allowedPostUpgradeCommands": [
+    "^npm run all$"
   ]
 }
