@@ -50306,7 +50306,7 @@ async function processCacheKeyTemplate(template) {
     const version = core.getInput('version');
     const installArgs = core.getInput('install_args');
     const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0';
-    const { MISE_ENV } = process.env;
+    const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
     const platform = await getTarget();
     // Calculate file hash
     const fileHash = await glob.hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
@@ -50328,7 +50328,7 @@ async function processCacheKeyTemplate(template) {
         cache_key_prefix: cacheKeyPrefix,
         platform,
         file_hash: fileHash,
-        mise_env: MISE_ENV,
+        mise_env: miseEnv,
         install_args_hash: installArgsHash
     };
     // Calculate the default cache key by processing the default template

@@ -396,7 +396,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
   const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0'
-  const { MISE_ENV } = process.env
+  const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
   const platform = await getTarget()
 
   // Calculate file hash
@@ -421,7 +421,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     cache_key_prefix: cacheKeyPrefix,
     platform,
     file_hash: fileHash,
-    mise_env: MISE_ENV,
+    mise_env: miseEnv,
     install_args_hash: installArgsHash
   }
 
