@@ -264,6 +264,28 @@ async function setupMise(
         await exec.exec('chmod', ['+x', miseBinPath])
         break
     }
+  } else {
+    const requestedVersion = core.getInput('version')
+    if (requestedVersion !== '') {
+      const versionOutput = await exec.getExecOutput(
+        miseBinPath,
+        ['version', '--json'],
+        { silent: true }
+      )
+      const versionJson = JSON.parse(versionOutput.stdout)
+      const version = versionJson.version.split(' ')[0]
+      if (requestedVersion === version) {
+        core.info(`mise already installed`)
+      } else {
+        core.info(
+          `mise already installed (${version}), but different version requested (${requestedVersion})`
+        )
+        await exec.exec(miseBinPath, ['self-update', requestedVersion, '-y'], {
+          silent: true
+        })
+        core.info(`mise updated to version ${requestedVersion}`)
+      }
+    }
   }
   // compare with provided hash
   const want = core.getInput('sha256')
