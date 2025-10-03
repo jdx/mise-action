@@ -1,6 +1,27 @@
 # Changelog
 
 ---
+## [3.3.0](https://github.com/jdx/mise-action/compare/v3.2.0..v3.3.0) - 2025-10-03
+
+### 🚀 Features
+
+- use self-update to modify version if mise is already installed (#277) by [@ImpSy](https://github.com/ImpSy) in [#277](https://github.com/jdx/mise-action/pull/277)
+
+### 🐛 Bug Fixes
+
+- **(cache)** replace `,` in `MISE_ENV` with `-` (#278) by [@risu729](https://github.com/risu729) in [#278](https://github.com/jdx/mise-action/pull/278)
+- correct Renovate allowedPostUpgradeCommands configuration by [@jdx](https://github.com/jdx) in [4313941](https://github.com/jdx/mise-action/commit/43139419dcaeb99e24c487d646766d014d0957a2)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(config)** migrate renovate config (#263) by [@renovate[bot]](https://github.com/renovate[bot]) in [#263](https://github.com/jdx/mise-action/pull/263)
+- updated deps by [@jdx](https://github.com/jdx) in [5795893](https://github.com/jdx/mise-action/commit/5795893acedc0f2044498a21005c38f12dd5d8d3)
+
+### New Contributors
+
+* @ImpSy made their first contribution in [#277](https://github.com/jdx/mise-action/pull/277)
+
+---
 ## [3.2.0](https://github.com/jdx/mise-action/compare/v3.1.0..v3.2.0) - 2025-08-22
 
 ### 🚀 Features
