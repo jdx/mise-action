@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [3.3.1](https://github.com/jdx/mise-action/compare/v3.3.0..v3.3.1) - 2025-10-06
+
+### 🐛 Bug Fixes
+
+- trim "v" prefix on update (#287) by [@zeitlinger](https://github.com/zeitlinger) in [#287](https://github.com/jdx/mise-action/pull/287)
+
+---
 ## [3.3.0](https://github.com/jdx/mise-action/compare/v3.2.0..v3.3.0) - 2025-10-03
 
 ### 🚀 Features
@@ -19,6 +26,7 @@
 
 ### New Contributors
 
+* @mise-en-dev made their first contribution in [#284](https://github.com/jdx/mise-action/pull/284)
 * @ImpSy made their first contribution in [#277](https://github.com/jdx/mise-action/pull/277)
 
 ---
