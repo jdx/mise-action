@@ -50102,15 +50102,17 @@ async function exportMiseEnv() {
     }
     core.endGroup();
 }
+function cleanVersion(version) {
+    // remove 'v' prefix if present
+    return version.replace(/^v/, '');
+}
 function checkMiseSupportsRedacted() {
     const version = core.getInput('version');
     // If no version is specified, assume latest which supports redacted
     if (!version) {
         return true;
     }
-    // Parse the version string (remove 'v' prefix if present)
-    const cleanVersion = version.replace(/^v/, '');
-    const versionMatch = cleanVersion.match(/^(\d+)\.(\d+)\.(\d+)/);
+    const versionMatch = cleanVersion(version).match(/^(\d+)\.(\d+)\.(\d+)/);
     if (!versionMatch) {
         // If we can't parse the version, assume it supports redacted
         return true;
@@ -50221,11 +50223,11 @@ async function setupMise(version, fetchFromGitHub = false) {
         }
     }
     else {
-        const requestedVersion = core.getInput('version');
+        const requestedVersion = cleanVersion(core.getInput('version'));
         if (requestedVersion !== '') {
             const versionOutput = await exec.getExecOutput(miseBinPath, ['version', '--json'], { silent: true });
             const versionJson = JSON.parse(versionOutput.stdout);
-            const version = versionJson.version.split(' ')[0];
+            const version = cleanVersion(versionJson.version.split(' ')[0]);
             if (requestedVersion === version) {
                 core.info(`mise already installed`);
             }
