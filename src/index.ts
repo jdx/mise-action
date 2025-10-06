@@ -127,8 +127,8 @@ async function exportMiseEnv(): Promise<void> {
 }
 
 function cleanVersion(version: string) {
-    // remove 'v' prefix if present
-    return version.replace(/^v/, '');
+  // remove 'v' prefix if present
+  return version.replace(/^v/, '')
 }
 
 function checkMiseSupportsRedacted(): boolean {
