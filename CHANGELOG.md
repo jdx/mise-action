@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.3.2](https://github.com/jdx/mise-action/compare/v3.3.1..v3.3.2) - 2025-10-10
+
+### 📚 Documentation
+
+- update to v3 in README (#290) by [@pdecat](https://github.com/pdecat) in [#290](https://github.com/jdx/mise-action/pull/290)
+
+### New Contributors
+
+* @pdecat made their first contribution in [#290](https://github.com/jdx/mise-action/pull/290)
+
+---
 ## [3.3.1](https://github.com/jdx/mise-action/compare/v3.3.0..v3.3.1) - 2025-10-06
 
 ### 🐛 Bug Fixes
