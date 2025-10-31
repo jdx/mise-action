@@ -1,23 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>jdx/renovate-config"],
-  "packageRules": [
-    {
-      "matchManagers": ["github-actions"],
-      "postUpgradeTasks": {
-        "commands": [],
-        "fileFilters": [],
-        "executionMode": "branch"
-      }
-    },
-    {
-      "matchManagers": ["npm"],
-      "postUpgradeTasks": {
-        "commands": ["npm run all"],
-        "fileFilters": ["dist/**/*"],
-        "executionMode": "branch"
-      }
-    }
-  ],
-  "allowedCommands": ["^npm run all$"]
+  "extends": ["github>jdx/renovate-config"]
 }
