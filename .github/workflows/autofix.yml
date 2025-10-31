@@ -1,18 +1,21 @@
-name: Auto-update Distribution
+name: autofix.ci
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
 
 permissions:
   contents: read
 
 jobs:
-  update-dist:
+  autofix:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -27,4 +30,4 @@ jobs:
         run: npm run all
 
       - name: autofix.ci
-        uses: autofix-ci/action@ff86a557419858bb967097bfc916833f5647fa8c
+        uses: autofix-ci/action@v1
