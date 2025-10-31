@@ -2,11 +2,6 @@ name: Auto-update Distribution
 
 on:
   pull_request:
-    paths:
-      - 'package.json'
-      - 'package-lock.json'
-      - 'src/**'
-      - 'tsconfig.json'
 
 permissions:
   contents: read
