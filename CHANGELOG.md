@@ -1,6 +1,35 @@
 # Changelog
 
 ---
+## [3.4.0](https://github.com/jdx/mise-action/compare/v3.3.1..v3.4.0) - 2025-10-31
+
+### 🚀 Features
+
+- use autofix.ci to auto-update dist/ on all PRs by [@jdx](https://github.com/jdx) in [16e9fd5](https://github.com/jdx/mise-action/commit/16e9fd5251189c3d389adb836f243575c134d680)
+- use autofix.ci to auto-update dist/ on all PRs (#308) by [@jdx](https://github.com/jdx) in [#308](https://github.com/jdx/mise-action/pull/308)
+
+### 🐛 Bug Fixes
+
+- add missing `await` to `core.group` calls (#305) by [@smorimoto](https://github.com/smorimoto) in [#305](https://github.com/jdx/mise-action/pull/305)
+- auto-update dist folder in Renovate PRs via GitHub Actions (#306) by [@jdx](https://github.com/jdx) in [#306](https://github.com/jdx/mise-action/pull/306)
+- configure Renovate to ignore github-actions[bot] commits by [@jdx](https://github.com/jdx) in [993e7d0](https://github.com/jdx/mise-action/commit/993e7d0bb6f3422ef833a702b90e2a44909ec651)
+- run auto-update-dist workflow on all PRs by [@jdx](https://github.com/jdx) in [6d0fd75](https://github.com/jdx/mise-action/commit/6d0fd75ed51124702e37bfcf6e977da73f64b4e1)
+
+### 📚 Documentation
+
+- update to v3 in README (#290) by [@pdecat](https://github.com/pdecat) in [#290](https://github.com/jdx/mise-action/pull/290)
+
+### ⚙️ Miscellaneous Tasks
+
+- upgrade all workflows to Node 24 by [@jdx](https://github.com/jdx) in [c7b5f37](https://github.com/jdx/mise-action/commit/c7b5f37cadd1a385188a023510a966efa5eed247)
+- remove unused workflow by [@jdx](https://github.com/jdx) in [aecb23d](https://github.com/jdx/mise-action/commit/aecb23d92f0e50768578578f309255414a23561d)
+
+### New Contributors
+
+* @smorimoto made their first contribution in [#305](https://github.com/jdx/mise-action/pull/305)
+* @pdecat made their first contribution in [#290](https://github.com/jdx/mise-action/pull/290)
+
+---
 ## [3.3.1](https://github.com/jdx/mise-action/compare/v3.3.0..v3.3.1) - 2025-10-06
 
 ### 🐛 Bug Fixes
