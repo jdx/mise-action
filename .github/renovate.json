@@ -1,6 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>jdx/renovate-config"],
-  "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
+  "gitIgnoredAuthors": ["autofix.ci[bot] <autofix.ci[bot]@users.noreply.github.com>"],
   "rebaseWhen": "conflicted"
 }
