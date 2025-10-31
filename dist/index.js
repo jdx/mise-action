@@ -50284,7 +50284,7 @@ const testMise = async () => mise(['--version']);
 const miseInstall = async () => mise([`install ${core.getInput('install_args')}`]);
 const miseLs = async () => mise([`ls`]);
 const miseReshim = async () => mise([`reshim`, `-f`]);
-const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
+const mise = async (args) => await core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('working_directory') ||
         core.getInput('install_dir') ||
         process.cwd();
@@ -50301,7 +50301,7 @@ const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async 
         return exec.exec('mise', args, { cwd, env });
     }
 });
-const writeFile = async (p, body) => core.group(`Writing ${p}`, async () => {
+const writeFile = async (p, body) => await core.group(`Writing ${p}`, async () => {
     core.info(`Body:\n${body}`);
     await fs.promises.writeFile(p, body, { encoding: 'utf8' });
 });
@@ -50320,7 +50320,7 @@ function miseDir() {
     return path.join(os.homedir(), '.local', 'share', 'mise');
 }
 async function saveCache(cacheKey) {
-    core.group(`Saving mise cache`, async () => {
+    await core.group(`Saving mise cache`, async () => {
         const cachePath = miseDir();
         if (!fs.existsSync(cachePath)) {
             throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);

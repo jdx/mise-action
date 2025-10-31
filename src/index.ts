@@ -343,7 +343,7 @@ const miseInstall = async (): Promise<number> =>
 const miseLs = async (): Promise<number> => mise([`ls`])
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
-  core.group(`Running mise ${args.join(' ')}`, async () => {
+  await core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd =
       core.getInput('working_directory') ||
       core.getInput('install_dir') ||
@@ -363,7 +363,7 @@ const mise = async (args: string[]): Promise<number> =>
   })
 
 const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
-  core.group(`Writing ${p}`, async () => {
+  await core.group(`Writing ${p}`, async () => {
     core.info(`Body:\n${body}`)
     await fs.promises.writeFile(p, body, { encoding: 'utf8' })
   })
@@ -384,7 +384,7 @@ function miseDir(): string {
 }
 
 async function saveCache(cacheKey: string): Promise<void> {
-  core.group(`Saving mise cache`, async () => {
+  await core.group(`Saving mise cache`, async () => {
     const cachePath = miseDir()
 
     if (!fs.existsSync(cachePath)) {
