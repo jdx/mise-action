@@ -15,10 +15,10 @@ jobs:
 
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v5
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: 'npm'
@@ -30,4 +30,4 @@ jobs:
         run: npm run all
 
       - name: autofix.ci
-        uses: autofix-ci/action@v1
+        uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27 # v1
