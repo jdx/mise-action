@@ -55397,7 +55397,7 @@ exports.buildCreatePoller = buildCreatePoller;
 // Licensed under the MIT License.
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DEFAULT_RETRY_POLICY_COUNT = exports.SDK_VERSION = void 0;
-exports.SDK_VERSION = "1.22.1";
+exports.SDK_VERSION = "1.22.2";
 exports.DEFAULT_RETRY_POLICY_COUNT = 3;
 //# sourceMappingURL=constants.js.map
 
@@ -55491,7 +55491,6 @@ function createDefaultHttpClient() {
                 ? (0, wrapAbortSignal_js_1.wrapAbortSignalLike)(request.abortSignal)
                 : {};
             try {
-                // eslint-disable-next-line no-param-reassign
                 request.abortSignal = abortSignal;
                 return await client.sendRequest(request);
             }
@@ -56649,7 +56648,6 @@ function wrapAbortSignalLikePolicy() {
                 return next(request);
             }
             const { abortSignal, cleanup } = (0, wrapAbortSignal_js_1.wrapAbortSignalLike)(request.abortSignal);
-            // eslint-disable-next-line no-param-reassign
             request.abortSignal = abortSignal;
             try {
                 return await next(request);
@@ -56813,13 +56811,21 @@ function createFile(content, name, options = {}) {
             size: content.byteLength,
             name,
             arrayBuffer: async () => content.buffer,
-            stream: () => new Blob([content]).stream(),
+            stream: () => new Blob([toArrayBuffer(content)]).stream(),
             [rawContent]: () => content,
         };
     }
     else {
-        return new File([content], name, options);
+        return new File([toArrayBuffer(content)], name, options);
     }
+}
+function toArrayBuffer(source) {
+    if ("resize" in source.buffer) {
+        // ArrayBuffer
+        return source;
+    }
+    // SharedArrayBuffer
+    return source.map((x) => x);
 }
 //# sourceMappingURL=file.js.map
 
@@ -57064,18 +57070,18 @@ function getHeaderName() {
  */
 async function setPlatformSpecificData(map) {
     if (node_process_1.default && node_process_1.default.versions) {
+        const osInfo = `${node_os_1.default.type()} ${node_os_1.default.release()}; ${node_os_1.default.arch()}`;
         const versions = node_process_1.default.versions;
         if (versions.bun) {
-            map.set("Bun", versions.bun);
+            map.set("Bun", `${versions.bun} (${osInfo})`);
         }
         else if (versions.deno) {
-            map.set("Deno", versions.deno);
+            map.set("Deno", `${versions.deno} (${osInfo})`);
         }
         else if (versions.node) {
-            map.set("Node", versions.node);
+            map.set("Node", `${versions.node} (${osInfo})`);
         }
     }
-    map.set("OS", `(${node_os_1.default.arch()}-${node_os_1.default.type()}-${node_os_1.default.release()})`);
 }
 //# sourceMappingURL=userAgentPlatform.js.map
 
@@ -89889,7 +89895,7 @@ function replaceAll(value, searchValue, replaceValue) {
 // Licensed under the MIT License.
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.DEFAULT_RETRY_POLICY_COUNT = exports.SDK_VERSION = void 0;
-exports.SDK_VERSION = "0.3.1";
+exports.SDK_VERSION = "0.3.2";
 exports.DEFAULT_RETRY_POLICY_COUNT = 3;
 //# sourceMappingURL=constants.js.map
 
@@ -93371,25 +93377,25 @@ function getHeaderName() {
  */
 async function setPlatformSpecificData(map) {
     if (node_process_1.default && node_process_1.default.versions) {
+        const osInfo = `${node_os_1.default.type()} ${node_os_1.default.release()}; ${node_os_1.default.arch()}`;
         const versions = node_process_1.default.versions;
         if (versions.bun) {
-            map.set("Bun", versions.bun);
+            map.set("Bun", `${versions.bun} (${osInfo})`);
         }
         else if (versions.deno) {
-            map.set("Deno", versions.deno);
+            map.set("Deno", `${versions.deno} (${osInfo})`);
         }
         else if (versions.node) {
-            map.set("Node", versions.node);
+            map.set("Node", `${versions.node} (${osInfo})`);
         }
     }
-    map.set("OS", `(${node_os_1.default.arch()}-${node_os_1.default.type()}-${node_os_1.default.release()})`);
 }
 //# sourceMappingURL=userAgentPlatform.js.map
 
 /***/ }),
 
 /***/ 5023:
-/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+/***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
@@ -93397,18 +93403,13 @@ async function setPlatformSpecificData(map) {
 // Licensed under the MIT License.
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.randomUUID = randomUUID;
-const node_crypto_1 = __nccwpck_require__(77598);
-// NOTE: This is a workaround until we can use `globalThis.crypto.randomUUID` in Node.js 19+.
-const uuidFunction = typeof globalThis?.crypto?.randomUUID === "function"
-    ? globalThis.crypto.randomUUID.bind(globalThis.crypto)
-    : node_crypto_1.randomUUID;
 /**
  * Generated Universally Unique Identifier
  *
  * @returns RFC4122 v4 UUID.
  */
 function randomUUID() {
-    return uuidFunction();
+    return crypto.randomUUID();
 }
 //# sourceMappingURL=uuidUtils.js.map
 
