@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.4.1](https://github.com/jdx/mise-action/compare/v3.4.0..v3.4.1) - 2025-11-13
+
+### 🐛 Bug Fixes
+
+- avoid github token downstream issue (#317) by [@acesyde](https://github.com/acesyde) in [#317](https://github.com/jdx/mise-action/pull/317)
+
+### New Contributors
+
+* @acesyde made their first contribution in [#317](https://github.com/jdx/mise-action/pull/317)
+
+---
 ## [3.4.0](https://github.com/jdx/mise-action/compare/v3.3.1..v3.4.0) - 2025-10-31
 
 ### 🚀 Features
