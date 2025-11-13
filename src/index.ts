@@ -176,10 +176,11 @@ async function setEnvVars(): Promise<void> {
 
   const githubToken = core.getInput('github_token')
   if (githubToken) {
-    set('GITHUB_TOKEN', githubToken)
+    // Don't use GITHUB_TOKEN, use MISE_GITHUB_TOKEN instead to avoid downstream issues.
+    set('MISE_GITHUB_TOKEN', githubToken)
   } else {
     core.warning(
-      'No GITHUB_TOKEN provided. You may hit GitHub API rate limits when installing tools from GitHub.'
+      'No MISE_GITHUB_TOKEN provided. You may hit GitHub API rate limits when installing tools from GitHub.'
     )
   }
 
