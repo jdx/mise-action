@@ -49986,6 +49986,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.post = post;
 const cache = __importStar(__nccwpck_require__(5116));
 const io = __importStar(__nccwpck_require__(94994));
 const core = __importStar(__nccwpck_require__(37484));
@@ -50030,9 +50031,8 @@ async function run() {
     try {
         await setToolVersions();
         await setMiseToml();
-        let cacheKey;
         if (core.getBooleanInput('cache')) {
-            cacheKey = await restoreMiseCache();
+            await restoreMiseCache();
         }
         else {
             core.setOutput('cache-hit', false);
@@ -50047,9 +50047,7 @@ async function run() {
         await testMise();
         if (core.getBooleanInput('install')) {
             await miseInstall();
-            if (cacheKey && core.getBooleanInput('cache_save')) {
-                await saveCache(cacheKey);
-            }
+            // Save cache move to post()
         }
         await miseLs();
         const loadEnv = core.getBooleanInput('env');
@@ -50063,6 +50061,28 @@ async function run() {
         else
             throw err;
     }
+}
+async function post() {
+    try {
+        const primaryKey = await getCacheKey();
+        if (core.getBooleanInput('install')) {
+            if (primaryKey && core.getBooleanInput('cache_save')) {
+                await saveCache(primaryKey);
+            }
+        }
+    }
+    catch (err) {
+        if (err instanceof Error)
+            core.setFailed(err.message);
+        else
+            throw err;
+    }
+}
+async function getCacheKey() {
+    // Use custom cache key if provided, otherwise use default template
+    const cacheKeyTemplate = core.getState('PRIMARY_KEY');
+    const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
+    return primaryKey;
 }
 async function exportMiseEnv() {
     core.startGroup('Exporting mise environment variables');
@@ -50162,16 +50182,14 @@ async function setEnvVars() {
 async function restoreMiseCache() {
     core.startGroup('Restoring mise cache');
     const cachePath = miseDir();
-    // Use custom cache key if provided, otherwise use default template
-    const cacheKeyTemplate = core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
-    const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
+    const primaryKey = await getCacheKey();
     core.saveState('PRIMARY_KEY', primaryKey);
     core.saveState('MISE_DIR', cachePath);
     const cacheKey = await cache.restoreCache([cachePath], primaryKey);
     core.setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
         core.info(`mise cache not found for ${primaryKey}`);
-        return primaryKey;
+        return;
     }
     core.info(`mise cache restored from key: ${cacheKey}`);
 }

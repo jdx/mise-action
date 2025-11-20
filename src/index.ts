@@ -8,6 +8,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
+import * as stateHelper from './state-helper'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -76,14 +77,12 @@ async function run(): Promise<void> {
   }
 }
 
-export async function post() {
+export async function cleanup(): Promise<void> {
   try {
     const primaryKey = await getCacheKey()
 
-    if (core.getBooleanInput('install')) {
-      if (primaryKey && core.getBooleanInput('cache_save')) {
-        await saveCache(primaryKey)
-      }
+    if (primaryKey && core.getBooleanInput('cache_save')) {
+      await saveCache(primaryKey)
     }
   } catch (err) {
     if (err instanceof Error) core.setFailed(err.message)
@@ -93,9 +92,9 @@ export async function post() {
 
 async function getCacheKey(): Promise<string> {
   // Use custom cache key if provided, otherwise use default template
-  const cacheKeyTemplate = core.getState('PRIMARY_KEY')
-  const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
-  return primaryKey
+  const cacheKeyTemplate =
+    core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
+  return await processCacheKeyTemplate(cacheKeyTemplate)
 }
 
 async function exportMiseEnv(): Promise<void> {
@@ -385,8 +384,6 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
     await fs.promises.writeFile(p, body, { encoding: 'utf8' })
   })
 
-run()
-
 function miseDir(): string {
   const dir = core.getState('MISE_DIR')
   if (dir) return dir
@@ -490,4 +487,13 @@ async function isMusl() {
     ignoreReturnCode: true
   })
   return stderr.indexOf('musl') > -1
+}
+
+// Main
+if (!stateHelper.IsPost) {
+  run()
+}
+// Post
+else {
+  cleanup()
 }
