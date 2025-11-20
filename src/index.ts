@@ -47,9 +47,8 @@ async function run(): Promise<void> {
     await setToolVersions()
     await setMiseToml()
 
-    let cacheKey: string | undefined
     if (core.getBooleanInput('cache')) {
-      cacheKey = await restoreMiseCache()
+      await restoreMiseCache()
     } else {
       core.setOutput('cache-hit', false)
     }
@@ -64,9 +63,7 @@ async function run(): Promise<void> {
     await testMise()
     if (core.getBooleanInput('install')) {
       await miseInstall()
-      if (cacheKey && core.getBooleanInput('cache_save')) {
-        await saveCache(cacheKey)
-      }
+      // Save cache move to post()
     }
     await miseLs()
     const loadEnv = core.getBooleanInput('env')
@@ -77,6 +74,28 @@ async function run(): Promise<void> {
     if (err instanceof Error) core.setFailed(err.message)
     else throw err
   }
+}
+
+export async function post() {
+  try {
+    const primaryKey = await getCacheKey()
+
+    if (core.getBooleanInput('install')) {
+      if (primaryKey && core.getBooleanInput('cache_save')) {
+        await saveCache(primaryKey)
+      }
+    }
+  } catch (err) {
+    if (err instanceof Error) core.setFailed(err.message)
+    else throw err
+  }
+}
+
+async function getCacheKey(): Promise<string> {
+  // Use custom cache key if provided, otherwise use default template
+  const cacheKeyTemplate = core.getState('PRIMARY_KEY')
+  const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
+  return primaryKey
 }
 
 async function exportMiseEnv(): Promise<void> {
@@ -192,14 +211,11 @@ async function setEnvVars(): Promise<void> {
   core.addPath(shimsDir)
 }
 
-async function restoreMiseCache(): Promise<string | undefined> {
+async function restoreMiseCache(): Promise<void> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
 
-  // Use custom cache key if provided, otherwise use default template
-  const cacheKeyTemplate =
-    core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
-  const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
+  const primaryKey = await getCacheKey()
 
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
@@ -209,7 +225,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
 
   if (!cacheKey) {
     core.info(`mise cache not found for ${primaryKey}`)
-    return primaryKey
+    return
   }
 
   core.info(`mise cache restored from key: ${cacheKey}`)
