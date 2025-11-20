@@ -49,8 +49,8 @@ inputs:
     required: false
     description: |
       Override the complete cache key (ignores all other cache key options).
-      Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}}, 
-      {{mise_env}}, {{install_args_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables, 
+      Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}},
+      {{mise_env}}, {{install_args_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables,
       and conditional logic like {{#if version}}...{{/if}}
   experimental:
     required: false
@@ -87,3 +87,4 @@ outputs:
 runs:
   using: node20
   main: dist/index.js
+  post: dist/index.js
