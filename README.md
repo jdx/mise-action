@@ -73,6 +73,7 @@ Available template variables:
 - `{{mise_env}}` - The MISE_ENV environment variable value
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
 - `{{default}}` - The processed default cache key (useful for extending)
+- `{{mise_ls_hash}}` - SHA256 hash of the output of `mise ls`
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.
 
