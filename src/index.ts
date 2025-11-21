@@ -48,26 +48,24 @@ async function run(): Promise<void> {
     await setToolVersions()
     await setMiseToml()
 
+    const version = core.getInput('version')
+    const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
+    await setupMise(version, fetchFromGitHub)
+    await testMise()
+
     if (core.getBooleanInput('cache')) {
       await restoreMiseCache()
     } else {
       core.setOutput('cache-hit', false)
     }
 
-    const version = core.getInput('version')
-    const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
-    await setupMise(version, fetchFromGitHub)
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
     }
-    await testMise()
     if (core.getBooleanInput('install')) {
       await miseInstall()
       // Save cache move to post()
-    }
-    if (core.getBooleanInput('upgrade')) {
-      await miseUpgrade()
     }
     await miseLs()
     const loadEnv = core.getBooleanInput('env')
@@ -361,7 +359,6 @@ const miseInstall = async (): Promise<exec.ExecOutput> =>
   mise([`install ${core.getInput('install_args')}`])
 const miseLs = async (): Promise<exec.ExecOutput> => mise([`ls`])
 const miseReshim = async (): Promise<exec.ExecOutput> => mise([`reshim`, `-f`])
-const miseUpgrade = async (): Promise<exec.ExecOutput> => mise([`upgrade`])
 const mise = async (args: string[]): Promise<exec.ExecOutput> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd =
@@ -459,7 +456,10 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   }
 
   const miseLsOutput = await miseLs()
-  const miseLsHash = crypto.createHash('sha256').update(miseLsOutput.stdout).digest('hex')
+  const miseLsHash = crypto
+    .createHash('sha256')
+    .update(miseLsOutput.stdout)
+    .digest('hex')
 
   // Prepare base template data
   const baseTemplateData = {

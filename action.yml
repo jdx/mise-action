@@ -33,10 +33,6 @@ inputs:
   install_dir:
     required: false
     description: deprecated
-  upgrade:
-    required: false
-    default: "false"
-    description: if true, will run `mise upgrade` to upgrade all `latest` versions to the newest available
   cache:
     required: false
     default: "true"

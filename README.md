@@ -19,7 +19,6 @@ jobs:
           version: 2024.10.0 # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
-          upgrade: true # [default: false] run `mise upgrade` to upgrade all `latest` versions
           cache: true # [default: true] cache mise using GitHub's cache
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
