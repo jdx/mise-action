@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.5.0](https://github.com/jdx/mise-action/compare/v3.4.1..v3.5.0) - 2025-11-21
+
+### 🚀 Features
+
+- **(action)** moved save cache to post step (#321) by [@aamkye](https://github.com/aamkye) in [#321](https://github.com/jdx/mise-action/pull/321)
+
+### New Contributors
+
+* @aamkye made their first contribution in [#321](https://github.com/jdx/mise-action/pull/321)
+
+---
 ## [3.4.1](https://github.com/jdx/mise-action/compare/v3.4.0..v3.4.1) - 2025-11-13
 
 ### 🐛 Bug Fixes
