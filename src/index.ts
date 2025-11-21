@@ -41,7 +41,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}'
+  '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if mise_ls_hash}}-{{mise_ls_hash}}{{/if}}'
 
 async function run(): Promise<void> {
   try {
@@ -65,6 +65,9 @@ async function run(): Promise<void> {
     if (core.getBooleanInput('install')) {
       await miseInstall()
       // Save cache move to post()
+    }
+    if (core.getBooleanInput('upgrade')) {
+      await miseUpgrade()
     }
     await miseLs()
     const loadEnv = core.getBooleanInput('env')
@@ -353,12 +356,13 @@ async function setMiseToml(): Promise<void> {
   }
 }
 
-const testMise = async (): Promise<number> => mise(['--version'])
-const miseInstall = async (): Promise<number> =>
+const testMise = async (): Promise<exec.ExecOutput> => mise(['--version'])
+const miseInstall = async (): Promise<exec.ExecOutput> =>
   mise([`install ${core.getInput('install_args')}`])
-const miseLs = async (): Promise<number> => mise([`ls`])
-const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
-const mise = async (args: string[]): Promise<number> =>
+const miseLs = async (): Promise<exec.ExecOutput> => mise([`ls`])
+const miseReshim = async (): Promise<exec.ExecOutput> => mise([`reshim`, `-f`])
+const miseUpgrade = async (): Promise<exec.ExecOutput> => mise([`upgrade`])
+const mise = async (args: string[]): Promise<exec.ExecOutput> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd =
       core.getInput('working_directory') ||
@@ -369,12 +373,12 @@ const mise = async (args: string[]): Promise<number> =>
       : undefined
 
     if (args.length === 1) {
-      return exec.exec(`mise ${args}`, [], {
+      return exec.getExecOutput(`mise ${args}`, [], {
         cwd,
         env
       })
     } else {
-      return exec.exec('mise', args, { cwd, env })
+      return exec.getExecOutput('mise', args, { cwd, env })
     }
   })
 
@@ -454,6 +458,9 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     }
   }
 
+  const miseLsOutput = await miseLs()
+  const miseLsHash = crypto.createHash('sha256').update(miseLsOutput.stdout).digest('hex')
+
   // Prepare base template data
   const baseTemplateData = {
     version,
@@ -461,7 +468,8 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     platform,
     file_hash: fileHash,
     mise_env: miseEnv,
-    install_args_hash: installArgsHash
+    install_args_hash: installArgsHash,
+    mise_ls_hash: miseLsHash
   }
 
   // Calculate the default cache key by processing the default template
