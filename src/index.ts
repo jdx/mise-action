@@ -8,7 +8,6 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
-import * as stateHelper from './state-helper'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -48,8 +47,9 @@ async function run(): Promise<void> {
     await setToolVersions()
     await setMiseToml()
 
+    let cacheKey: string | undefined
     if (core.getBooleanInput('cache')) {
-      await restoreMiseCache()
+      cacheKey = await restoreMiseCache()
     } else {
       core.setOutput('cache-hit', false)
     }
@@ -64,7 +64,9 @@ async function run(): Promise<void> {
     await testMise()
     if (core.getBooleanInput('install')) {
       await miseInstall()
-      // Save cache move to post()
+      if (cacheKey && core.getBooleanInput('cache_save')) {
+        await saveCache(cacheKey)
+      }
     }
     await miseLs()
     const loadEnv = core.getBooleanInput('env')
@@ -75,26 +77,6 @@ async function run(): Promise<void> {
     if (err instanceof Error) core.setFailed(err.message)
     else throw err
   }
-}
-
-export async function cleanup(): Promise<void> {
-  try {
-    const primaryKey = await getCacheKey()
-
-    if (primaryKey && core.getBooleanInput('cache_save')) {
-      await saveCache(primaryKey)
-    }
-  } catch (err) {
-    if (err instanceof Error) core.setFailed(err.message)
-    else throw err
-  }
-}
-
-async function getCacheKey(): Promise<string> {
-  // Use custom cache key if provided, otherwise use default template
-  const cacheKeyTemplate =
-    core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
-  return await processCacheKeyTemplate(cacheKeyTemplate)
 }
 
 async function exportMiseEnv(): Promise<void> {
@@ -210,11 +192,14 @@ async function setEnvVars(): Promise<void> {
   core.addPath(shimsDir)
 }
 
-async function restoreMiseCache(): Promise<void> {
+async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
 
-  const primaryKey = await getCacheKey()
+  // Use custom cache key if provided, otherwise use default template
+  const cacheKeyTemplate =
+    core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
+  const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
 
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
@@ -224,7 +209,7 @@ async function restoreMiseCache(): Promise<void> {
 
   if (!cacheKey) {
     core.info(`mise cache not found for ${primaryKey}`)
-    return
+    return primaryKey
   }
 
   core.info(`mise cache restored from key: ${cacheKey}`)
@@ -384,6 +369,8 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
     await fs.promises.writeFile(p, body, { encoding: 'utf8' })
   })
 
+run()
+
 function miseDir(): string {
   const dir = core.getState('MISE_DIR')
   if (dir) return dir
@@ -487,13 +474,4 @@ async function isMusl() {
     ignoreReturnCode: true
   })
   return stderr.indexOf('musl') > -1
-}
-
-// Main
-if (!stateHelper.IsPost) {
-  run()
-}
-// Post
-else {
-  cleanup()
 }

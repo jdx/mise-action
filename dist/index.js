@@ -49986,7 +49986,6 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.cleanup = cleanup;
 const cache = __importStar(__nccwpck_require__(5116));
 const io = __importStar(__nccwpck_require__(94994));
 const core = __importStar(__nccwpck_require__(37484));
@@ -49997,7 +49996,6 @@ const fs = __importStar(__nccwpck_require__(79896));
 const os = __importStar(__nccwpck_require__(70857));
 const path = __importStar(__nccwpck_require__(16928));
 const Handlebars = __importStar(__nccwpck_require__(88508));
-const stateHelper = __importStar(__nccwpck_require__(87155));
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -50032,8 +50030,9 @@ async function run() {
     try {
         await setToolVersions();
         await setMiseToml();
+        let cacheKey;
         if (core.getBooleanInput('cache')) {
-            await restoreMiseCache();
+            cacheKey = await restoreMiseCache();
         }
         else {
             core.setOutput('cache-hit', false);
@@ -50048,7 +50047,9 @@ async function run() {
         await testMise();
         if (core.getBooleanInput('install')) {
             await miseInstall();
-            // Save cache move to post()
+            if (cacheKey && core.getBooleanInput('cache_save')) {
+                await saveCache(cacheKey);
+            }
         }
         await miseLs();
         const loadEnv = core.getBooleanInput('env');
@@ -50062,25 +50063,6 @@ async function run() {
         else
             throw err;
     }
-}
-async function cleanup() {
-    try {
-        const primaryKey = await getCacheKey();
-        if (primaryKey && core.getBooleanInput('cache_save')) {
-            await saveCache(primaryKey);
-        }
-    }
-    catch (err) {
-        if (err instanceof Error)
-            core.setFailed(err.message);
-        else
-            throw err;
-    }
-}
-async function getCacheKey() {
-    // Use custom cache key if provided, otherwise use default template
-    const cacheKeyTemplate = core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
-    return await processCacheKeyTemplate(cacheKeyTemplate);
 }
 async function exportMiseEnv() {
     core.startGroup('Exporting mise environment variables');
@@ -50180,14 +50162,16 @@ async function setEnvVars() {
 async function restoreMiseCache() {
     core.startGroup('Restoring mise cache');
     const cachePath = miseDir();
-    const primaryKey = await getCacheKey();
+    // Use custom cache key if provided, otherwise use default template
+    const cacheKeyTemplate = core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
+    const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
     core.saveState('PRIMARY_KEY', primaryKey);
     core.saveState('MISE_DIR', cachePath);
     const cacheKey = await cache.restoreCache([cachePath], primaryKey);
     core.setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
         core.info(`mise cache not found for ${primaryKey}`);
-        return;
+        return primaryKey;
     }
     core.info(`mise cache restored from key: ${cacheKey}`);
 }
@@ -50322,6 +50306,7 @@ const writeFile = async (p, body) => await core.group(`Writing ${p}`, async () =
     core.info(`Body:\n${body}`);
     await fs.promises.writeFile(p, body, { encoding: 'utf8' });
 });
+run();
 function miseDir() {
     const dir = core.getState('MISE_DIR');
     if (dir)
@@ -50413,69 +50398,6 @@ async function isMusl() {
         ignoreReturnCode: true
     });
     return stderr.indexOf('musl') > -1;
-}
-// Main
-if (!stateHelper.IsPost) {
-    run();
-}
-// Post
-else {
-    cleanup();
-}
-
-
-/***/ }),
-
-/***/ 87155:
-/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
-
-"use strict";
-
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.IsPost = void 0;
-// https://github.com/actions/checkout/blob/v4/src/state-helper.ts
-const core = __importStar(__nccwpck_require__(37484));
-/**
- * Indicates whether the POST action is running
- */
-exports.IsPost = !!core.getState('isPost');
-// Publish a variable so that when the POST action runs, it can determine it should run the cleanup logic.
-// This is necessary since we don't have a separate entry point.
-if (!exports.IsPost) {
-    core.saveState('isPost', 'true');
 }
 
 
