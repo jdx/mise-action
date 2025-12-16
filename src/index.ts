@@ -375,6 +375,9 @@ function miseDir(): string {
   const dir = core.getState('MISE_DIR')
   if (dir) return dir
 
+  const miseDir = core.getInput('mise_dir')
+  if (miseDir) return miseDir
+
   const { MISE_DATA_DIR, XDG_DATA_HOME, LOCALAPPDATA } = process.env
   if (MISE_DATA_DIR) return MISE_DATA_DIR
   if (XDG_DATA_HOME) return path.join(XDG_DATA_HOME, 'mise')
