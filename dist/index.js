@@ -50291,9 +50291,10 @@ const mise = async (args) => await core.group(`Running mise ${args.join(' ')}`, 
     const cwd = core.getInput('working_directory') ||
         core.getInput('install_dir') ||
         process.cwd();
+    const baseEnv = Object.fromEntries(Object.entries(process.env).filter((entry) => entry[1] !== undefined));
     const env = core.isDebug()
-        ? { ...process.env, MISE_LOG_LEVEL: 'debug' }
-        : undefined;
+        ? { ...baseEnv, MISE_LOG_LEVEL: 'debug' }
+        : baseEnv;
     if (args.length === 1) {
         return exec.exec(`mise ${args}`, [], {
             cwd,
