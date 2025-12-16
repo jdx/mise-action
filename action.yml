@@ -67,6 +67,10 @@ inputs:
     required: false
     default: "false"
     description: if true, will run `mise reshim --all` after setting up mise
+  add_shims_to_path:
+    required: false
+    default: "true"
+    description: if false, will not add mise shims directory to PATH
   github_token:
     required: false
     description: |
