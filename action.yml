@@ -26,7 +26,7 @@ inputs:
   plugin_install:
     required: false
     description: |
-      If provider, `mise plugin install` will be run with these arguments before running `mise install`.
+      If present, `mise plugin install` will be run with these arguments before running `mise install`
   install:
     required: false
     default: "true"
