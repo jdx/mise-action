@@ -50049,6 +50049,10 @@ async function run() {
         if (pluginInstall) {
             await misePluginInstall();
         }
+        const pluginLink = core.getInput('plugin_link');
+        if (pluginLink) {
+            await misePluginLink();
+        }
         if (core.getBooleanInput('install')) {
             await miseInstall();
             if (cacheKey && core.getBooleanInput('cache_save')) {
@@ -50289,6 +50293,7 @@ async function setMiseToml() {
 }
 const testMise = async () => mise(['--version']);
 const misePluginInstall = async () => mise([`plugin install ${core.getInput('plugin_install')}`]);
+const misePluginLink = async () => mise([`plugin link ${core.getInput('plugin_link')}`]);
 const miseInstall = async () => mise([`install ${core.getInput('install_args')}`]);
 const miseLs = async () => mise([`ls`]);
 const miseReshim = async () => mise([`reshim`, `-f`]);

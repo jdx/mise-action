@@ -27,6 +27,10 @@ inputs:
     required: false
     description: |
       If present, `mise plugin install` will be run with these arguments before running `mise install`
+  plugin_link:
+    required: false
+    description: |
+      If present, `mise plugin link` will be run with these arguments before running `mise install`
   install:
     required: false
     default: "true"
