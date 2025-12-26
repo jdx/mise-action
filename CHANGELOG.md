@@ -1,6 +1,18 @@
 # Changelog
 
 ---
+## [3.6.0](https://github.com/jdx/mise-action/compare/v3.5.1..v3.6.0) - 2025-12-26
+
+### 🚀 Features
+
+- add option to disable shims in PATH (#340) by [@jdx](https://github.com/jdx) in [#340](https://github.com/jdx/mise-action/pull/340)
+
+### 🐛 Bug Fixes
+
+- use mise_dir input when specified (#339) by [@jdx](https://github.com/jdx) in [#339](https://github.com/jdx/mise-action/pull/339)
+- pass environment variables to mise commands (#341) by [@jdx](https://github.com/jdx) in [#341](https://github.com/jdx/mise-action/pull/341)
+
+---
 ## [3.5.1](https://github.com/jdx/mise-action/compare/v3.5.0..v3.5.1) - 2025-11-24
 
 ### 🔍 Other Changes
