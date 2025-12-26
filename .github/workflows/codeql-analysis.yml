@@ -38,15 +38,15 @@ jobs:
 
       - name: Initialize CodeQL
         id: initialize
-        uses: github/codeql-action/init@497990dfed22177a82ba1bbab381bc8f6d27058f # v3
+        uses: github/codeql-action/init@45c373516f557556c15d420e3f5e0aa3d64366bc # v3
         with:
           languages: ${{ matrix.language }}
           source-root: src
 
       - name: Autobuild
         id: autobuild
-        uses: github/codeql-action/autobuild@497990dfed22177a82ba1bbab381bc8f6d27058f # v3
+        uses: github/codeql-action/autobuild@45c373516f557556c15d420e3f5e0aa3d64366bc # v3
 
       - name: Perform CodeQL Analysis
         id: analyze
-        uses: github/codeql-action/analyze@497990dfed22177a82ba1bbab381bc8f6d27058f # v3
+        uses: github/codeql-action/analyze@45c373516f557556c15d420e3f5e0aa3d64366bc # v3
