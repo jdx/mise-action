@@ -22,7 +22,7 @@ inputs:
     description: If present, this value will be written to the .tool-versions file
   mise_toml:
     required: false
-    description: If present, this value will be written to the .mise.toml file
+    description: If present, this value will be written to the mise.toml file
   install:
     required: false
     default: "true"
