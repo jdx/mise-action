@@ -50236,9 +50236,7 @@ async function setupMise(version, fetchFromGitHub = false) {
             }
             else {
                 core.info(`mise already installed (${version}), but different version requested (${requestedVersion})`);
-                await exec.exec(miseBinPath, ['self-update', requestedVersion, '-y'], {
-                    silent: true
-                });
+                await exec.exec(miseBinPath, ['self-update', requestedVersion, '-y']);
                 core.info(`mise updated to version ${requestedVersion}`);
             }
         }
