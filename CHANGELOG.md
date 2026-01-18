@@ -1,6 +1,30 @@
 # Changelog
 
 ---
+## [3.6.0](https://github.com/jdx/mise-action/compare/v3.5.1..v3.6.0) - 2026-01-18
+
+### 🚀 Features
+
+- add option to disable shims in PATH (#340) by [@jdx](https://github.com/jdx) in [#340](https://github.com/jdx/mise-action/pull/340)
+
+### 🐛 Bug Fixes
+
+- **(cache)** isolate cache keys per working_directory in monorepos (#360) by [@chadxz](https://github.com/chadxz) in [#360](https://github.com/jdx/mise-action/pull/360)
+- use mise_dir input when specified (#339) by [@jdx](https://github.com/jdx) in [#339](https://github.com/jdx/mise-action/pull/339)
+- pass environment variables to mise commands (#341) by [@jdx](https://github.com/jdx) in [#341](https://github.com/jdx/mise-action/pull/341)
+- make mise self-update output visible in logs (#355) by [@nikobockerman](https://github.com/nikobockerman) in [#355](https://github.com/jdx/mise-action/pull/355)
+
+### 📚 Documentation
+
+- fix description for `mise_toml` input (#351) by [@quad](https://github.com/quad) in [#351](https://github.com/jdx/mise-action/pull/351)
+
+### New Contributors
+
+* @chadxz made their first contribution in [#360](https://github.com/jdx/mise-action/pull/360)
+* @nikobockerman made their first contribution in [#355](https://github.com/jdx/mise-action/pull/355)
+* @quad made their first contribution in [#351](https://github.com/jdx/mise-action/pull/351)
+
+---
 ## [3.5.1](https://github.com/jdx/mise-action/compare/v3.5.0..v3.5.1) - 2025-11-24
 
 ### 🔍 Other Changes
