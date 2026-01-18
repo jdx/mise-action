@@ -50025,7 +50025,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `**/.tool-versions`
 ];
 // Default cache key template
-const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}';
+const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}-{{file_hash}}-{{dir_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}';
 async function run() {
     try {
         await setToolVersions();
@@ -50478,12 +50478,20 @@ async function processCacheKeyTemplate(template) {
             installArgsHash = crypto.createHash('sha256').update(tools).digest('hex');
         }
     }
+    // Calculate mise dir hash to isolate caches for different mise_dir configurations
+    // This matches the binary cache key which also includes dir_hash
+    const dirHash = crypto
+        .createHash('sha256')
+        .update(miseDir())
+        .digest('hex')
+        .slice(0, 8);
     // Prepare base template data
     const baseTemplateData = {
         version,
         cache_key_prefix: cacheKeyPrefix,
         platform,
         file_hash: fileHash,
+        dir_hash: dirHash,
         mise_env: miseEnv,
         install_args_hash: installArgsHash
     };

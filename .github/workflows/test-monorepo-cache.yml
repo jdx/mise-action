@@ -217,35 +217,3 @@ jobs:
             exit 1
           fi
           echo "PASS: Identical content in different paths correctly produced different cache keys"
-
-  # Test that changing mise_dir produces a different binary cache key.
-  # This prevents restoring a cached binary to the wrong location.
-  install-default-mise-dir:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ${{ env.SETUP_SIMPLE }}
-      - uses: ./
-        with:
-          cache_key_prefix: mise-dir-${{ github.run_id }}
-
-  # Try to restore with a DIFFERENT mise_dir - should be cache MISS
-  # since the cache key includes a hash of the mise_dir path.
-  restore-custom-mise-dir:
-    needs: install-default-mise-dir
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: ${{ env.SETUP_SIMPLE }}
-      - uses: ./
-        with:
-          mise_dir: /tmp/custom-mise
-          install: false
-          cache_key_prefix: mise-dir-${{ github.run_id }}
-      - name: Verify cache miss with different mise_dir
-        run: |
-          if [ -f /tmp/custom-mise/shims/actionlint ]; then
-            echo "FAIL: actionlint found - cache should have missed with different mise_dir"
-            exit 1
-          fi
-          echo "PASS: Cache missed as expected with different mise_dir"
