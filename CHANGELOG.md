@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [3.6.1](https://github.com/jdx/mise-action/compare/v3.6.0..v3.6.1) - 2026-01-20
+
+### 🔍 Other Changes
+
+- Revert "fix(cache): isolate cache keys per working_directory in monorepos" (#364) by [@jdx](https://github.com/jdx) in [#364](https://github.com/jdx/mise-action/pull/364)
+
+---
 ## [3.6.0](https://github.com/jdx/mise-action/compare/v3.5.1..v3.6.0) - 2026-01-18
 
 ### 🚀 Features
