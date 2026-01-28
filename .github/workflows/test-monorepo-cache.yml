@@ -217,3 +217,68 @@ jobs:
             exit 1
           fi
           echo "PASS: Identical content in different paths correctly produced different cache keys"
+
+  # Test that binary backup/restore doesn't leak extra content into bin/.
+  # After cache restore cycles, bin/ should contain only the mise binary.
+  binary-backup-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_SIMPLE }}
+      - uses: ./
+        with:
+          cache_key_prefix: binary-backup-${{ github.run_id }}
+
+  binary-backup-restore:
+    needs: binary-backup-install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_SIMPLE }}
+      - uses: ./
+        with:
+          cache_key_prefix: binary-backup-${{ github.run_id }}
+
+      - name: Verify bin/ contains only mise binary
+        run: |
+          MISE_BIN=~/.local/share/mise/bin
+          echo "Contents of $MISE_BIN:"
+          ls -la "$MISE_BIN"
+
+          # Should be exactly one file (the mise binary)
+          FILE_COUNT=$(find "$MISE_BIN" -maxdepth 1 -type f | wc -l)
+          DIR_COUNT=$(find "$MISE_BIN" -maxdepth 1 -mindepth 1 -type d | wc -l)
+          if [ "$FILE_COUNT" -ne 1 ] || [ "$DIR_COUNT" -ne 0 ]; then
+            echo "FAIL: bin/ should contain only the mise binary"
+            echo "Found $FILE_COUNT file(s) and $DIR_COUNT directory(s)"
+            echo "Binary backup/restore is leaking extra content into bin/"
+            exit 1
+          fi
+          echo "PASS: bin/ contains only the mise binary"
+
+  binary-backup-second-restore:
+    needs: binary-backup-restore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_SIMPLE }}
+      - uses: ./
+        with:
+          cache_key_prefix: binary-backup-${{ github.run_id }}
+
+      - name: Verify bin/ still contains only mise binary
+        run: |
+          MISE_BIN=~/.local/share/mise/bin
+          echo "Contents of $MISE_BIN:"
+          ls -la "$MISE_BIN"
+
+          # Should be exactly one file (the mise binary)
+          FILE_COUNT=$(find "$MISE_BIN" -maxdepth 1 -type f | wc -l)
+          DIR_COUNT=$(find "$MISE_BIN" -maxdepth 1 -mindepth 1 -type d | wc -l)
+          if [ "$FILE_COUNT" -ne 1 ] || [ "$DIR_COUNT" -ne 0 ]; then
+            echo "FAIL: bin/ should contain only the mise binary"
+            echo "Found $FILE_COUNT file(s) and $DIR_COUNT directory(s)"
+            echo "Binary backup/restore is leaking extra content into bin/"
+            exit 1
+          fi
+          echo "PASS: bin/ contains only the mise binary"

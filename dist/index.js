@@ -50209,25 +50209,27 @@ async function saveMiseBinaryCache(state) {
 /**
  * Runs a function while preserving the mise binary. The tools cache includes
  * bin/, so restoring it could overwrite the binary that setupMise() just
- * installed. This backs up the binary before and restores it after.
+ * installed. This backs up the binary file before and restores it after.
  */
 async function withBinaryBackup(fn) {
-    const binPath = path.join(miseDir(), 'bin');
-    const binBackup = path.join(os.tmpdir(), `mise-bin-backup-${crypto.randomBytes(8).toString('hex')}`);
-    if (!fs.existsSync(binPath)) {
-        throw new Error(`Expected binary at ${binPath} but it does not exist`);
+    const binDir = path.join(miseDir(), 'bin');
+    const binaryName = process.platform === 'win32' ? 'mise.exe' : 'mise';
+    const binaryPath = path.join(binDir, binaryName);
+    const backupPath = path.join(os.tmpdir(), `mise-binary-backup-${crypto.randomBytes(8).toString('hex')}`);
+    if (!fs.existsSync(binaryPath)) {
+        throw new Error(`Expected binary at ${binaryPath} but it does not exist`);
     }
-    await io.cp(binPath, binBackup, { recursive: true });
+    await io.cp(binaryPath, backupPath);
     try {
         return await fn();
     }
     finally {
         try {
-            await io.cp(binBackup, binPath, { recursive: true, force: true });
+            await fs.promises.mkdir(binDir, { recursive: true });
+            await io.cp(backupPath, binaryPath, { force: true });
         }
         finally {
-            // cleanup even if the restore fails
-            await io.rmRF(binBackup);
+            await io.rmRF(backupPath);
         }
     }
 }
