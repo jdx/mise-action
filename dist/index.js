@@ -50025,21 +50025,28 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `**/.tool-versions`
 ];
 // Default cache key template
-const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}';
+const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}-{{file_hash}}-{{dir_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}';
 async function run() {
     try {
         await setToolVersions();
         await setMiseToml();
-        let cacheKey;
-        if (core.getBooleanInput('cache')) {
-            cacheKey = await restoreMiseCache();
-        }
-        else {
-            core.setOutput('cache-hit', false);
-        }
         const version = core.getInput('version');
-        const fetchFromGitHub = core.getBooleanInput('fetch_from_github');
-        await setupMise(version, fetchFromGitHub);
+        const cacheEnabled = core.getBooleanInput('cache');
+        // Restore binary cache, install mise, save binary cache if needed
+        let binaryCache = { key: '', hit: false };
+        if (cacheEnabled) {
+            binaryCache = await restoreMiseBinaryCache(version);
+        }
+        await setupMise(version, core.getBooleanInput('fetch_from_github'));
+        if (cacheEnabled) {
+            await saveMiseBinaryCache(binaryCache);
+        }
+        // Restore tools cache (needs mise installed to compute key for working_directory)
+        let toolsCache = { key: '', hit: false };
+        if (cacheEnabled) {
+            toolsCache = await restoreToolsCache();
+        }
+        core.setOutput('cache-hit', binaryCache.hit && toolsCache.hit);
         await setEnvVars();
         if (core.getBooleanInput('reshim')) {
             await miseReshim();
@@ -50047,13 +50054,12 @@ async function run() {
         await testMise();
         if (core.getBooleanInput('install')) {
             await miseInstall();
-            if (cacheKey && core.getBooleanInput('cache_save')) {
-                await saveCache(cacheKey);
+            if (cacheEnabled) {
+                await saveToolsCache(toolsCache);
             }
         }
         await miseLs();
-        const loadEnv = core.getBooleanInput('env');
-        if (loadEnv) {
+        if (core.getBooleanInput('env')) {
             await exportMiseEnv();
         }
     }
@@ -50161,21 +50167,89 @@ async function setEnvVars() {
         core.addPath(shimsDir);
     }
 }
-async function restoreMiseCache() {
-    core.startGroup('Restoring mise cache');
-    const cachePath = miseDir();
-    // Use custom cache key if provided, otherwise use default template
-    const cacheKeyTemplate = core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
-    const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
-    core.saveState('PRIMARY_KEY', primaryKey);
-    core.saveState('MISE_DIR', cachePath);
-    const cacheKey = await cache.restoreCache([cachePath], primaryKey);
-    core.setOutput('cache-hit', Boolean(cacheKey));
-    if (!cacheKey) {
-        core.info(`mise cache not found for ${primaryKey}`);
-        return primaryKey;
+async function restoreMiseBinaryCache(version) {
+    const binPath = path.join(miseDir(), 'bin');
+    const platform = await getTarget();
+    const resolvedVersion = version || 'latest';
+    const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0';
+    // Include hash of miseDir path to handle custom mise_dir configurations
+    const dirHash = crypto
+        .createHash('sha256')
+        .update(miseDir())
+        .digest('hex')
+        .slice(0, 8);
+    const key = `${cacheKeyPrefix}-binary-${platform}-${resolvedVersion}-${dirHash}`;
+    const cacheKey = await core.group('Restoring mise binary cache', async () => {
+        const restored = await cache.restoreCache([binPath], key);
+        if (restored) {
+            core.info(`mise binary cache restored from key: ${restored}`);
+        }
+        else {
+            core.info(`mise binary cache not found for ${key}`);
+        }
+        return restored;
+    });
+    return { key, hit: Boolean(cacheKey) };
+}
+async function saveMiseBinaryCache(state) {
+    if (!core.getBooleanInput('cache_save') || state.hit || !state.key) {
+        return;
     }
-    core.info(`mise cache restored from key: ${cacheKey}`);
+    await core.group('Saving mise binary cache', async () => {
+        const binPath = path.join(miseDir(), 'bin');
+        if (!fs.existsSync(binPath)) {
+            return;
+        }
+        const cacheId = await cache.saveCache([binPath], state.key);
+        if (cacheId !== -1) {
+            core.info(`Binary cache saved with key: ${state.key}`);
+        }
+    });
+}
+/**
+ * Runs a function while preserving the mise binary. The tools cache includes
+ * bin/, so restoring it could overwrite the binary that setupMise() just
+ * installed. This backs up the binary before and restores it after.
+ */
+async function withBinaryBackup(fn) {
+    const binPath = path.join(miseDir(), 'bin');
+    const binBackup = path.join(os.tmpdir(), `mise-bin-backup-${crypto.randomBytes(8).toString('hex')}`);
+    if (!fs.existsSync(binPath)) {
+        throw new Error(`Expected binary at ${binPath} but it does not exist`);
+    }
+    await io.cp(binPath, binBackup, { recursive: true });
+    try {
+        return await fn();
+    }
+    finally {
+        try {
+            await io.cp(binBackup, binPath, { recursive: true, force: true });
+        }
+        finally {
+            // cleanup even if the restore fails
+            await io.rmRF(binBackup);
+        }
+    }
+}
+async function restoreToolsCache() {
+    const cacheKeyTemplate = core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
+    const key = await processCacheKeyTemplate(cacheKeyTemplate);
+    if (!key) {
+        core.info('Tools caching disabled');
+        return { key: '', hit: false };
+    }
+    const cacheKey = await withBinaryBackup(() => core.group('Restoring mise tools cache', async () => {
+        const cachePath = miseDir();
+        const restored = await cache.restoreCache([cachePath], key);
+        if (restored) {
+            core.info(`mise tools cache restored from key: ${restored}`);
+        }
+        else {
+            core.info(`mise tools cache not found for ${key}`);
+        }
+        return restored;
+    }));
+    return { key, hit: Boolean(cacheKey) };
 }
 async function setupMise(version, fetchFromGitHub = false) {
     const miseBinDir = path.join(miseDir(), 'bin');
@@ -50309,9 +50383,6 @@ const writeFile = async (p, body) => await core.group(`Writing ${p}`, async () =
 });
 run();
 function miseDir() {
-    const dir = core.getState('MISE_DIR');
-    if (dir)
-        return dir;
     const miseDir = core.getInput('mise_dir');
     if (miseDir)
         return miseDir;
@@ -50324,16 +50395,20 @@ function miseDir() {
         return path.join(LOCALAPPDATA, 'mise');
     return path.join(os.homedir(), '.local', 'share', 'mise');
 }
-async function saveCache(cacheKey) {
-    await core.group(`Saving mise cache`, async () => {
+async function saveToolsCache(state) {
+    if (!core.getBooleanInput('cache_save') || state.hit || !state.key) {
+        return;
+    }
+    await core.group('Saving mise tools cache', async () => {
         const cachePath = miseDir();
         if (!fs.existsSync(cachePath)) {
-            throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
-        }
-        const cacheId = await cache.saveCache([cachePath], cacheKey);
-        if (cacheId === -1)
+            core.warning(`Cache folder path does not exist: ${cachePath}`);
             return;
-        core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
+        }
+        const cacheId = await cache.saveCache([cachePath], state.key);
+        if (cacheId !== -1) {
+            core.info(`Tools cache saved with key: ${state.key}`);
+        }
     });
 }
 async function getTarget() {
@@ -50359,8 +50434,38 @@ async function processCacheKeyTemplate(template) {
     const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0';
     const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
     const platform = await getTarget();
+    const workingDirectory = core.getInput('working_directory');
     // Calculate file hash
-    const fileHash = await glob.hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
+    // When working_directory is set, use mise config ls to get only relevant config files
+    // Otherwise, use the glob pattern to get all config files in the repo
+    let fileHash;
+    if (workingDirectory) {
+        const configFiles = await configFilesForPath(workingDirectory);
+        if (configFiles === null) {
+            // Failed to get config files, skip caching
+            return null;
+        }
+        // Hash the contents of the config files
+        // Include file path in each update to prevent collisions between different
+        // file arrangements with the same concatenated content (e.g., "ab"+"cdef"
+        // vs "abc"+"def")
+        const hash = crypto.createHash('sha256');
+        try {
+            for (const file of configFiles) {
+                hash.update(file);
+                const content = await fs.promises.readFile(file);
+                hash.update(content);
+            }
+            fileHash = hash.digest('hex');
+        }
+        catch (error) {
+            core.warning(`Failed to read config file for cache key: ${error}. Caching will be disabled.`);
+            return null;
+        }
+    }
+    else {
+        fileHash = await glob.hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
+    }
     // Calculate install args hash
     let installArgsHash = '';
     if (installArgs) {
@@ -50373,12 +50478,20 @@ async function processCacheKeyTemplate(template) {
             installArgsHash = crypto.createHash('sha256').update(tools).digest('hex');
         }
     }
+    // Calculate mise dir hash to isolate caches for different mise_dir configurations
+    // This matches the binary cache key which also includes dir_hash
+    const dirHash = crypto
+        .createHash('sha256')
+        .update(miseDir())
+        .digest('hex')
+        .slice(0, 8);
     // Prepare base template data
     const baseTemplateData = {
         version,
         cache_key_prefix: cacheKeyPrefix,
         platform,
         file_hash: fileHash,
+        dir_hash: dirHash,
         mise_env: miseEnv,
         install_args_hash: installArgsHash
     };
@@ -50402,6 +50515,68 @@ async function isMusl() {
         ignoreReturnCode: true
     });
     return stderr.indexOf('musl') > -1;
+}
+/**
+ * Checks if a file path is contained within a directory.
+ *
+ * Uses path.relative() to compute the relative path from parent to child.
+ * If the result starts with ".." or is absolute, the child is outside the parent.
+ *
+ * @example
+ * isPathWithin("/workspace", "/workspace/src/file.ts")     // true
+ * isPathWithin("/workspace", "/workspace-other/file.ts")   // false (not a child)
+ * isPathWithin("/workspace", "/etc/passwd")                // false (unrelated)
+ * isPathWithin("C:\\work", "D:\\other\\file.ts")           // false (different drive on Windows)
+ */
+function isPathWithin(parent, child) {
+    const relative = path.relative(parent, child);
+    return !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+/**
+ * Get config files that affect the given working directory using `mise config ls --json`.
+ * This returns the hierarchy of configs (directory's own config + inherited parents).
+ * Filters to only files within GITHUB_WORKSPACE and adds corresponding .lock files.
+ */
+async function configFilesForPath(workingDirectory) {
+    const githubWorkspace = process.env.GITHUB_WORKSPACE || process.cwd();
+    // Use explicit path to mise binary instead of relying on PATH
+    const miseBinPath = path.join(miseDir(), 'bin', process.platform === 'win32' ? 'mise.exe' : 'mise');
+    try {
+        const output = await exec.getExecOutput(miseBinPath, ['config', 'ls', '--json'], {
+            cwd: workingDirectory,
+            silent: true
+        });
+        const configs = JSON.parse(output.stdout);
+        const configFiles = [];
+        for (const config of configs) {
+            const configPath = config.path;
+            // Filter to only files within GITHUB_WORKSPACE
+            if (!isPathWithin(githubWorkspace, configPath)) {
+                continue;
+            }
+            configFiles.push(configPath);
+            // Include corresponding lock files if they exist
+            let lockPath;
+            if (configPath.endsWith('.toml')) {
+                // mise.toml -> mise.lock
+                lockPath = configPath.replace(/\.toml$/, '.lock');
+            }
+            else if (configPath.endsWith('.tool-versions')) {
+                // .tool-versions -> mise.lock in the same directory
+                lockPath = path.join(path.dirname(configPath), 'mise.lock');
+            }
+            if (lockPath &&
+                fs.existsSync(lockPath) &&
+                !configFiles.includes(lockPath)) {
+                configFiles.push(lockPath);
+            }
+        }
+        return configFiles.sort();
+    }
+    catch (error) {
+        core.warning(`Failed to get config files for working_directory "${workingDirectory}": ${error}. Caching will be disabled.`);
+        return null;
+    }
 }
 
 
