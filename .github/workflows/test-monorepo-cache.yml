@@ -1,0 +1,284 @@
+# Test monorepo cache isolation: when working_directory is set, each directory
+# should get its own cache key based on its config hierarchy, not all configs
+# in the repo. This prevents cache pollution between unrelated projects.
+name: "test-monorepo-cache"
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  # Simulates a monorepo with:
+  # - Root config with shared tool (actionlint)
+  # - Frontend with its own tool (shfmt)
+  # - Backend with its own tool (shellcheck)
+  # Frontend and backend both inherit the root config.
+  SETUP_MONOREPO: |
+    mkdir -p apps/frontend apps/backend
+    echo '[tools]' > mise.toml
+    echo 'actionlint = "1"' >> mise.toml
+    echo '[tools]' > apps/frontend/mise.toml
+    echo 'shfmt = "3"' >> apps/frontend/mise.toml
+    echo '[tools]' > apps/backend/mise.toml
+    echo 'shellcheck = "0.10"' >> apps/backend/mise.toml
+
+  # Simple single-tool config for mise_dir tests
+  SETUP_SIMPLE: |
+    echo '[tools]' > mise.toml
+    echo 'actionlint = "1"' >> mise.toml
+
+jobs:
+  # Install ONLY backend tools and save cache.
+  # This cache should NOT be shared with frontend.
+  install-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_MONOREPO }}
+      - uses: ./
+        with:
+          working_directory: apps/backend
+          cache_key_prefix: monorepo-test-${{ github.run_id }}
+
+  # Try to restore frontend after backend cache exists - should be cache MISS
+  # since frontend has a different working_directory and thus a different cache key.
+  restore-frontend:
+    needs: install-backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_MONOREPO }}
+      - uses: ./
+        with:
+          working_directory: apps/frontend
+          install: false
+          cache_key_prefix: monorepo-test-${{ github.run_id }}
+      - name: Verify cache isolation
+        run: |
+          # With the fix, frontend has a different cache key, so cache miss = no tools
+          # With the bug, frontend has same key as backend, so cache hit = has shellcheck but not shfmt
+          if [ -f ~/.local/share/mise/shims/shellcheck ]; then
+            echo "FAIL: shellcheck found - frontend got backend's cache (shared key bug)"
+            exit 1
+          fi
+          echo "PASS: No backend tools found - cache keys are properly isolated"
+
+  # Install frontend and save cache (used by unrelated-change-no-bust)
+  install-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_MONOREPO }}
+      - uses: ./
+        with:
+          working_directory: apps/frontend
+          cache_key_prefix: unrelated-${{ github.run_id }}
+
+  # Test that changing an UNRELATED directory's config does NOT bust the cache.
+  # Only configs affecting the working_directory are hashed.
+  unrelated-change-no-bust:
+    needs: install-frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_MONOREPO }}
+
+      # Modify BACKEND config (unrelated to frontend)
+      - run: echo 'jq = "1"' >> apps/backend/mise.toml
+
+      # Try to restore frontend - should still be a cache HIT
+      - uses: ./
+        with:
+          working_directory: apps/frontend
+          install: false
+          cache_key_prefix: unrelated-${{ github.run_id }}
+
+      - name: Verify cache still hits after unrelated change
+        run: |
+          if [ ! -f ~/.local/share/mise/shims/shfmt ]; then
+            echo "FAIL: shfmt missing - unrelated backend change busted frontend cache"
+            exit 1
+          fi
+          echo "PASS: Frontend cache survived unrelated backend change"
+
+  # Test that changing a parent config changes the child's cache key.
+  # We modify the root mise.toml and verify the cache key is different
+  # (cache miss on restore attempt).
+  parent-config-change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_MONOREPO }}
+
+      # Install frontend with original root config
+      - uses: ./
+        with:
+          working_directory: apps/frontend
+          cache_key_prefix: parent-change-${{ github.run_id }}
+
+      # Clear local mise state to simulate a fresh restore
+      - run: rm -rf ~/.local/share/mise/installs ~/.local/share/mise/shims
+
+      # Modify root config (add a new tool)
+      - run: echo 'taplo = "0.9"' >> mise.toml
+
+      # Try to restore - should be a cache MISS because root config changed
+      - uses: ./
+        id: restore-after-change
+        with:
+          working_directory: apps/frontend
+          install: false
+          cache_key_prefix: parent-change-${{ github.run_id }}
+
+      # Verify cache miss (shfmt not present because we didn't install)
+      - name: Verify cache miss after parent change
+        run: |
+          if [ -f ~/.local/share/mise/shims/shfmt ]; then
+            echo "FAIL: shfmt found - cache should have missed after parent config change"
+            exit 1
+          fi
+          echo "PASS: Cache missed as expected after parent config change"
+
+  # Test that changing a lock file changes the cache key.
+  # Lock files pin exact versions, so changes should bust the cache.
+  lock-file-change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p apps/project
+          echo '[tools]' > apps/project/mise.toml
+          echo 'shfmt = "3"' >> apps/project/mise.toml
+          echo 'lockfile = "v1"' > apps/project/mise.lock
+
+      # Install with original lock file
+      - uses: ./
+        with:
+          working_directory: apps/project
+          cache_key_prefix: lock-change-${{ github.run_id }}
+
+      # Clear local mise state
+      - run: rm -rf ~/.local/share/mise/installs ~/.local/share/mise/shims
+
+      # Modify lock file
+      - run: echo 'lockfile = "v2"' > apps/project/mise.lock
+
+      # Try to restore - should be cache MISS because lock file changed
+      - uses: ./
+        with:
+          working_directory: apps/project
+          install: false
+          cache_key_prefix: lock-change-${{ github.run_id }}
+
+      - name: Verify cache miss after lock file change
+        run: |
+          if [ -f ~/.local/share/mise/shims/shfmt ]; then
+            echo "FAIL: shfmt found - cache should have missed after lock file change"
+            exit 1
+          fi
+          echo "PASS: Cache missed as expected after lock file change"
+
+  # Test that IDENTICAL content in DIFFERENT paths produces DIFFERENT cache keys.
+  # This prevents hash collisions from concatenating file contents without separators.
+  install-identical-content-alpha:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p apps/alpha
+          echo '[tools]' > apps/alpha/mise.toml
+          echo 'shfmt = "3"' >> apps/alpha/mise.toml
+      - uses: ./
+        with:
+          working_directory: apps/alpha
+          cache_key_prefix: identical-content-${{ github.run_id }}
+
+  # Try to restore with IDENTICAL content but DIFFERENT path - should be cache MISS
+  restore-identical-content-beta:
+    needs: install-identical-content-alpha
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          mkdir -p apps/beta
+          # Exact same content as alpha
+          echo '[tools]' > apps/beta/mise.toml
+          echo 'shfmt = "3"' >> apps/beta/mise.toml
+      - uses: ./
+        with:
+          working_directory: apps/beta
+          install: false
+          cache_key_prefix: identical-content-${{ github.run_id }}
+      - name: Verify different paths produce different cache keys
+        run: |
+          if [ -f ~/.local/share/mise/shims/shfmt ]; then
+            echo "FAIL: shfmt found - identical content in different path caused cache collision"
+            exit 1
+          fi
+          echo "PASS: Identical content in different paths correctly produced different cache keys"
+
+  # Test that binary backup/restore doesn't leak extra content into bin/.
+  # After cache restore cycles, bin/ should contain only the mise binary.
+  binary-backup-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_SIMPLE }}
+      - uses: ./
+        with:
+          cache_key_prefix: binary-backup-${{ github.run_id }}
+
+  binary-backup-restore:
+    needs: binary-backup-install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_SIMPLE }}
+      - uses: ./
+        with:
+          cache_key_prefix: binary-backup-${{ github.run_id }}
+
+      - name: Verify bin/ contains only mise binary
+        run: |
+          MISE_BIN=~/.local/share/mise/bin
+          echo "Contents of $MISE_BIN:"
+          ls -la "$MISE_BIN"
+
+          # Should be exactly one file (the mise binary)
+          FILE_COUNT=$(find "$MISE_BIN" -maxdepth 1 -type f | wc -l)
+          DIR_COUNT=$(find "$MISE_BIN" -maxdepth 1 -mindepth 1 -type d | wc -l)
+          if [ "$FILE_COUNT" -ne 1 ] || [ "$DIR_COUNT" -ne 0 ]; then
+            echo "FAIL: bin/ should contain only the mise binary"
+            echo "Found $FILE_COUNT file(s) and $DIR_COUNT directory(s)"
+            echo "Binary backup/restore is leaking extra content into bin/"
+            exit 1
+          fi
+          echo "PASS: bin/ contains only the mise binary"
+
+  binary-backup-second-restore:
+    needs: binary-backup-restore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ${{ env.SETUP_SIMPLE }}
+      - uses: ./
+        with:
+          cache_key_prefix: binary-backup-${{ github.run_id }}
+
+      - name: Verify bin/ still contains only mise binary
+        run: |
+          MISE_BIN=~/.local/share/mise/bin
+          echo "Contents of $MISE_BIN:"
+          ls -la "$MISE_BIN"
+
+          # Should be exactly one file (the mise binary)
+          FILE_COUNT=$(find "$MISE_BIN" -maxdepth 1 -type f | wc -l)
+          DIR_COUNT=$(find "$MISE_BIN" -maxdepth 1 -mindepth 1 -type d | wc -l)
+          if [ "$FILE_COUNT" -ne 1 ] || [ "$DIR_COUNT" -ne 0 ]; then
+            echo "FAIL: bin/ should contain only the mise binary"
+            echo "Found $FILE_COUNT file(s) and $DIR_COUNT directory(s)"
+            echo "Binary backup/restore is leaking extra content into bin/"
+            exit 1
+          fi
+          echo "PASS: bin/ contains only the mise binary"
