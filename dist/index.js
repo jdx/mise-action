@@ -50261,6 +50261,12 @@ async function setupMise(version, fetchFromGitHub = false) {
             throw new Error(`SHA256 mismatch: expected ${want}, got ${got} for ${miseBinPath}`);
         }
     }
+    // create plugins directory if it doesn't exist
+    const misePluginDir = path.join(miseDir(), 'plugins');
+    if (!fs.existsSync(path.join(misePluginDir))) {
+        await fs.promises.mkdir(misePluginDir, { recursive: true });
+        core.info(`Created mise plugin directory: ${misePluginDir}`);
+    }
     core.addPath(miseBinDir);
 }
 async function zstdInstalled() {
