@@ -43,7 +43,7 @@ inputs:
     description: if false, action will not write to cache
   cache_key_prefix:
     required: false
-    default: "mise-v0"
+    default: "mise-v1"
     description: The prefix key to use for the cache, change this to invalidate the cache
   cache_key:
     required: false

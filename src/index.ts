@@ -40,7 +40,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}-{{file_hash}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}'
+  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 async function run(): Promise<void> {
   try {
@@ -429,7 +429,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   // Get all available variables
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
-  const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v0'
+  const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
   const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
   const platform = await getTarget()
 
