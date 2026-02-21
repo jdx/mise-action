@@ -215,6 +215,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
   }
 
   core.info(`mise cache restored from key: ${cacheKey}`)
+  return primaryKey
 }
 
 async function setupMise(
