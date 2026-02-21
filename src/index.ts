@@ -40,7 +40,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{file_hash}}'
+  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 async function run(): Promise<void> {
   try {
