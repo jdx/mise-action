@@ -194,7 +194,7 @@ async function setEnvVars(): Promise<void> {
   }
 }
 
-async function restoreMiseCache(): Promise<string | undefined> {
+async function restoreMiseCache(): Promise<string> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
 
@@ -215,6 +215,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
   }
 
   core.info(`mise cache restored from key: ${cacheKey}`)
+  return primaryKey
 }
 
 async function setupMise(
