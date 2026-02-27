@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.6.2](https://github.com/jdx/mise-action/compare/v3.6.1..v3.6.2) - 2026-02-27
+
+### 🐛 Bug Fixes
+
+- move file_hash to end of cache key template to prevent prefix matching (#384) by [@altendky](https://github.com/altendky) in [#384](https://github.com/jdx/mise-action/pull/384)
+
+### New Contributors
+
+* @altendky made their first contribution in [#384](https://github.com/jdx/mise-action/pull/384)
+
+---
 ## [3.6.1](https://github.com/jdx/mise-action/compare/v3.6.0..v3.6.1) - 2026-01-20
 
 ### 🔍 Other Changes
