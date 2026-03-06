@@ -107,7 +107,9 @@ async function exportMiseEnv(): Promise<void> {
       }
 
       // Then get the actual values
-      const actualOutput = await exec.getExecOutput('mise', ['env', '--json'], { cwd })
+      const actualOutput = await exec.getExecOutput('mise', ['env', '--json'], {
+        cwd
+      })
       const actualVars = JSON.parse(actualOutput.stdout)
 
       // Export all environment variables
@@ -119,12 +121,16 @@ async function exportMiseEnv(): Promise<void> {
     } catch {
       // Fall back to dotenv format if the redacted command fails
       core.info('Falling back to dotenv format')
-      const output = await exec.getExecOutput('mise', ['env', '--dotenv'], { cwd })
+      const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
+        cwd
+      })
       fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
     }
   } else {
     // Fall back to the old --dotenv format for older versions
-    const output = await exec.getExecOutput('mise', ['env', '--dotenv'], { cwd })
+    const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
+      cwd
+    })
     fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
   }
 
