@@ -82,6 +82,11 @@ async function run(): Promise<void> {
 async function exportMiseEnv(): Promise<void> {
   core.startGroup('Exporting mise environment variables')
 
+  const cwd =
+    core.getInput('working_directory') ||
+    core.getInput('install_dir') ||
+    process.cwd()
+
   // Check if mise supports --redacted flags based on version input
   const supportsRedacted = checkMiseSupportsRedacted()
 
@@ -91,7 +96,7 @@ async function exportMiseEnv(): Promise<void> {
       const redactedOutput = await exec.getExecOutput(
         'mise',
         ['env', '--redacted', '--json'],
-        { silent: true }
+        { silent: true, cwd }
       )
       const redactedVars = JSON.parse(redactedOutput.stdout)
 
@@ -102,7 +107,9 @@ async function exportMiseEnv(): Promise<void> {
       }
 
       // Then get the actual values
-      const actualOutput = await exec.getExecOutput('mise', ['env', '--json'])
+      const actualOutput = await exec.getExecOutput('mise', ['env', '--json'], {
+        cwd
+      })
       const actualVars = JSON.parse(actualOutput.stdout)
 
       // Export all environment variables
@@ -114,12 +121,16 @@ async function exportMiseEnv(): Promise<void> {
     } catch {
       // Fall back to dotenv format if the redacted command fails
       core.info('Falling back to dotenv format')
-      const output = await exec.getExecOutput('mise', ['env', '--dotenv'])
+      const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
+        cwd
+      })
       fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
     }
   } else {
     // Fall back to the old --dotenv format for older versions
-    const output = await exec.getExecOutput('mise', ['env', '--dotenv'])
+    const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
+      cwd
+    })
     fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
   }
 
