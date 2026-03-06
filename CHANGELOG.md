@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [3.6.3](https://github.com/jdx/mise-action/compare/v3.6.2..v3.6.3) - 2026-03-06
+
+### 🐛 Bug Fixes
+
+- pass cwd to all exec calls in exportMiseEnv() (#390) by [@andrewthauer](https://github.com/andrewthauer) in [#390](https://github.com/jdx/mise-action/pull/390)
+
+### New Contributors
+
+* @andrewthauer made their first contribution in [#390](https://github.com/jdx/mise-action/pull/390)
+
+---
 ## [3.6.2](https://github.com/jdx/mise-action/compare/v3.6.1..v3.6.2) - 2026-03-02
 
 ### 🐛 Bug Fixes
