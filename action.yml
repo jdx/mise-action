@@ -89,5 +89,5 @@ outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
 runs:
-  using: node20
+  using: node24
   main: dist/index.js
