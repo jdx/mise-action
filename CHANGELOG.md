@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [4.0.0](https://github.com/jdx/mise-action/compare/v3.6.3..v4.0.0) - 2026-03-13
+
+### 🚀 Features
+
+- **breaking** Update Node.js version from 20 to 24 (#395) by [@tumerorkun](https://github.com/tumerorkun) in [#395](https://github.com/jdx/mise-action/pull/395)
+
+### New Contributors
+
+* @tumerorkun made their first contribution in [#395](https://github.com/jdx/mise-action/pull/395)
+
+---
 ## [3.6.3](https://github.com/jdx/mise-action/compare/v3.6.2..v3.6.3) - 2026-03-06
 
 ### 🐛 Bug Fixes
