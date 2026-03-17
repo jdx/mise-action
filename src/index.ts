@@ -38,6 +38,9 @@ const MISE_CONFIG_FILE_PATTERNS = [
   `**/.tool-versions`
 ]
 
+// Binary name varies by platform
+const MISE_BIN_NAME = process.platform === 'win32' ? 'mise.exe' : 'mise'
+
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
   '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
@@ -68,8 +71,10 @@ async function run(): Promise<void> {
 
     const resolvedMiseDir = miseDir()
     core.setOutput('mise-dir', resolvedMiseDir)
-    const miseBinName = process.platform === 'win32' ? 'mise.exe' : 'mise'
-    core.setOutput('mise-path', path.join(resolvedMiseDir, 'bin', miseBinName))
+    core.setOutput(
+      'mise-path',
+      path.join(resolvedMiseDir, 'bin', MISE_BIN_NAME)
+    )
 
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
@@ -244,10 +249,7 @@ async function setupMise(
   fetchFromGitHub = false
 ): Promise<void> {
   const miseBinDir = path.join(miseDir(), 'bin')
-  const miseBinPath = path.join(
-    miseBinDir,
-    process.platform === 'win32' ? 'mise.exe' : 'mise'
-  )
+  const miseBinPath = path.join(miseBinDir, MISE_BIN_NAME)
   if (!fs.existsSync(path.join(miseBinPath))) {
     core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
     await fs.promises.mkdir(miseBinDir, { recursive: true })
