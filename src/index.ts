@@ -294,30 +294,13 @@ async function setupMise(
   } else {
     const requestedVersion = cleanVersion(core.getInput('version'))
     if (requestedVersion !== '') {
-      let version: string
-      try {
-        const versionOutput = await exec.getExecOutput(
-          miseBinPath,
-          ['version', '--json'],
-          { silent: true }
-        )
-        const versionJson = JSON.parse(versionOutput.stdout)
-        const raw = versionJson?.version
-        if (!raw) {
-          throw new Error(
-            `Unexpected output from mise version --json: ${versionOutput.stdout}`
-          )
-        }
-        version = cleanVersion(raw.split(' ')[0])
-      } catch {
-        // Fallback for older mise versions that don't support `version --json`
-        const versionOutput = await exec.getExecOutput(
-          miseBinPath,
-          ['--version'],
-          { silent: true }
-        )
-        version = cleanVersion(versionOutput.stdout.trim().split(' ')[0])
-      }
+      const versionOutput = await exec.getExecOutput(
+        miseBinPath,
+        ['version', '--json'],
+        { silent: true }
+      )
+      const versionJson = JSON.parse(versionOutput.stdout)
+      const version = cleanVersion(versionJson.version.split(' ')[0])
       if (requestedVersion === version) {
         core.info(`mise already installed`)
       } else {
@@ -379,24 +362,11 @@ async function setMiseToml(): Promise<void> {
 async function setMiseVersion(): Promise<void> {
   await core.group('Getting mise version', async () => {
     const cwd = getCwd()
-    let version: string
-    try {
-      const output = await exec.getExecOutput('mise', ['version', '--json'], {
-        cwd
-      })
-      const versionJson = JSON.parse(output.stdout)
-      const raw = versionJson?.version
-      if (!raw) {
-        throw new Error(
-          `Unexpected output from mise version --json: ${output.stdout}`
-        )
-      }
-      version = cleanVersion(raw.split(' ')[0])
-    } catch {
-      // Fallback for older mise versions that don't support `version --json`
-      const output = await exec.getExecOutput('mise', ['--version'], { cwd })
-      version = cleanVersion(output.stdout.trim().split(' ')[0])
-    }
+    const output = await exec.getExecOutput('mise', ['version', '--json'], {
+      cwd
+    })
+    const versionJson = JSON.parse(output.stdout)
+    const version = cleanVersion(versionJson.version.split(' ')[0])
     core.info(`mise version: ${version}`)
     core.setOutput('mise-version', version)
   })
