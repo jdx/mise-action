@@ -82,10 +82,7 @@ async function run(): Promise<void> {
 async function exportMiseEnv(): Promise<void> {
   core.startGroup('Exporting mise environment variables')
 
-  const cwd =
-    core.getInput('working_directory') ||
-    core.getInput('install_dir') ||
-    process.cwd()
+  const cwd = getCwd()
 
   // Check if mise supports --redacted flags based on version input
   const supportsRedacted = checkMiseSupportsRedacted()
@@ -356,10 +353,7 @@ const miseLs = async (): Promise<number> => mise([`ls`])
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {
-    const cwd =
-      core.getInput('working_directory') ||
-      core.getInput('install_dir') ||
-      process.cwd()
+    const cwd = getCwd()
     const baseEnv = Object.fromEntries(
       Object.entries(process.env).filter(
         (entry): entry is [string, string] => entry[1] !== undefined
@@ -386,6 +380,14 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
   })
 
 run()
+
+function getCwd(): string {
+  return (
+    core.getInput('working_directory') ||
+    core.getInput('install_dir') ||
+    process.cwd()
+  )
+}
 
 function miseDir(): string {
   const dir = core.getState('MISE_DIR')
