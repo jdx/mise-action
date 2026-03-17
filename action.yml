@@ -7,8 +7,7 @@ branding:
 inputs:
   version:
     required: false
-    description:
-      The version of mise to use. If not specified, will use the latest release.
+    description: The version of mise to use. If not specified, will use the latest release.
   sha256:
     required: false
     description: The SHA256 checksum of the mise binary to verify the download.
@@ -20,35 +19,32 @@ inputs:
       Or $MISE_DATA_DIR if $MISE_DATA_DIR is set.
   tool_versions:
     required: false
-    description:
-      If present, this value will be written to the .tool-versions file
+    description: If present, this value will be written to the .tool-versions file
   mise_toml:
     required: false
     description: If present, this value will be written to the mise.toml file
   install:
     required: false
-    default: 'true'
+    default: "true"
     description: if false, will not run `mise install`
   install_args:
     required: false
-    description:
-      Arguments to pass to `mise install` such as "bun" to only install bun
+    description: Arguments to pass to `mise install` such as "bun" to only install bun
   install_dir:
     required: false
     description: deprecated
   cache:
     required: false
-    default: 'true'
+    default: "true"
     description: if false, action will not read or write to cache
   cache_save:
     required: false
-    default: 'true'
+    default: "true"
     description: if false, action will not write to cache
   cache_key_prefix:
     required: false
-    default: 'mise-v1'
-    description:
-      The prefix key to use for the cache, change this to invalidate the cache
+    default: "mise-v1"
+    description: The prefix key to use for the cache, change this to invalidate the cache
   cache_key:
     required: false
     description: |
@@ -58,22 +54,22 @@ inputs:
       and conditional logic like {{#if version}}...{{/if}}
   experimental:
     required: false
-    default: 'false'
+    default: "false"
     description: if true, will use experimental features
   log_level:
     required: false
-    default: 'info'
+    default: "info"
     description: The log level to use for the action
   working_directory:
     required: false
     description: The directory that mise runs in
   reshim:
     required: false
-    default: 'false'
+    default: "false"
     description: if true, will run `mise reshim --all` after setting up mise
   add_shims_to_path:
     required: false
-    default: 'true'
+    default: "true"
     description: if false, will not add mise shims directory to PATH
   github_token:
     required: false
@@ -83,16 +79,12 @@ inputs:
     default: ${{ github.token }}
   fetch_from_github:
     required: false
-    default: 'true'
-    description:
-      If true (default), fetch the mise binary from GitHub. If false and using
-      the latest version, fetch from mise.jdx.dev instead.
+    default: "true"
+    description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.
   env:
-    description:
-      'Automatically load mise env vars into GITHUB_ENV. Note that PATH
-      modifications are not part of this.'
+    description: "Automatically load mise env vars into GITHUB_ENV. Note that PATH modifications are not part of this."
     required: false
-    default: 'true'
+    default: "true"
 outputs:
   mise-version:
     description: The installed version of mise (e.g. "2025.7.3").
@@ -101,8 +93,7 @@ outputs:
   mise-dir:
     description: The resolved mise data directory path.
   tool-versions:
-    description:
-      JSON output from `mise ls --json` showing installed tools and versions.
+    description: JSON output from `mise ls --json` showing installed tools and versions.
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
   cache-attempted:

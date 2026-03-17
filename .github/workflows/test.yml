@@ -1,4 +1,4 @@
-name: 'build-test'
+name: "build-test"
 on: # rebuild any PRs and main branch changes
   pull_request:
     branches:
@@ -158,9 +158,8 @@ jobs:
         id: mise
         uses: ./
         with:
-          cache_key:
-            'custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}'
-          install_args: 'jq@1.7.1'
+          cache_key: "custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}"
+          install_args: "jq@1.7.1"
           mise_toml: |
             [tools]
             jq = "1.7.1"
