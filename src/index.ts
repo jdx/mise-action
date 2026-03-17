@@ -101,10 +101,7 @@ async function run(): Promise<void> {
 async function exportMiseEnv(): Promise<void> {
   core.startGroup('Exporting mise environment variables')
 
-  const cwd =
-    core.getInput('working_directory') ||
-    core.getInput('install_dir') ||
-    process.cwd()
+  const cwd = getCwd()
 
   // Check if mise supports --redacted flags based on version input
   const supportsRedacted = checkMiseSupportsRedacted()
@@ -364,10 +361,7 @@ async function setMiseToml(): Promise<void> {
 
 async function setMiseVersion(): Promise<void> {
   await core.group('Getting mise version', async () => {
-    const cwd =
-      core.getInput('working_directory') ||
-      core.getInput('install_dir') ||
-      process.cwd()
+    const cwd = getCwd()
     const output = await exec.getExecOutput('mise', ['version', '--json'], {
       cwd
     })
@@ -381,10 +375,7 @@ const miseInstall = async (): Promise<number> =>
   mise([`install ${core.getInput('install_args')}`])
 async function miseLs(): Promise<void> {
   await core.group('Running mise ls', async () => {
-    const cwd =
-      core.getInput('working_directory') ||
-      core.getInput('install_dir') ||
-      process.cwd()
+    const cwd = getCwd()
     // Run human-readable ls for log output
     await exec.exec('mise', ['ls'], { cwd })
     // Capture JSON for the output
@@ -398,10 +389,7 @@ async function miseLs(): Promise<void> {
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {
-    const cwd =
-      core.getInput('working_directory') ||
-      core.getInput('install_dir') ||
-      process.cwd()
+    const cwd = getCwd()
     const baseEnv = Object.fromEntries(
       Object.entries(process.env).filter(
         (entry): entry is [string, string] => entry[1] !== undefined
@@ -428,6 +416,14 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
   })
 
 run()
+
+function getCwd(): string {
+  return (
+    core.getInput('working_directory') ||
+    core.getInput('install_dir') ||
+    process.cwd()
+  )
+}
 
 function miseDir(): string {
   const dir = core.getState('MISE_DIR')
