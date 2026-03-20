@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-20
+
+### 🚜 Refactor
+
+- extract getCwd() helper to deduplicate working directory resolution (#403) by [@altendky](https://github.com/altendky) in [#403](https://github.com/jdx/mise-action/pull/403)
+
+---
 ## [4.0.0](https://github.com/jdx/mise-action/compare/v3.6.3..v4.0.0) - 2026-03-13
 
 ### 🚀 Features
