@@ -38,6 +38,9 @@ const MISE_CONFIG_FILE_PATTERNS = [
   `**/.tool-versions`
 ]
 
+// Binary name varies by platform
+const MISE_BIN_NAME = process.platform === 'win32' ? 'mise.exe' : 'mise'
+
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
   '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
@@ -47,9 +50,17 @@ async function run(): Promise<void> {
     await setToolVersions()
     await setMiseToml()
 
+    const cacheKeyTemplate =
+      core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
+    const computedCacheKey = await processCacheKeyTemplate(cacheKeyTemplate)
+    core.setOutput('cache-key', computedCacheKey)
+
+    const cacheEnabled = core.getBooleanInput('cache')
+    core.setOutput('cache-attempted', cacheEnabled)
+
     let cacheKey: string | undefined
-    if (core.getBooleanInput('cache')) {
-      cacheKey = await restoreMiseCache()
+    if (cacheEnabled) {
+      cacheKey = await restoreMiseCache(computedCacheKey)
     } else {
       core.setOutput('cache-hit', false)
     }
@@ -57,11 +68,19 @@ async function run(): Promise<void> {
     const version = core.getInput('version')
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
     await setupMise(version, fetchFromGitHub)
+
+    const resolvedMiseDir = miseDir()
+    core.setOutput('mise-dir', resolvedMiseDir)
+    core.setOutput(
+      'mise-path',
+      path.join(resolvedMiseDir, 'bin', MISE_BIN_NAME)
+    )
+
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
     }
-    await testMise()
+    await setMiseVersion()
     if (core.getBooleanInput('install')) {
       await miseInstall()
       if (cacheKey && core.getBooleanInput('cache_save')) {
@@ -82,10 +101,7 @@ async function run(): Promise<void> {
 async function exportMiseEnv(): Promise<void> {
   core.startGroup('Exporting mise environment variables')
 
-  const cwd =
-    core.getInput('working_directory') ||
-    core.getInput('install_dir') ||
-    process.cwd()
+  const cwd = getCwd()
 
   // Check if mise supports --redacted flags based on version input
   const supportsRedacted = checkMiseSupportsRedacted()
@@ -205,14 +221,11 @@ async function setEnvVars(): Promise<void> {
   }
 }
 
-async function restoreMiseCache(): Promise<string | undefined> {
+async function restoreMiseCache(
+  primaryKey: string
+): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
-
-  // Use custom cache key if provided, otherwise use default template
-  const cacheKeyTemplate =
-    core.getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE
-  const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
 
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
@@ -233,10 +246,7 @@ async function setupMise(
   fetchFromGitHub = false
 ): Promise<void> {
   const miseBinDir = path.join(miseDir(), 'bin')
-  const miseBinPath = path.join(
-    miseBinDir,
-    process.platform === 'win32' ? 'mise.exe' : 'mise'
-  )
+  const miseBinPath = path.join(miseBinDir, MISE_BIN_NAME)
   if (!fs.existsSync(path.join(miseBinPath))) {
     core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
     await fs.promises.mkdir(miseBinDir, { recursive: true })
@@ -349,17 +359,37 @@ async function setMiseToml(): Promise<void> {
   }
 }
 
-const testMise = async (): Promise<number> => mise(['--version'])
+async function setMiseVersion(): Promise<void> {
+  await core.group('Getting mise version', async () => {
+    const cwd = getCwd()
+    const output = await exec.getExecOutput('mise', ['version', '--json'], {
+      cwd
+    })
+    const versionJson = JSON.parse(output.stdout)
+    const version = cleanVersion(versionJson.version.split(' ')[0])
+    core.info(`mise version: ${version}`)
+    core.setOutput('mise-version', version)
+  })
+}
 const miseInstall = async (): Promise<number> =>
   mise([`install ${core.getInput('install_args')}`])
-const miseLs = async (): Promise<number> => mise([`ls`])
+async function miseLs(): Promise<void> {
+  await core.group('Running mise ls', async () => {
+    const cwd = getCwd()
+    // Run human-readable ls for log output
+    await exec.exec('mise', ['ls'], { cwd })
+    // Capture JSON for the output
+    const output = await exec.getExecOutput('mise', ['ls', '--json'], {
+      cwd,
+      silent: true
+    })
+    core.setOutput('tool-versions', output.stdout.trim())
+  })
+}
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {
-    const cwd =
-      core.getInput('working_directory') ||
-      core.getInput('install_dir') ||
-      process.cwd()
+    const cwd = getCwd()
     const baseEnv = Object.fromEntries(
       Object.entries(process.env).filter(
         (entry): entry is [string, string] => entry[1] !== undefined
@@ -386,6 +416,14 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
   })
 
 run()
+
+function getCwd(): string {
+  return (
+    core.getInput('working_directory') ||
+    core.getInput('install_dir') ||
+    process.cwd()
+  )
+}
 
 function miseDir(): string {
   const dir = core.getState('MISE_DIR')

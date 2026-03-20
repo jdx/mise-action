@@ -86,8 +86,20 @@ inputs:
     required: false
     default: "true"
 outputs:
+  mise-version:
+    description: The installed version of mise (e.g. "2025.7.3").
+  mise-path:
+    description: The full path to the mise binary.
+  mise-dir:
+    description: The resolved mise data directory path.
+  tool-versions:
+    description: JSON output from `mise ls --json` showing installed tools and versions.
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
+  cache-attempted:
+    description: A boolean value to indicate if a cache restore was attempted.
+  cache-key:
+    description: The resolved cache key used for caching.
 runs:
   using: node24
   main: dist/index.js

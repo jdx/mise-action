@@ -45,6 +45,7 @@ jobs:
         run: ${{ matrix.requirements }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Setup mise
+        id: mise
         uses: ./
         with:
           mise_toml: |
@@ -61,12 +62,36 @@ jobs:
       - run: jq --version
       - run: . scripts/test.sh
         shell: bash
+      - name: Verify outputs
+        shell: bash
+        env:
+          MISE_VERSION: ${{ steps.mise.outputs.mise-version }}
+          MISE_PATH: ${{ steps.mise.outputs.mise-path }}
+          MISE_DIR: ${{ steps.mise.outputs.mise-dir }}
+          TOOL_VERSIONS: ${{ steps.mise.outputs.tool-versions }}
+          CACHE_KEY: ${{ steps.mise.outputs.cache-key }}
+          CACHE_ATTEMPTED: ${{ steps.mise.outputs.cache-attempted }}
+        run: |
+          set -euxo pipefail
+          # mise-version should be non-empty
+          test -n "$MISE_VERSION"
+          # mise-path should point to an existing file
+          test -f "$MISE_PATH"
+          # mise-dir should point to an existing directory
+          test -d "$MISE_DIR"
+          # tool-versions should be non-empty JSON
+          echo "$TOOL_VERSIONS" | jq . > /dev/null
+          # cache-key should be non-empty
+          test -n "$CACHE_KEY"
+          # cache-attempted should be true (default)
+          test "$CACHE_ATTEMPTED" = "true"
 
   specific_version:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Setup mise
+        id: mise
         uses: ./
         with:
           cache_save: ${{ github.ref_name == 'main' }}
@@ -79,6 +104,19 @@ jobs:
             bun = "1"
       - run: which bun
       - run: bun -v
+      - name: Verify outputs
+        shell: bash
+        env:
+          MISE_VERSION: ${{ steps.mise.outputs.mise-version }}
+          MISE_PATH: ${{ steps.mise.outputs.mise-path }}
+          MISE_DIR: ${{ steps.mise.outputs.mise-dir }}
+          TOOL_VERSIONS: ${{ steps.mise.outputs.tool-versions }}
+        run: |
+          set -euxo pipefail
+          test "$MISE_VERSION" = "2025.7.3"
+          test -f "$MISE_PATH"
+          test -d "$MISE_DIR"
+          echo "$TOOL_VERSIONS" | jq -e '.bun' > /dev/null
       - name: Update mise
         uses: ./
         with:
@@ -117,6 +155,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Setup mise with custom cache key
+        id: mise
         uses: ./
         with:
           cache_key: "custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}"
@@ -128,12 +167,23 @@ jobs:
       - run: mise x jq -- jq --version
       - run: which jq
       - run: jq --version
+      - name: Verify outputs
+        shell: bash
+        env:
+          CACHE_KEY: ${{ steps.mise.outputs.cache-key }}
+          CACHE_ATTEMPTED: ${{ steps.mise.outputs.cache-attempted }}
+        run: |
+          set -euxo pipefail
+          # cache-key should start with "custom-"
+          [[ "$CACHE_KEY" == custom-* ]]
+          test "$CACHE_ATTEMPTED" = "true"
 
   fetch_from_github:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Setup mise from mise.jdx.dev
+        id: mise
         uses: ./
         with:
           fetch_from_github: true
@@ -146,3 +196,15 @@ jobs:
       - run: mise x jq -- jq --version
       - run: which jq
       - run: jq --version
+      - name: Verify outputs
+        shell: bash
+        env:
+          CACHE_ATTEMPTED: ${{ steps.mise.outputs.cache-attempted }}
+          CACHE_HIT: ${{ steps.mise.outputs.cache-hit }}
+          CACHE_KEY: ${{ steps.mise.outputs.cache-key }}
+        run: |
+          set -euxo pipefail
+          test "$CACHE_ATTEMPTED" = "false"
+          test "$CACHE_HIT" = "false"
+          # cache-key should still be computed even when cache is disabled
+          test -n "$CACHE_KEY"
