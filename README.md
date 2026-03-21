@@ -61,7 +61,7 @@ When using `cache_key`, you can use template variables to reference internal val
 - uses: jdx/mise-action@v4
   with:
     cache_key: "mise-{{platform}}-{{version}}-{{file_hash}}"
-    version: "2024.10.0"
+    version: "2026.3.10"
     install_args: "node python"
 ```
 
@@ -81,7 +81,7 @@ Example using multiple variables:
 - uses: jdx/mise-action@v4
   with:
     cache_key: "mise-v1-{{platform}}-{{install_args_hash}}-{{file_hash}}"
-    install_args: "node@20 python@3.12"
+    install_args: "node@24 python@3.14"
 ```
 
 You can also extend the default cache key:
