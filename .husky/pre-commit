@@ -1,4 +1,5 @@
 # shellcheck disable=SC1091
 
+npm ci
 npm run all
 git add dist
