@@ -41,3 +41,4 @@ jobs:
           communique generate "$TAG_NAME" --github-release
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLZ_GITHUB_TOKEN }}
