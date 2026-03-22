@@ -10,3 +10,4 @@ tasks.release-plz = "./scripts/release-plz.sh"
 node = '24'
 git-cliff = 'latest'
 gh = 'latest'
+communique = 'latest'
