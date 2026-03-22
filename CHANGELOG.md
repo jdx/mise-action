@@ -1,6 +1,30 @@
 # Changelog
 
 ---
+## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-22
+
+### 🐛 Bug Fixes
+
+- run npm install in pre-commit hook before build (#410) by [@jdx](https://github.com/jdx) in [#410](https://github.com/jdx/mise-action/pull/410)
+
+### 🚜 Refactor
+
+- extract getCwd() helper to deduplicate working directory resolution (#403) by [@altendky](https://github.com/altendky) in [#403](https://github.com/jdx/mise-action/pull/403)
+
+### 📚 Documentation
+
+- bump versions listed im README.md (#407) by [@deining](https://github.com/deining) in [#407](https://github.com/jdx/mise-action/pull/407)
+- bump more versions listed in README.md (#408) by [@deining](https://github.com/deining) in [#408](https://github.com/jdx/mise-action/pull/408)
+
+### ⚙️ Miscellaneous Tasks
+
+- add workflow to auto-close stale PRs (#409) by [@jdx](https://github.com/jdx) in [#409](https://github.com/jdx/mise-action/pull/409)
+
+### New Contributors
+
+* @deining made their first contribution in [#408](https://github.com/jdx/mise-action/pull/408)
+
+---
 ## [4.0.0](https://github.com/jdx/mise-action/compare/v3.6.3..v4.0.0) - 2026-03-13
 
 ### 🚀 Features
