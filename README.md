@@ -13,10 +13,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v3
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
         with:
-          version: 2024.10.0 # [default: latest] mise version to install
+          version: 2026.3.10 # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
@@ -24,11 +24,11 @@ jobs:
           log_level: debug # [default: info] log level
           # automatically write this .tool-versions file
           tool_versions: |
-            shellcheck 0.9.0
+            shellcheck 0.11.0
           # or, if you prefer .mise.toml format:
           mise_toml: |
             [tools]
-            shellcheck = "0.9.0"
+            shellcheck = "0.11.0"
           working_directory: app # [default: .] directory to run mise in
           reshim: false # [default: false] run `mise reshim -f`
           github_token: ${{ secrets.GITHUB_TOKEN }} # [default: ${{ github.token }}] GitHub token for API authentication
@@ -36,8 +36,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: jdx/mise-action@v3
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v4
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
@@ -47,7 +47,7 @@ jobs:
 You can customize the cache key used by the action:
 
 ```yaml
-- uses: jdx/mise-action@v3
+- uses: jdx/mise-action@v4
   with:
     cache_key: "my-custom-cache-key"  # Override the entire cache key
     cache_key_prefix: "mise-v1"       # Or just change the prefix (default: "mise-v0")
@@ -58,10 +58,10 @@ You can customize the cache key used by the action:
 When using `cache_key`, you can use template variables to reference internal values:
 
 ```yaml
-- uses: jdx/mise-action@v3
+- uses: jdx/mise-action@v4
   with:
     cache_key: "mise-{{platform}}-{{version}}-{{file_hash}}"
-    version: "2024.10.0"
+    version: "2026.3.10"
     install_args: "node python"
 ```
 
@@ -78,18 +78,18 @@ Conditional logic is also supported using Handlebars syntax like `{{#if version}
 
 Example using multiple variables:
 ```yaml
-- uses: jdx/mise-action@v3
+- uses: jdx/mise-action@v4
   with:
     cache_key: "mise-v1-{{platform}}-{{install_args_hash}}-{{file_hash}}"
-    install_args: "node@20 python@3.12"
+    install_args: "node@24 python@3.14"
 ```
 
 You can also extend the default cache key:
 ```yaml
-- uses: jdx/mise-action@v3
+- uses: jdx/mise-action@v4
   with:
     cache_key: "{{default}}-custom-suffix"
-    install_args: "node@20 python@3.12"
+    install_args: "node@24 python@3.14"
 ```
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
@@ -99,7 +99,7 @@ This gives you full control over cache invalidation based on the specific aspect
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
 
 ```yaml
-- uses: jdx/mise-action@v3
+- uses: jdx/mise-action@v4
   with:
     github_token: ${{ secrets.GITHUB_TOKEN }}
     # your other configuration
