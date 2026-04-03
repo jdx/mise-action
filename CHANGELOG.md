@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [4.0.2](https://github.com/jdx/mise-action/compare/v4.0.1..v4.0.2) - 2026-04-03
+
+### ⚙️ Miscellaneous Tasks
+
+- add communique to enhance release notes (#411) by [@jdx](https://github.com/jdx) in [#411](https://github.com/jdx/mise-action/pull/411)
+
+---
 ## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-22
 
 ### 🐛 Bug Fixes
