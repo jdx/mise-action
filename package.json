@@ -22,8 +22,8 @@
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
-    "lint": "npx eslint . && npm run format:check",
-    "package": "npx rimraf ./dist && npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
+    "lint": "eslint . && npm run format:check",
+    "package": "rimraf ./dist && rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "package:watch": "npm run package -- --watch",
     "version": "./scripts/version.sh",
     "prepare": "husky"
@@ -55,6 +55,7 @@
     "prettier": "^3.4.1",
     "rimraf": "^6.0.0",
     "rollup": "^4.0.0",
+    "rollup-plugin-license": "^3.7.1",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.16.0"
   }

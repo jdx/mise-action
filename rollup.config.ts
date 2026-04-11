@@ -2,6 +2,8 @@ import commonjs from '@rollup/plugin-commonjs'
 import json from '@rollup/plugin-json'
 import nodeResolve from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
+import license from 'rollup-plugin-license'
+import path from 'path'
 
 const config = {
   input: 'src/index.ts',
@@ -15,7 +17,12 @@ const config = {
     typescript(),
     nodeResolve({ preferBuiltins: true }),
     commonjs({ ignoreTryCatch: false }),
-    json()
+    json(),
+    license({
+      thirdParty: {
+        output: path.resolve('dist', 'licenses.txt')
+      }
+    })
   ]
 }
 
