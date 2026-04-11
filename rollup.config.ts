@@ -14,7 +14,7 @@ const config = {
   plugins: [
     typescript(),
     nodeResolve({ preferBuiltins: true }),
-    commonjs(),
+    commonjs({ ignoreTryCatch: false }),
     json()
   ]
 }
