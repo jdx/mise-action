@@ -13,7 +13,9 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "newLine": "lf"
+    "newLine": "lf",
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true
   },
   "exclude": ["./dist", "./node_modules", "./__tests__", "./coverage"]
 }
