@@ -38,11 +38,11 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.15.0",
+    "@eslint/js": "^10.0.0",
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^24",
     "@vercel/ncc": "^0.38.3",
-    "eslint": "^9.15.0",
+    "eslint": "^10.0.0",
     "globals": "^17.0.0",
     "husky": "^9.1.7",
     "jest": "^30",
