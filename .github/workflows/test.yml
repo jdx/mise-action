@@ -47,6 +47,7 @@ jobs:
       - name: Setup mise
         uses: ./
         with:
+          cache_key_prefix: mise-debug-v1
           mise_toml: |
             [tools]
             jq = "1.7.1"
@@ -55,6 +56,7 @@ jobs:
             MY_ENV_VAR = "abc"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTIONS_STEP_DEBUG: true
       - run: mise --version
       - run: mise x jq -- jq --version
       - run: which jq

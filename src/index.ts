@@ -399,6 +399,7 @@ function miseDir(): string {
   const { MISE_DATA_DIR, XDG_DATA_HOME, LOCALAPPDATA } = process.env
   if (MISE_DATA_DIR) return MISE_DATA_DIR
   if (XDG_DATA_HOME) return path.join(XDG_DATA_HOME, 'mise')
+
   if (process.platform === 'win32' && LOCALAPPDATA)
     return path.join(LOCALAPPDATA, 'mise')
 
@@ -408,6 +409,14 @@ function miseDir(): string {
 async function saveCache(cacheKey: string): Promise<void> {
   await core.group(`Saving mise cache`, async () => {
     const cachePath = miseDir()
+    core.info(`Cache path: ${cachePath}`)
+    core.info(`Cache path exists: ${fs.existsSync(cachePath)}`)
+    core.info(`Platform: ${process.platform}`)
+    core.info(`GITHUB_WORKSPACE: ${process.env.GITHUB_WORKSPACE}`)
+    if (fs.existsSync(cachePath)) {
+      const contents = await fs.promises.readdir(cachePath)
+      core.info(`Cache dir contents: ${JSON.stringify(contents)}`)
+    }
 
     if (!fs.existsSync(cachePath)) {
       throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
