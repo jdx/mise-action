@@ -146,3 +146,19 @@ jobs:
       - run: mise x jq -- jq --version
       - run: which jq
       - run: jq --version
+
+  final:
+    needs:
+      - build
+      - test
+      - specific_version
+      - checksum_failure
+      - custom_cache_key
+      - fetch_from_github
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    if: always()
+    steps:
+      - name: Check CI job results
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
