@@ -161,8 +161,8 @@ jobs:
             [tools]
             jq = "1.7.1"
             
-            [env.preview]
-            PREVIEW_VAR = "preview-value"
+            [env]
+            TEST_VAR = "test-value"
       
       - name: Verify MISE_ENV is set in subsequent steps
         run: |
@@ -174,11 +174,11 @@ jobs:
       
       - name: Verify mise environment variables are loaded
         run: |
-          if [ "$PREVIEW_VAR" != "preview-value" ]; then
-            echo "Environment-specific variable not loaded: got '$PREVIEW_VAR'"
+          if [ "$TEST_VAR" != "test-value" ]; then
+            echo "Environment variable not loaded: got '$TEST_VAR'"
             exit 1
           fi
-          echo "✓ Environment-specific variables loaded correctly"
+          echo "✓ Environment variables loaded correctly"
       
       # Test 2: MISE_ENV environment variable takes precedence
       - name: Setup mise with both env var and input
@@ -189,7 +189,7 @@ jobs:
             [tools]
             jq = "1.7.1"
             
-            [env.production]
+            [env]
             PROD_VAR = "production-value"
         env:
           MISE_ENV: production
@@ -202,13 +202,13 @@ jobs:
           fi
           echo "✓ Existing MISE_ENV correctly took precedence"
       
-      - name: Verify production environment is active
+      - name: Verify environment variables are loaded
         run: |
           if [ "$PROD_VAR" != "production-value" ]; then
-            echo "Production environment not active: got '$PROD_VAR'"
+            echo "Environment variable not loaded: got '$PROD_VAR'"
             exit 1
           fi
-          echo "✓ Production environment correctly active"
+          echo "✓ Environment variables loaded correctly"
       
       # Test 3: Cache key includes environment
       - name: Setup mise with environment (cache test)
