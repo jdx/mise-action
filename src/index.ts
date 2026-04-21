@@ -169,11 +169,21 @@ async function outputToolVersions(): Promise<void> {
     const tools: Record<string, ToolInfo[]> = JSON.parse(output.stdout)
     const activeVersions: Record<string, ToolVersionOutput> = {}
 
+    // Reserved output names that should not be overwritten by tool names
+    const reservedOutputs = ['cache-hit', 'versions']
+
     for (const [toolName, versions] of Object.entries(tools)) {
       const activeVersion = versions.find(v => v.active)
       if (activeVersion) {
         // Set individual output: steps.mise.outputs.bun = "1.0.0"
-        core.setOutput(toolName, activeVersion.version)
+        // Skip reserved output names to avoid conflicts
+        if (reservedOutputs.includes(toolName)) {
+          core.warning(
+            `Tool "${toolName}" conflicts with reserved output name; skipping individual output for this tool.`
+          )
+        } else {
+          core.setOutput(toolName, activeVersion.version)
+        }
         core.info(`${toolName}: ${activeVersion.version}`)
 
         // Collect for JSON output with full metadata

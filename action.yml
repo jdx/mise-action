@@ -90,6 +90,9 @@ outputs:
     description: A boolean value to indicate if a cache was hit.
   versions:
     description: JSON object containing all active tool versions with metadata (version, requested_version, install_path, source).
+  # Dynamic outputs: each active tool (e.g. `node`, `bun`, `python`) is also
+  # set as an individual output whose value is the resolved version string.
+  # Access via ${{ steps.<step-id>.outputs.<tool-name> }}
 runs:
   using: node24
   main: dist/index.js
