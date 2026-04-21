@@ -85189,10 +85189,10 @@ async function processCacheKeyTemplate(template) {
     const version = getInput('version');
     const installArgs = getInput('install_args');
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
-    // Check environment input first, then fall back to process.env.MISE_ENV
-    // This ensures the cache key includes the environment even before setEnvVars() runs
+    // Match the precedence in setEnvVars(): process.env.MISE_ENV takes precedence over environment input
+    // This ensures the cache key matches the runtime MISE_ENV value
     const environmentInput = getInput('environment');
-    const miseEnv = (environmentInput || process.env.MISE_ENV || '').replace(/,/g, '-');
+    const miseEnv = (process.env.MISE_ENV || environmentInput || '').replace(/,/g, '-');
     const platform = await getTarget();
     // Calculate file hash
     const fileHash = await hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));

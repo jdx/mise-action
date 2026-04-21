@@ -9,7 +9,7 @@
   - Simplifies multi-environment workflows by eliminating manual export step
   - Respects existing MISE_ENV environment variable (takes precedence)
   - Automatically included in cache key generation via {{mise_env}} template variable
-  - Only exports to GITHUB_ENV when `env` input is true (default)
+  - Exports to GITHUB_ENV making it available to all subsequent workflow steps
 
 ---
 ## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-22
