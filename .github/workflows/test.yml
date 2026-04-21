@@ -181,6 +181,11 @@ jobs:
           echo "✓ Environment variables loaded correctly"
       
       # Test 2: MISE_ENV environment variable takes precedence
+      # Clear MISE_ENV first since it persists from previous test
+      - name: Clear MISE_ENV from previous test
+        run: |
+          echo "MISE_ENV=production" >> $GITHUB_ENV
+      
       - name: Setup mise with both env var and input
         uses: ./
         with:
@@ -191,8 +196,6 @@ jobs:
             
             [env]
             PROD_VAR = "production-value"
-        env:
-          MISE_ENV: production
       
       - name: Verify existing MISE_ENV takes precedence
         run: |
