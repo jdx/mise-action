@@ -88,6 +88,8 @@ inputs:
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
+  versions:
+    description: JSON object containing all active tool versions with metadata (version, requested_version, install_path, source).
 runs:
   using: node24
   main: dist/index.js

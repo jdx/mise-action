@@ -94,6 +94,58 @@ You can also extend the default cache key:
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
 
+## Outputs
+
+The action provides the following outputs:
+
+| Output | Description |
+|--------|-------------|
+| `cache-hit` | Boolean indicating if the cache was restored |
+| `versions` | JSON object with all active tool versions and metadata |
+| `<tool-name>` | Version string for each active tool (e.g., `bun`, `node`, `python`) |
+
+### Using Tool Version Outputs
+
+After mise installs tools, you can access the resolved versions directly without needing a separate step:
+
+```yaml
+- name: Setup tools with Mise
+  id: mise
+  uses: jdx/mise-action@v4
+
+# Access individual tool versions directly
+- name: Cache bun
+  uses: actions/cache@v5
+  with:
+    path: ~/.bun/install/cache
+    key: bun-cache-${{ runner.os }}-${{ steps.mise.outputs.bun }}-${{ hashFiles('**/bun.lock') }}
+
+# Or use the full versions JSON for complex scenarios
+- name: Show all versions
+  run: echo '${{ steps.mise.outputs.versions }}'
+```
+
+The `versions` output contains full metadata for each active tool:
+
+```json
+{
+  "bun": {
+    "version": "1.0.0",
+    "requested_version": "latest",
+    "install_path": "/home/runner/.local/share/mise/installs/bun/1.0.0",
+    "source": {
+      "type": "mise.toml",
+      "path": "/home/runner/work/repo/mise.toml"
+    }
+  },
+  "node": {
+    "version": "20.10.0",
+    "requested_version": "20",
+    "install_path": "/home/runner/.local/share/mise/installs/node/20.10.0"
+  }
+}
+```
+
 ## GitHub API Rate Limits
 
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.

@@ -84859,6 +84859,7 @@ async function run() {
         await testMise();
         if (getBooleanInput('install')) {
             await miseInstall();
+            await outputToolVersions();
             if (cacheKey && getBooleanInput('cache_save')) {
                 await saveCache(cacheKey);
             }
@@ -84918,6 +84919,39 @@ async function exportMiseEnv() {
             cwd
         });
         fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+    }
+    endGroup();
+}
+async function outputToolVersions() {
+    startGroup('Outputting tool versions');
+    const cwd = getCwd();
+    try {
+        const output = await getExecOutput('mise', ['ls', '--json'], {
+            cwd,
+            silent: true
+        });
+        const tools = JSON.parse(output.stdout);
+        const activeVersions = {};
+        for (const [toolName, versions] of Object.entries(tools)) {
+            const activeVersion = versions.find(v => v.active);
+            if (activeVersion) {
+                // Set individual output: steps.mise.outputs.bun = "1.0.0"
+                setOutput(toolName, activeVersion.version);
+                info(`${toolName}: ${activeVersion.version}`);
+                // Collect for JSON output with full metadata
+                activeVersions[toolName] = {
+                    version: activeVersion.version,
+                    requested_version: activeVersion.requested_version,
+                    install_path: activeVersion.install_path,
+                    source: activeVersion.source
+                };
+            }
+        }
+        // Set JSON output with all active versions
+        setOutput('versions', JSON.stringify(activeVersions));
+    }
+    catch (error) {
+        warning(`Failed to output tool versions: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     endGroup();
 }
