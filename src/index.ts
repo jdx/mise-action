@@ -456,7 +456,13 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
   const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
-  const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
+  // Check environment input first, then fall back to process.env.MISE_ENV
+  // This ensures the cache key includes the environment even before setEnvVars() runs
+  const environmentInput = core.getInput('environment')
+  const miseEnv = (environmentInput || process.env.MISE_ENV || '').replace(
+    /,/g,
+    '-'
+  )
   const platform = await getTarget()
 
   // Calculate file hash

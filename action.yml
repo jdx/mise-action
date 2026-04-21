@@ -89,8 +89,8 @@ inputs:
     required: false
     description: |
       The mise environment to use (e.g., "preview", "production"). 
-      When set, this value will be exported to GITHUB_ENV (if env input is true), 
-      making it available to all subsequent workflow steps.
+      When set, this value will be exported to GITHUB_ENV, making it available 
+      to all subsequent workflow steps.
       Note: If MISE_ENV is already set in the environment, it takes precedence over this input.
 outputs:
   cache-hit:
