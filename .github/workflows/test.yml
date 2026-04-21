@@ -214,6 +214,9 @@ jobs:
           echo "✓ Environment variables loaded correctly"
       
       # Test 3: Cache key includes environment
+      - name: Clear MISE_ENV for cache test
+        run: echo "MISE_ENV=test-env" >> $GITHUB_ENV
+      
       - name: Setup mise with environment (cache test)
         uses: ./
         with:
@@ -233,7 +236,7 @@ jobs:
       
       # Test 4: Respect env=false input
       - name: Clear MISE_ENV for next test
-        run: echo "MISE_ENV=" >> $GITHUB_ENV
+        run: echo "MISE_ENV=no-export" >> $GITHUB_ENV
       
       - name: Setup mise with env=false
         uses: ./
