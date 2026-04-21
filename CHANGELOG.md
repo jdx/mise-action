@@ -1,6 +1,17 @@
 # Changelog
 
 ---
+## [Unreleased]
+
+### 🚀 Features
+
+- Add `environment` input to automatically set and export MISE_ENV (#447)
+  - Simplifies multi-environment workflows by eliminating manual export step
+  - Respects existing MISE_ENV environment variable (takes precedence)
+  - Automatically included in cache key generation via {{mise_env}} template variable
+  - Only exports to GITHUB_ENV when `env` input is true (default)
+
+---
 ## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-22
 
 ### 🐛 Bug Fixes

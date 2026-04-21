@@ -84959,6 +84959,16 @@ async function setEnvVars() {
             exportVariable(k, v);
         }
     };
+    // Set MISE_ENV from 'environment' input if provided
+    // Note: existing MISE_ENV environment variable takes precedence
+    const environmentInput = getInput('environment');
+    if (environmentInput && !process.env.MISE_ENV) {
+        info(`Setting MISE_ENV=${environmentInput}`);
+        exportVariable('MISE_ENV', environmentInput);
+    }
+    else if (environmentInput && process.env.MISE_ENV) {
+        info(`MISE_ENV already set to '${process.env.MISE_ENV}', ignoring 'environment' input`);
+    }
     if (getBooleanInput('experimental'))
         set('MISE_EXPERIMENTAL', '1');
     const logLevel = getInput('log_level');
