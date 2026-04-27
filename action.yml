@@ -85,6 +85,13 @@ inputs:
     description: "Automatically load mise env vars into GITHUB_ENV. Note that PATH modifications are not part of this."
     required: false
     default: "true"
+  environment:
+    required: false
+    description: |
+      The mise environment to use (e.g., "preview", "production"). 
+      When set, this value will be exported to GITHUB_ENV, making it available 
+      to all subsequent workflow steps.
+      Note: If MISE_ENV is already set in the environment, it takes precedence over this input.
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.

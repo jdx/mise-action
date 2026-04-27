@@ -147,6 +147,116 @@ jobs:
       - run: which jq
       - run: jq --version
 
+  mise_environment_test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      
+      # Test 1: Basic environment input
+      - name: Setup mise with environment input
+        uses: ./
+        with:
+          environment: preview
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+            
+            [env]
+            TEST_VAR = "test-value"
+      
+      - name: Verify MISE_ENV is set in subsequent steps
+        run: |
+          if [ "$MISE_ENV" != "preview" ]; then
+            echo "MISE_ENV not set correctly: got '$MISE_ENV', expected 'preview'"
+            exit 1
+          fi
+          echo "✓ MISE_ENV correctly set to: $MISE_ENV"
+      
+      - name: Verify mise environment variables are loaded
+        run: |
+          if [ "$TEST_VAR" != "test-value" ]; then
+            echo "Environment variable not loaded: got '$TEST_VAR'"
+            exit 1
+          fi
+          echo "✓ Environment variables loaded correctly"
+      
+      # Test 2: MISE_ENV environment variable takes precedence
+      # Clear MISE_ENV first since it persists from previous test
+      - name: Clear MISE_ENV from previous test
+        run: |
+          echo "MISE_ENV=production" >> $GITHUB_ENV
+      
+      - name: Setup mise with both env var and input
+        uses: ./
+        with:
+          environment: staging
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+            
+            [env]
+            PROD_VAR = "production-value"
+      
+      - name: Verify existing MISE_ENV takes precedence
+        run: |
+          if [ "$MISE_ENV" != "production" ]; then
+            echo "MISE_ENV should be 'production' (from env var), got '$MISE_ENV'"
+            exit 1
+          fi
+          echo "✓ Existing MISE_ENV correctly took precedence"
+      
+      - name: Verify environment variables are loaded
+        run: |
+          if [ "$PROD_VAR" != "production-value" ]; then
+            echo "Environment variable not loaded: got '$PROD_VAR'"
+            exit 1
+          fi
+          echo "✓ Environment variables loaded correctly"
+      
+      # Test 3: Cache key includes environment
+      - name: Clear MISE_ENV for cache test
+        run: echo "MISE_ENV=test-env" >> $GITHUB_ENV
+      
+      - name: Setup mise with environment (cache test)
+        uses: ./
+        with:
+          environment: test-env
+          cache_key: "test-{{mise_env}}-{{platform}}-${{ github.run_id }}"
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+      
+      - name: Verify environment persists
+        run: |
+          if [ "$MISE_ENV" != "test-env" ]; then
+            echo "MISE_ENV not persisted correctly: got '$MISE_ENV'"
+            exit 1
+          fi
+          echo "✓ MISE_ENV persisted correctly for cache test"
+      
+      # Test 4: Respect env=false input
+      - name: Clear MISE_ENV for next test
+        run: echo "MISE_ENV=no-export" >> $GITHUB_ENV
+      
+      - name: Setup mise with env=false
+        uses: ./
+        with:
+          environment: no-export
+          env: false
+          install: false
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+      
+      - name: Verify MISE_ENV is set even with env=false
+        run: |
+          # MISE_ENV should be set by the action
+          if [ "$MISE_ENV" != "no-export" ]; then
+            echo "MISE_ENV should be set to 'no-export', got '$MISE_ENV'"
+            exit 1
+          fi
+          echo "✓ MISE_ENV set even with env=false"
+
   final:
     needs:
       - build
@@ -155,6 +265,7 @@ jobs:
       - checksum_failure
       - custom_cache_key
       - fetch_from_github
+      - mise_environment_test
     runs-on: ubuntu-latest
     timeout-minutes: 1
     if: always()

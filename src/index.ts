@@ -177,6 +177,19 @@ async function setEnvVars(): Promise<void> {
       core.exportVariable(k, v)
     }
   }
+
+  // Set MISE_ENV from 'environment' input if provided
+  // Note: existing MISE_ENV environment variable takes precedence
+  const environmentInput = core.getInput('environment')
+  if (environmentInput && !process.env.MISE_ENV) {
+    core.info(`Setting MISE_ENV=${environmentInput}`)
+    core.exportVariable('MISE_ENV', environmentInput)
+  } else if (environmentInput && process.env.MISE_ENV) {
+    core.info(
+      `MISE_ENV already set to '${process.env.MISE_ENV}', ignoring 'environment' input`
+    )
+  }
+
   if (core.getBooleanInput('experimental')) set('MISE_EXPERIMENTAL', '1')
 
   const logLevel = core.getInput('log_level')
@@ -443,7 +456,13 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
   const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
-  const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
+  // Match the precedence in setEnvVars(): process.env.MISE_ENV takes precedence over environment input
+  // This ensures the cache key matches the runtime MISE_ENV value
+  const environmentInput = core.getInput('environment')
+  const miseEnv = (process.env.MISE_ENV || environmentInput || '').replace(
+    /,/g,
+    '-'
+  )
   const platform = await getTarget()
 
   // Calculate file hash

@@ -94,6 +94,77 @@ You can also extend the default cache key:
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
 
+## Multi-Environment Workflows
+
+Mise supports multiple environments through the `MISE_ENV` variable. The action provides an `environment` input to simplify multi-environment workflows:
+
+```yaml
+- name: Setup mise for preview environment
+  uses: jdx/mise-action@v4
+  with:
+    environment: preview  # Automatically sets and exports MISE_ENV
+    mise_toml: |
+      [tools]
+      node = "24"
+      
+      [env.preview]
+      API_URL = "https://preview.example.com"
+      
+      [env.production]
+      API_URL = "https://api.example.com"
+
+- name: Deploy (MISE_ENV is available)
+  run: mise run deploy
+  # The preview environment is active, API_URL is set to preview URL
+```
+
+**Before (manual approach)**:
+```yaml
+- name: Export MISE_ENV
+  run: echo "MISE_ENV=preview" >> $GITHUB_ENV
+
+- name: Setup mise
+  uses: jdx/mise-action@v4
+  env:
+    MISE_ENV: preview
+```
+
+**After (with environment input)**:
+```yaml
+- name: Setup mise
+  uses: jdx/mise-action@v4
+  with:
+    environment: preview
+```
+
+### Environment Variable Precedence
+
+If `MISE_ENV` is already set (e.g., at the job level), it takes precedence over the `environment` input:
+
+```yaml
+jobs:
+  deploy:
+    env:
+      MISE_ENV: production  # This takes precedence
+    steps:
+      - uses: jdx/mise-action@v4
+        with:
+          environment: staging  # This will be ignored
+```
+
+### Cache Keys and Environments
+
+The cache key automatically includes the environment when using the default cache key template. You can also reference it explicitly:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    environment: preview
+    cache_key: "mise-{{platform}}-{{mise_env}}-{{file_hash}}"
+```
+
+This ensures different environments maintain separate caches.
+
 ## GitHub API Rate Limits
 
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.

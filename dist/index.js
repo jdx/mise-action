@@ -84959,6 +84959,16 @@ async function setEnvVars() {
             exportVariable(k, v);
         }
     };
+    // Set MISE_ENV from 'environment' input if provided
+    // Note: existing MISE_ENV environment variable takes precedence
+    const environmentInput = getInput('environment');
+    if (environmentInput && !process.env.MISE_ENV) {
+        info(`Setting MISE_ENV=${environmentInput}`);
+        exportVariable('MISE_ENV', environmentInput);
+    }
+    else if (environmentInput && process.env.MISE_ENV) {
+        info(`MISE_ENV already set to '${process.env.MISE_ENV}', ignoring 'environment' input`);
+    }
     if (getBooleanInput('experimental'))
         set('MISE_EXPERIMENTAL', '1');
     const logLevel = getInput('log_level');
@@ -85179,7 +85189,10 @@ async function processCacheKeyTemplate(template) {
     const version = getInput('version');
     const installArgs = getInput('install_args');
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
-    const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
+    // Match the precedence in setEnvVars(): process.env.MISE_ENV takes precedence over environment input
+    // This ensures the cache key matches the runtime MISE_ENV value
+    const environmentInput = getInput('environment');
+    const miseEnv = (process.env.MISE_ENV || environmentInput || '').replace(/,/g, '-');
     const platform = await getTarget();
     // Calculate file hash
     const fileHash = await hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
