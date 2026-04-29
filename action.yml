@@ -85,6 +85,36 @@ inputs:
     description: "Automatically load mise env vars into GITHUB_ENV. Note that PATH modifications are not part of this."
     required: false
     default: "true"
+  wings_enabled:
+    description: |
+      [experimental] Opt in to the mise-wings asset cache
+      (https://mise-wings.en.dev) for this action invocation.
+
+      When `true`, the action exports `MISE_WINGS_ENABLED=1` so
+      the installed mise binary routes tool-install URLs (npm
+      tarballs, GitHub release artifacts) through the per-org
+      wings cache subdomains.
+
+      Authentication is automatic via the runner's GitHub OIDC
+      identity — no `mise wings login` step, no long-lived
+      secret to rotate. The workflow must declare
+      `permissions: id-token: write` so the OIDC token-issuer
+      env vars are populated; without that, mise falls through
+      to direct-origin fetches transparently.
+
+      Default `false` is the conservative posture: a workflow
+      with `id-token: write` (used for SLSA / AWS-OIDC /
+      Sigstore / etc.) should not have its OIDC token sent to
+      a third-party cache without explicit opt-in. Older mise
+      binaries that don't speak wings ignore the env var
+      entirely, so this is forward-compatible.
+
+      Requires an active mise-wings subscription on the Clerk
+      org linked to the GitHub org running the workflow;
+      without one, the proxy 402s and mise leaves the cache
+      off without affecting the workflow's success.
+    required: false
+    default: "false"
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
