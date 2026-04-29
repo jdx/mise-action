@@ -1,5 +1,5 @@
 Name: @actions/core
-Version: 3.0.0
+Version: 3.0.1
 License: MIT
 Private: false
 Description: Actions core lib
@@ -21,7 +21,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ---
 
 Name: @actions/http-client
-Version: 4.0.0
+Version: 4.0.1
 License: MIT
 Private: false
 Description: Actions Http Client
@@ -90,7 +90,7 @@ THE SOFTWARE.
 ---
 
 Name: undici
-Version: 6.24.1
+Version: 6.25.0
 License: MIT
 Private: false
 Description: An HTTP/1.1 client, written from scratch for Node.js
@@ -264,7 +264,7 @@ SOFTWARE.
 ---
 
 Name: brace-expansion
-Version: 1.1.13
+Version: 1.1.14
 License: MIT
 Private: false
 Description: Brace expansion as known from sh/bash
@@ -377,7 +377,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ---
 
 Name: @typespec/ts-http-runtime
-Version: 0.3.4
+Version: 0.3.5
 License: MIT
 Private: false
 Description: Isomorphic client library for making HTTP requests in node.js and browser.
@@ -840,7 +840,7 @@ SOFTWARE.
 ---
 
 Name: @azure/core-http-compat
-Version: 2.3.2
+Version: 2.4.0
 License: MIT
 Private: false
 Description: Core HTTP Compatibility Library to bridge the gap between Core V1 & V2 packages.
@@ -910,7 +910,7 @@ SOFTWARE.
 ---
 
 Name: fast-xml-parser
-Version: 5.5.10
+Version: 5.7.2
 License: MIT
 Private: false
 Description: Validate XML, Parse XML, Build XML without C/C++ based libraries
@@ -943,8 +943,18 @@ SOFTWARE.
 
 ---
 
+Name: @nodable/entities
+Version: 2.1.0
+License: MIT
+Private: false
+Description: Entity parser for XML, HTML, External entites with security and NCR control
+Repository: git+https://github.com/nodable/val-parsers.git
+Author: Amit Gupta (https://solothought.com)
+
+---
+
 Name: strnum
-Version: 2.2.2
+Version: 2.2.3
 License: MIT
 Private: false
 Description: Parse String to Number based on configuration
@@ -978,7 +988,7 @@ SOFTWARE.
 ---
 
 Name: path-expression-matcher
-Version: 1.2.1
+Version: 1.5.0
 License: MIT
 Private: false
 Description: Efficient path tracking and pattern matching for XML/JSON parsers
@@ -1013,7 +1023,7 @@ SOFTWARE.
 ---
 
 Name: fast-xml-builder
-Version: 1.1.4
+Version: 1.1.5
 License: MIT
 Private: false
 Description: Build XML from JSON without C/C++ based libraries
@@ -1047,7 +1057,7 @@ SOFTWARE.
 ---
 
 Name: @azure/core-xml
-Version: 1.5.0
+Version: 1.5.1
 License: MIT
 Private: false
 Description: Core library for interacting with XML payloads
