@@ -147,6 +147,50 @@ jobs:
       - run: which jq
       - run: jq --version
 
+  version_outputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Setup mise
+        id: mise
+        uses: ./
+        with:
+          cache: false
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+            bun = "1.2.0"
+      - name: Verify individual tool outputs
+        run: |
+          echo "jq version: ${{ steps.mise.outputs.jq }}"
+          echo "bun version: ${{ steps.mise.outputs.bun }}"
+          if [ -z "${{ steps.mise.outputs.jq }}" ]; then
+            echo "ERROR: jq output is empty"
+            exit 1
+          fi
+          if [ -z "${{ steps.mise.outputs.bun }}" ]; then
+            echo "ERROR: bun output is empty"
+            exit 1
+          fi
+          echo "Individual tool outputs verified successfully"
+      - name: Verify versions JSON output
+        run: |
+          echo "versions JSON: ${{ steps.mise.outputs.versions }}"
+          # Parse and validate JSON structure
+          echo '${{ steps.mise.outputs.versions }}' | jq -e '.jq.version' > /dev/null
+          echo '${{ steps.mise.outputs.versions }}' | jq -e '.bun.version' > /dev/null
+          echo "versions JSON output verified successfully"
+      - name: Use version output in cache key (simulation)
+        run: |
+          # Simulate using the version output in a cache key
+          CACHE_KEY="bun-cache-linux-${{ steps.mise.outputs.bun }}"
+          echo "Generated cache key: $CACHE_KEY"
+          if [[ "$CACHE_KEY" != *"1.2.0"* ]]; then
+            echo "ERROR: Cache key does not contain expected version"
+            exit 1
+          fi
+          echo "Cache key simulation successful"
+
   final:
     needs:
       - build
@@ -155,6 +199,7 @@ jobs:
       - checksum_failure
       - custom_cache_key
       - fetch_from_github
+      - version_outputs
     runs-on: ubuntu-latest
     timeout-minutes: 1
     if: always()

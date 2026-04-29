@@ -64,6 +64,7 @@ async function run(): Promise<void> {
     await testMise()
     if (core.getBooleanInput('install')) {
       await miseInstall()
+      await outputToolVersions()
       if (cacheKey && core.getBooleanInput('cache_save')) {
         await saveCache(cacheKey)
       }
@@ -129,6 +130,78 @@ async function exportMiseEnv(): Promise<void> {
       cwd
     })
     fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
+  }
+
+  core.endGroup()
+}
+
+interface ToolSource {
+  type: string
+  path: string
+}
+
+interface ToolInfo {
+  version: string
+  requested_version?: string
+  install_path: string
+  source?: ToolSource
+  installed: boolean
+  active: boolean
+}
+
+interface ToolVersionOutput {
+  version: string
+  requested_version?: string
+  install_path: string
+  source?: ToolSource
+}
+
+async function outputToolVersions(): Promise<void> {
+  core.startGroup('Outputting tool versions')
+  const cwd = getCwd()
+
+  try {
+    const output = await exec.getExecOutput('mise', ['ls', '--json'], {
+      cwd,
+      silent: true
+    })
+
+    const tools: Record<string, ToolInfo[]> = JSON.parse(output.stdout)
+    const activeVersions: Record<string, ToolVersionOutput> = {}
+
+    // Reserved output names that should not be overwritten by tool names
+    const reservedOutputs = ['cache-hit', 'versions']
+
+    for (const [toolName, versions] of Object.entries(tools)) {
+      const activeVersion = versions.find(v => v.active)
+      if (activeVersion) {
+        // Set individual output: steps.mise.outputs.bun = "1.0.0"
+        // Skip reserved output names to avoid conflicts
+        if (reservedOutputs.includes(toolName)) {
+          core.warning(
+            `Tool "${toolName}" conflicts with reserved output name; skipping individual output for this tool.`
+          )
+        } else {
+          core.setOutput(toolName, activeVersion.version)
+        }
+        core.info(`${toolName}: ${activeVersion.version}`)
+
+        // Collect for JSON output with full metadata
+        activeVersions[toolName] = {
+          version: activeVersion.version,
+          requested_version: activeVersion.requested_version,
+          install_path: activeVersion.install_path,
+          source: activeVersion.source
+        }
+      }
+    }
+
+    // Set JSON output with all active versions
+    core.setOutput('versions', JSON.stringify(activeVersions))
+  } catch (error) {
+    core.warning(
+      `Failed to output tool versions: ${error instanceof Error ? error.message : 'Unknown error'}`
+    )
   }
 
   core.endGroup()
