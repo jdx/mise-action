@@ -85677,6 +85677,24 @@ async function run() {
         else {
             setOutput('cache-hit', false);
         }
+        // Wings opt-in hook (experimental). When
+        // `wings_enabled: true` is set, this exports
+        // `MISE_WINGS_ENABLED=1` so subsequent `mise install`
+        // commands in this workflow route through the wings
+        // cache. Default `false` so workflows with
+        // `id-token: write` (used for SLSA / AWS-OIDC / Sigstore /
+        // etc.) don't silently send the runner's OIDC token to
+        // a third-party cache without explicit consent.
+        //
+        // Note: `setupMise` fetches the mise binary itself with
+        // `curl`, which doesn't go through mise's HTTP layer —
+        // the wings rewriter only kicks in once the resulting
+        // mise binary runs `mise install` and friends. Ordering
+        // here is irrelevant for binary acceleration; we just
+        // want the env var set before any `mise` subcommand
+        // runs. Greptile + Gemini both flagged the previous
+        // comment as overstating what the early call accelerates.
+        setupWings();
         const version = getInput('version');
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
         await setupMise(version, fetchFromGitHub);
@@ -85702,6 +85720,43 @@ async function run() {
             setFailed(err.message);
         else
             throw err;
+    }
+}
+/**
+ * Opt in to mise-wings caching for this workflow run. When
+ * `wings_enabled: true`, exports `MISE_WINGS_ENABLED=1` so
+ * subsequent `mise install` commands route through the
+ * cache.
+ *
+ * Mise itself owns the OIDC → wings session exchange — when
+ * it sees `MISE_WINGS_ENABLED=1` and the GHA OIDC env vars
+ * (`ACTIONS_ID_TOKEN_REQUEST_URL` +
+ * `ACTIONS_ID_TOKEN_REQUEST_TOKEN`), it fetches the runner's
+ * OIDC token, exchanges it at the proxy's `POST /auth`
+ * route, and caches the resulting session JWT for the rest
+ * of the process.
+ *
+ * Pre-flight check: `id-token: write` permission must be
+ * declared at the workflow or job level for the OIDC env
+ * vars to be present. We log a warning when wings is
+ * enabled but the env vars are absent — without this hint,
+ * the user sees a transparent "wings configured but doing
+ * nothing" which is hard to debug.
+ */
+function setupWings() {
+    if (!getBooleanInput('wings_enabled')) {
+        return;
+    }
+    exportVariable('MISE_WINGS_ENABLED', '1');
+    info("mise-wings: enabled. mise will exchange the runner's OIDC token for a wings session on first use.");
+    const oidcUrl = process.env.ACTIONS_ID_TOKEN_REQUEST_URL;
+    const oidcToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
+    if (!oidcUrl || !oidcToken) {
+        warning('mise-wings: GHA OIDC env vars are missing. Add ' +
+            '`permissions: id-token: write` at the workflow or job ' +
+            'level so the runner can mint OIDC tokens. Without this, ' +
+            'mise falls through to direct-origin fetches and the cache ' +
+            'is bypassed.');
     }
 }
 async function exportMiseEnv() {
