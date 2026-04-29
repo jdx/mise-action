@@ -23,7 +23,7 @@
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
     "lint": "eslint . && npm run format:check",
-    "package": "rimraf ./dist && rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
+    "package": "rimraf ./dist && rollup --config rollup.config.mjs",
     "package:watch": "npm run package -- --watch",
     "version": "./scripts/version.sh",
     "prepare": "husky"

@@ -8,21 +8,29 @@ This is a GitHub Action that installs and configures mise, a polyglot runtime ma
 
 ## Development Commands
 
+This project uses [aube](https://aube.en.dev) as its package
+manager (en.dev's pnpm-compat PM, native Rust). It reads
+`package-lock.json` directly — no separate `aube-lock.yaml`.
+`mise install` will install the pinned aube version
+automatically; you can also use `npm` if you prefer (the
+`.npmrc`'s `node-linker=hoisted` pin is aube-specific and
+ignored by npm).
+
 ```bash
 # Install dependencies
-npm install
+aube install
 
 # Build, format, lint, and package
-npm run all
+aubr all
 
 # Individual commands
-npm run format:write  # Format code with Prettier
-npm run lint         # Run ESLint and format check
-npm run package      # Bundle with ncc for distribution
+aubr format:write  # Format code with Prettier
+aubr lint         # Run ESLint and format check
+aubr package      # Bundle with rollup for distribution
 
 # Testing
-npm run all          # Run full build pipeline
-./scripts/test.sh    # Integration test script
+aubr all          # Run full build pipeline
+./scripts/test.sh     # Integration test script
 ```
 
 ## Architecture
@@ -50,6 +58,6 @@ The action follows GitHub's standard TypeScript action structure:
 
 ## Important Notes
 
-- Always run `npm run all` before committing to ensure dist/ is updated
+- Always run `aubr all` before committing to ensure dist/ is updated
 - The dist/ folder must be committed as GitHub Actions runs the compiled code
 - Test changes using the action itself (uses: ./) in test workflows

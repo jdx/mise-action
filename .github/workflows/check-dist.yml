@@ -33,19 +33,15 @@ jobs:
         id: checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
-        with:
-          node-version: 24
-          cache: npm
+      - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
 
       - name: Install Dependencies
         id: install
-        run: npm ci
+        run: aube ci
 
       - name: Build dist/ Directory
         id: build
-        run: npm run bundle
+        run: aubr bundle
 
       - name: Compare Expected and Actual Directories
         id: diff
