@@ -68,7 +68,7 @@ When using `cache_key`, you can use template variables to reference internal val
 Available template variables:
 - `{{version}}` - The mise version (from the `version` input)
 - `{{cache_key_prefix}}` - The cache key prefix (from `cache_key_prefix` input or default)
-- `{{platform}}` - The target platform (e.g., "linux-x64", "macos-arm64")
+- `{{platform}}` - The target platform, including the runner image (e.g., "linux-x64-ubuntu24", "macos-arm64-macos15", "linux-x64-self-hosted"). The trailing segment is `process.env.ImageOS` on github-hosted runners and falls back to `"self-hosted"` elsewhere — preventing cache collisions when the same repo runs on different runner providers (github-hosted, namespace.so, self-hosted).
 - `{{file_hash}}` - Hash of all mise configuration files
 - `{{mise_env}}` - The MISE_ENV environment variable value
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args

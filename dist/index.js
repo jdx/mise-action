@@ -86042,10 +86042,7 @@ async function saveCache(cacheKey) {
     });
 }
 async function getTarget() {
-    let { arch } = process;
-    // quick overwrite to abide by release format
-    if (arch === 'arm')
-        arch = 'armv7';
+    const arch = process.arch === 'arm' ? 'armv7' : process.arch;
     switch (process.platform) {
         case 'darwin':
             return `macos-${arch}`;
@@ -86057,13 +86054,24 @@ async function getTarget() {
             throw new Error(`Unsupported platform ${process.platform}`);
     }
 }
+/**
+ * Identifies the runner image so cached binaries from one provider
+ * (github-hosted, namespace.so, BuildJet, self-hosted) aren't restored
+ * onto another provider's image where their compiled-in paths and libc
+ * versions don't match. GitHub-hosted images export `ImageOS`
+ * (e.g. "macos15", "ubuntu24"); other runners leave it unset and pool
+ * under "self-hosted".
+ */
+function getRunnerImageId() {
+    return process.env.ImageOS || 'self-hosted';
+}
 async function processCacheKeyTemplate(template) {
     // Get all available variables
     const version = getInput('version');
     const installArgs = getInput('install_args');
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
     const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
-    const platform = await getTarget();
+    const platform = `${await getTarget()}-${getRunnerImageId()}`;
     // Calculate file hash
     const fileHash = await hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
     // Calculate install args hash
