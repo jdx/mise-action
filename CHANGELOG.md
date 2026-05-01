@@ -1,6 +1,24 @@
 # Changelog
 
 ---
+## [4.1.0](https://github.com/jdx/mise-action/compare/v4.0.1..v4.1.0) - 2026-05-01
+
+### 🚀 Features
+
+- add wings_enabled input (mise-wings cache integration) (#454) by [@jdx](https://github.com/jdx) in [#454](https://github.com/jdx/mise-action/pull/454)
+
+### 🐛 Bug Fixes
+
+- include runner image in cache key to prevent cross-provider collisions (#456) by [@jdx](https://github.com/jdx) in [#456](https://github.com/jdx/mise-action/pull/456)
+
+### ⚙️ Miscellaneous Tasks
+
+- add communique to enhance release notes (#411) by [@jdx](https://github.com/jdx) in [#411](https://github.com/jdx/mise-action/pull/411)
+- migrate from ncc (CJS) to rollup (ESM) (#436) by [@jdx](https://github.com/jdx) in [#436](https://github.com/jdx/mise-action/pull/436)
+- add final job to aggregate build-test results (#438) by [@jdx](https://github.com/jdx) in [#438](https://github.com/jdx/mise-action/pull/438)
+- migrate package manager from npm/pnpm/bun to aube (#455) by [@jdx](https://github.com/jdx) in [#455](https://github.com/jdx/mise-action/pull/455)
+
+---
 ## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-22
 
 ### 🐛 Bug Fixes
