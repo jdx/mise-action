@@ -167,18 +167,25 @@ async function setupRustCache(): Promise<void> {
     )
     return
   }
+  if (!core.getBooleanInput('cache_save')) {
+    core.warning(
+      'cache_rust is enabled, but cache_save is false. Rust cache paths will be restored for this run but not saved.'
+    )
+  }
 
   const { rustupHome, cargoHome } = rustCacheHomes()
 
   if (process.env.MISE_RUSTUP_HOME) {
-    core.info(`mise rust cache: using MISE_RUSTUP_HOME=${rustupHome}`)
+    core.info(`mise rust cache: using pre-set MISE_RUSTUP_HOME=${rustupHome}`)
   } else {
+    core.info(`mise rust cache: exporting MISE_RUSTUP_HOME=${rustupHome}`)
     core.exportVariable('MISE_RUSTUP_HOME', rustupHome)
   }
 
   if (process.env.MISE_CARGO_HOME) {
-    core.info(`mise rust cache: using MISE_CARGO_HOME=${cargoHome}`)
+    core.info(`mise rust cache: using pre-set MISE_CARGO_HOME=${cargoHome}`)
   } else {
+    core.info(`mise rust cache: exporting MISE_CARGO_HOME=${cargoHome}`)
     core.exportVariable('MISE_CARGO_HOME', cargoHome)
   }
 

@@ -89033,17 +89033,22 @@ async function setupRustCache() {
         warning('cache_rust is enabled, but cache is false. Rust cache setup is skipped.');
         return;
     }
+    if (!getBooleanInput('cache_save')) {
+        warning('cache_rust is enabled, but cache_save is false. Rust cache paths will be restored for this run but not saved.');
+    }
     const { rustupHome, cargoHome } = rustCacheHomes();
     if (process.env.MISE_RUSTUP_HOME) {
-        info(`mise rust cache: using MISE_RUSTUP_HOME=${rustupHome}`);
+        info(`mise rust cache: using pre-set MISE_RUSTUP_HOME=${rustupHome}`);
     }
     else {
+        info(`mise rust cache: exporting MISE_RUSTUP_HOME=${rustupHome}`);
         exportVariable('MISE_RUSTUP_HOME', rustupHome);
     }
     if (process.env.MISE_CARGO_HOME) {
-        info(`mise rust cache: using MISE_CARGO_HOME=${cargoHome}`);
+        info(`mise rust cache: using pre-set MISE_CARGO_HOME=${cargoHome}`);
     }
     else {
+        info(`mise rust cache: exporting MISE_CARGO_HOME=${cargoHome}`);
         exportVariable('MISE_CARGO_HOME', cargoHome);
     }
     await fs.promises.mkdir(rustupHome, { recursive: true });
