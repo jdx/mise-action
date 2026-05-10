@@ -108,7 +108,7 @@ If mise is responsible for installing Rust in your workflow, opt in to Rust tool
     cache_rust: true
 ```
 
-When enabled, the action exports `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` to directories under the mise data dir before cache restore and install. Those directories are then restored and saved with the normal mise cache. The default cache key includes a `-rust` segment when this option is enabled so Rust-enabled caches do not reuse older mise-only caches. If you override `cache_key`, include `{{cache_rust}}` or otherwise invalidate that key when enabling this option.
+When enabled, the action exports `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` to directories under the mise data dir before cache restore and install. Those directories are then restored and saved with the normal mise cache. With the default `env: true`, mise may also export `RUSTUP_HOME` and `CARGO_HOME` for later workflow steps so plain `cargo`, `rustfmt`, and `clippy` commands use the same cached homes. The default cache key includes a `-rust` segment when this option is enabled so Rust-enabled caches do not reuse older mise-only caches. If you override `cache_key`, include `{{cache_rust}}` or otherwise invalidate that key when enabling this option.
 
 Leave `cache_rust` as `false` when Rust is installed or cached by another action such as `rustup`, `actions-rust-lang/setup-rust-toolchain`, or `Swatinem/rust-cache`, and you use mise for other tools. `Swatinem/rust-cache` remains useful alongside this option for Cargo registry, git dependency, and `target` build artifact caching.
 

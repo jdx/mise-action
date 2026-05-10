@@ -64,6 +64,10 @@ inputs:
       rustup metadata, and cargo/rustup proxy binaries that mise needs for
       Rust components such as rustfmt and clippy.
 
+      With the default `env: true`, mise may also export `RUSTUP_HOME` and
+      `CARGO_HOME` for later workflow steps so plain `cargo`, `rustfmt`, and
+      `clippy` commands use the same cached homes.
+
       Default `false` keeps existing workflows unchanged, especially jobs that
       install Rust with rustup, rust-cache, setup-rust-toolchain, or another
       standard Rust action and use mise only for other tools.
