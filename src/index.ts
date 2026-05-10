@@ -46,7 +46,7 @@ async function run(): Promise<void> {
   try {
     await setToolVersions()
     await setMiseToml()
-    setupRustCache()
+    await setupRustCache()
 
     let cacheKey: string | undefined
     if (core.getBooleanInput('cache')) {
@@ -156,7 +156,7 @@ function setupWings(): void {
  * workflows that use rust-cache, rustup, setup-rust-toolchain, or another
  * Rust setup action outside of mise.
  */
-function setupRustCache(): void {
+async function setupRustCache(): Promise<void> {
   if (!core.getBooleanInput('cache_rust')) {
     return
   }
@@ -182,8 +182,8 @@ function setupRustCache(): void {
     core.exportVariable('MISE_CARGO_HOME', cargoHome)
   }
 
-  fs.mkdirSync(rustupHome, { recursive: true })
-  fs.mkdirSync(cargoHome, { recursive: true })
+  await fs.promises.mkdir(rustupHome, { recursive: true })
+  await fs.promises.mkdir(cargoHome, { recursive: true })
 
   core.info(
     'mise rust cache: enabled. mise-managed rustup and cargo homes will be restored and saved with the mise cache.'

@@ -88921,7 +88921,7 @@ async function run() {
     try {
         await setToolVersions();
         await setMiseToml();
-        setupRustCache();
+        await setupRustCache();
         let cacheKey;
         if (getBooleanInput('cache')) {
             cacheKey = await restoreMiseCache();
@@ -89025,7 +89025,7 @@ function setupWings() {
  * workflows that use rust-cache, rustup, setup-rust-toolchain, or another
  * Rust setup action outside of mise.
  */
-function setupRustCache() {
+async function setupRustCache() {
     if (!getBooleanInput('cache_rust')) {
         return;
     }
@@ -89046,8 +89046,8 @@ function setupRustCache() {
     else {
         exportVariable('MISE_CARGO_HOME', cargoHome);
     }
-    fs.mkdirSync(rustupHome, { recursive: true });
-    fs.mkdirSync(cargoHome, { recursive: true });
+    await fs.promises.mkdir(rustupHome, { recursive: true });
+    await fs.promises.mkdir(cargoHome, { recursive: true });
     info('mise rust cache: enabled. mise-managed rustup and cargo homes will be restored and saved with the mise cache.');
 }
 async function exportMiseEnv() {
