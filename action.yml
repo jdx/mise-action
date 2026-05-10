@@ -50,8 +50,23 @@ inputs:
     description: |
       Override the complete cache key (ignores all other cache key options).
       Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}}, 
-      {{mise_env}}, {{install_args_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables, 
+      {{mise_env}}, {{install_args_hash}}, {{cache_rust}}, {{default}}, {{env.VAR_NAME}} for environment variables,
       and conditional logic like {{#if version}}...{{/if}}
+  cache_rust:
+    required: false
+    default: "false"
+    description: |
+      Opt in to caching Rust toolchains installed by mise's Rust backend.
+
+      When `true`, the action exports `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME`
+      to directories under the mise data dir before restoring the mise cache.
+      This lets the existing mise cache save/restore rustup toolchains,
+      rustup metadata, and cargo/rustup proxy binaries that mise needs for
+      Rust components such as rustfmt and clippy.
+
+      Default `false` keeps existing workflows unchanged, especially jobs that
+      install Rust with rustup, rust-cache, setup-rust-toolchain, or another
+      standard Rust action and use mise only for other tools.
   experimental:
     required: false
     default: "false"

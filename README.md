@@ -20,6 +20,7 @@ jobs:
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           cache: true # [default: true] cache mise using GitHub's cache
+          cache_rust: false # [default: false] also cache Rust toolchains installed by mise
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
           # automatically write this .tool-versions file
@@ -72,6 +73,7 @@ Available template variables:
 - `{{file_hash}}` - Hash of all mise configuration files
 - `{{mise_env}}` - The MISE_ENV environment variable value
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
+- `{{cache_rust}}` - Whether the Rust toolchain cache integration is enabled
 - `{{default}}` - The processed default cache key (useful for extending)
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.
@@ -93,6 +95,22 @@ You can also extend the default cache key:
 ```
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
+
+### Rust Toolchain Cache
+
+By default, mise-action only caches mise's data directory. Rust is different from most mise tools because mise delegates Rust installation to rustup, which stores toolchains in `RUSTUP_HOME` and cargo/rustup proxy binaries in `CARGO_HOME/bin`. That state may live outside the mise data directory, so a restored mise cache can otherwise make `mise install` think Rust is present while components such as `rustfmt` or `clippy` are missing.
+
+If mise is responsible for installing Rust in your workflow, opt in to Rust toolchain caching:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    cache_rust: true
+```
+
+When enabled, the action exports `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` to directories under the mise data dir before cache restore and install. Those directories are then restored and saved with the normal mise cache. The default cache key includes a `-rust` segment when this option is enabled so Rust-enabled caches do not reuse older mise-only caches. If you override `cache_key`, include `{{cache_rust}}` or otherwise invalidate that key when enabling this option.
+
+Leave `cache_rust` as `false` when Rust is installed or cached by another action such as `rustup`, `actions-rust-lang/setup-rust-toolchain`, or `Swatinem/rust-cache`, and you use mise for other tools. `Swatinem/rust-cache` remains useful alongside this option for Cargo registry, git dependency, and `target` build artifact caching.
 
 ## GitHub API Rate Limits
 

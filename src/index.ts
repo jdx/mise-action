@@ -40,12 +40,13 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
+  '{{cache_key_prefix}}-{{platform}}{{#if cache_rust}}-rust{{/if}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 async function run(): Promise<void> {
   try {
     await setToolVersions()
     await setMiseToml()
+    setupRustCache()
 
     let cacheKey: string | undefined
     if (core.getBooleanInput('cache')) {
@@ -139,6 +140,54 @@ function setupWings(): void {
         'is bypassed.'
     )
   }
+}
+
+/**
+ * Opt in to caching Rust toolchains that mise installs through rustup.
+ *
+ * mise's Rust backend delegates installation to rustup. By default, rustup
+ * stores toolchains in ~/.rustup and its proxies in ~/.cargo/bin, while this
+ * action's normal cache only stores miseDir(). Restoring only miseDir() can
+ * leave the cached mise install marker in place while rustup components such
+ * as rustfmt or clippy are missing from the runner.
+ *
+ * When `cache_rust: true`, put mise-managed Rust state under miseDir() via
+ * mise-specific env vars. This keeps the default behavior unchanged for
+ * workflows that use rust-cache, rustup, setup-rust-toolchain, or another
+ * Rust setup action outside of mise.
+ */
+function setupRustCache(): void {
+  if (!core.getBooleanInput('cache_rust')) {
+    return
+  }
+
+  if (!core.getBooleanInput('cache')) {
+    core.warning(
+      'cache_rust is enabled, but cache is false. Rust cache setup is skipped.'
+    )
+    return
+  }
+
+  const { rustupHome, cargoHome } = rustCacheHomes()
+
+  if (process.env.MISE_RUSTUP_HOME) {
+    core.info(`mise rust cache: using MISE_RUSTUP_HOME=${rustupHome}`)
+  } else {
+    core.exportVariable('MISE_RUSTUP_HOME', rustupHome)
+  }
+
+  if (process.env.MISE_CARGO_HOME) {
+    core.info(`mise rust cache: using MISE_CARGO_HOME=${cargoHome}`)
+  } else {
+    core.exportVariable('MISE_CARGO_HOME', cargoHome)
+  }
+
+  fs.mkdirSync(rustupHome, { recursive: true })
+  fs.mkdirSync(cargoHome, { recursive: true })
+
+  core.info(
+    'mise rust cache: enabled. mise-managed rustup and cargo homes will be restored and saved with the mise cache.'
+  )
 }
 
 async function exportMiseEnv(): Promise<void> {
@@ -267,6 +316,7 @@ async function setEnvVars(): Promise<void> {
 async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
+  const cachePaths = miseCachePaths()
 
   // Use custom cache key if provided, otherwise use default template
   const cacheKeyTemplate =
@@ -276,7 +326,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
 
-  const cacheKey = await cache.restoreCache([cachePath], primaryKey)
+  const cacheKey = await cache.restoreCache(cachePaths, primaryKey)
   core.setOutput('cache-hit', Boolean(cacheKey))
 
   if (!cacheKey) {
@@ -467,18 +517,64 @@ function miseDir(): string {
   return path.join(os.homedir(), '.local', 'share', 'mise')
 }
 
+function rustCacheHomes(): { rustupHome: string; cargoHome: string } {
+  const cacheRoot = miseDir()
+  return {
+    rustupHome: process.env.MISE_RUSTUP_HOME || path.join(cacheRoot, 'rustup'),
+    cargoHome: process.env.MISE_CARGO_HOME || path.join(cacheRoot, 'cargo')
+  }
+}
+
+function miseCachePaths(): string[] {
+  const cacheRoot = miseDir()
+  const cachePaths = [cacheRoot]
+
+  if (!core.getBooleanInput('cache_rust')) {
+    return cachePaths
+  }
+
+  const { rustupHome, cargoHome } = rustCacheHomes()
+  for (const cachePath of [rustupHome, cargoHome]) {
+    if (
+      !isPathInside(cachePath, cacheRoot) &&
+      !cachePaths.includes(cachePath)
+    ) {
+      cachePaths.push(cachePath)
+    }
+  }
+
+  return cachePaths
+}
+
+function isPathInside(child: string, parent: string): boolean {
+  const relative = path.relative(path.resolve(parent), path.resolve(child))
+  return (
+    relative === '' ||
+    (!!relative && !relative.startsWith('..') && !path.isAbsolute(relative))
+  )
+}
+
 async function saveCache(cacheKey: string): Promise<void> {
   await core.group(`Saving mise cache`, async () => {
     const cachePath = miseDir()
+    const cachePaths = miseCachePaths()
 
     if (!fs.existsSync(cachePath)) {
       throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
     }
 
-    const cacheId = await cache.saveCache([cachePath], cacheKey)
+    const existingCachePaths = cachePaths.filter(fs.existsSync)
+    const missingCachePaths = cachePaths.filter(p => !fs.existsSync(p))
+    if (missingCachePaths.length > 0) {
+      core.info(`Skipping missing cache paths: ${missingCachePaths.join(', ')}`)
+    }
+
+    const cacheId = await cache.saveCache(existingCachePaths, cacheKey)
     if (cacheId === -1) return
 
-    core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+    core.info(
+      `Cache saved from ${existingCachePaths.join(', ')} with key: ${cacheKey}`
+    )
   })
 }
 
@@ -513,6 +609,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
   const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
+  const cacheRust = core.getBooleanInput('cache_rust')
   const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
   const platform = `${await getTarget()}-${getRunnerImageId()}`
 
@@ -539,7 +636,8 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     platform,
     file_hash: fileHash,
     mise_env: miseEnv,
-    install_args_hash: installArgsHash
+    install_args_hash: installArgsHash,
+    cache_rust: cacheRust
   }
 
   // Calculate the default cache key by processing the default template
