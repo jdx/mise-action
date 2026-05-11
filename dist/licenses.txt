@@ -327,7 +327,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 Name: semver
-Version: 7.7.4
+Version: 7.8.0
 License: ISC
 Private: false
 Description: The semantic version parser used by npm.
@@ -910,7 +910,7 @@ SOFTWARE.
 ---
 
 Name: fast-xml-parser
-Version: 5.7.2
+Version: 5.7.3
 License: MIT
 Private: false
 Description: Validate XML, Parse XML, Build XML without C/C++ based libraries
@@ -954,12 +954,12 @@ Author: Amit Gupta (https://solothought.com)
 ---
 
 Name: strnum
-Version: 2.2.3
+Version: 2.3.0
 License: MIT
 Private: false
 Description: Parse String to Number based on configuration
 Repository: https://github.com/NaturalIntelligence/strnum
-Author: Amit Gupta (https://amitkumargupta.work/)
+Author: Amit Gupta (https://solothought.work/)
 License Text:
 ===
 
@@ -1023,7 +1023,7 @@ SOFTWARE.
 ---
 
 Name: fast-xml-builder
-Version: 1.1.5
+Version: 1.2.0
 License: MIT
 Private: false
 Description: Build XML from JSON without C/C++ based libraries
@@ -1053,6 +1053,16 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+Name: xml-naming
+Version: 0.1.0
+License: MIT
+Private: false
+Description: Validates XML name productions — Name, NCName, QName, NMToken, NMTokens — for XML 1.0 and 1.1
+Repository: https://github.com/NaturalIntelligence/xml-naming
+Author: Amit Gupta (https://solothought.com)
 
 ---
 
