@@ -110,7 +110,23 @@ If mise is responsible for installing Rust in your workflow, opt in to Rust tool
 
 When enabled, the action exports `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` to directories under the mise data dir before cache restore and install. Those directories are then restored and saved with the normal mise cache. With the default `env: true`, mise may also export `RUSTUP_HOME` and `CARGO_HOME` for later workflow steps so plain `cargo`, `rustfmt`, and `clippy` commands use the same cached homes. The default cache key includes a `-rust` segment when this option is enabled so Rust-enabled caches do not reuse older mise-only caches. If you override `cache_key`, include `{{cache_rust}}` or otherwise invalidate that key when enabling this option.
 
-Leave `cache_rust` as `false` when Rust is installed or cached by another action such as `rustup`, `actions-rust-lang/setup-rust-toolchain`, or `Swatinem/rust-cache`, and you use mise for other tools. `Swatinem/rust-cache` remains useful alongside this option for Cargo registry, git dependency, and `target` build artifact caching.
+This cache is intended for the Rust toolchain state that mise needs to restore: rustup toolchains and metadata in `RUSTUP_HOME`, plus cargo/rustup proxy binaries and Cargo-installed tool metadata in `CARGO_HOME`. `CARGO_HOME` can also contain registry and git dependency caches, but the mise-action cache key is based on mise configuration, not `Cargo.lock`, and mise-action saves before later workflow build steps run. Do not use `cache_rust` as a replacement for a Cargo dependency or `target` cache.
+
+Use `cache_rust` with `Swatinem/rust-cache` when mise installs Rust and you want rust-cache to manage Cargo registry, git dependency, and `target` build artifact caching:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    cache_rust: true
+
+- uses: Swatinem/rust-cache@v2
+  with:
+    # Let mise-action own rustup/cargo proxy binaries and Cargo tools installed by mise.
+    # Remove this line if you want rust-cache to cache Cargo binaries installed later in the job.
+    cache-bin: "false"
+```
+
+Put `Swatinem/rust-cache` after mise-action so it sees the Rust version and `CARGO_HOME` exported by mise. Leave `cache_rust` as `false` when Rust is installed by another action such as `rustup` or `actions-rust-lang/setup-rust-toolchain`, and you use mise only for non-Rust tools.
 
 ## GitHub API Rate Limits
 

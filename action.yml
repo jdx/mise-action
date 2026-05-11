@@ -68,9 +68,13 @@ inputs:
       `CARGO_HOME` for later workflow steps so plain `cargo`, `rustfmt`, and
       `clippy` commands use the same cached homes.
 
+      This is a Rust toolchain/proxy cache, not a Cargo dependency or build
+      cache. Use it with Swatinem/rust-cache when mise installs Rust and
+      rust-cache should own Cargo registry, git dependency, and target caches.
+
       Default `false` keeps existing workflows unchanged, especially jobs that
-      install Rust with rustup, rust-cache, setup-rust-toolchain, or another
-      standard Rust action and use mise only for other tools.
+      install Rust with rustup, setup-rust-toolchain, or another standard Rust
+      action and use mise only for other tools.
   experimental:
     required: false
     default: "false"
