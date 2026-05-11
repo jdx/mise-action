@@ -141,8 +141,16 @@ jobs:
           cache_rust: true
       - name: Check Rust cache paths
         run: |
-          test "$MISE_RUSTUP_HOME" = "$HOME/.local/share/mise/rustup"
-          test "$MISE_CARGO_HOME" = "$HOME/.local/share/mise/cargo"
+          if [ -n "${MISE_DATA_DIR:-}" ]; then
+            mise_data_dir="$MISE_DATA_DIR"
+          elif [ -n "${XDG_DATA_HOME:-}" ]; then
+            mise_data_dir="$XDG_DATA_HOME/mise"
+          else
+            mise_data_dir="$HOME/.local/share/mise"
+          fi
+
+          test "$MISE_RUSTUP_HOME" = "$mise_data_dir/rustup"
+          test "$MISE_CARGO_HOME" = "$mise_data_dir/cargo"
           test -d "$MISE_RUSTUP_HOME"
           test -d "$MISE_CARGO_HOME"
 
