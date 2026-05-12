@@ -5,19 +5,21 @@ on:
     types: [closed]
     branches: [main]
 
-permissions:
-  contents: write
+permissions: {}
 
 jobs:
   release:
     if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
 
       - name: Setup mise
         uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
@@ -30,10 +32,13 @@ jobs:
   enhance-release:
     needs: [release]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
+          persist-credentials: false
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
       - name: Enhance release notes with communique
         run: |
