@@ -4,6 +4,11 @@ set -euxo pipefail
 VERSION=$(jq -r .version package.json)
 MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
 
+# Configure git to use gh's credential helper. The checkout step uses
+# persist-credentials: false (per zizmor's artipacked audit), so the
+# token isn't written to .git/config and raw `git push` would 403.
+gh auth setup-git
+
 # create the version tag (allow it to fail if it already exists)
 git tag "v$VERSION" || echo "Tag v$VERSION already exists locally"
 

@@ -8,6 +8,9 @@ on: # rebuild any PRs and main branch changes
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
   cancel-in-progress: true
@@ -17,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - uses: jdx/mise-action@1648a7812b9aeae629881980618f079932869151 # v4
       - run: aube install
       - run: aubr all
@@ -43,6 +48,8 @@ jobs:
         if: ${{ matrix.requirements }}
         run: ${{ matrix.requirements }}
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup mise
         uses: ./
         with:
@@ -65,6 +72,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup mise
         uses: ./
         with:
@@ -90,6 +99,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup mise
         id: bad
         uses: ./
@@ -107,14 +118,18 @@ jobs:
         if: ${{ steps.bad.outcome == 'failure' }}
       - name: not failed as expected
         run: |
-          echo "Expected failure but the job was ${{ steps.bad.outcome }}"
+          echo "Expected failure but the job was ${STEPS_BAD_OUTCOME}"
           exit 1
         if: ${{ steps.bad.outcome != 'failure' }}
+        env:
+          STEPS_BAD_OUTCOME: ${{ steps.bad.outcome }}
 
   custom_cache_key:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup mise with custom cache key
         uses: ./
         with:
@@ -132,6 +147,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
       - name: Setup mise from mise.jdx.dev
         uses: ./
         with:
