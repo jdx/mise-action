@@ -42,6 +42,8 @@ const MISE_CONFIG_FILE_PATTERNS = [
 const DEFAULT_CACHE_KEY_TEMPLATE =
   '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
+const RUST_CACHE_PATHS = [path.join('installs', 'rust')]
+
 async function run(): Promise<void> {
   try {
     await setToolVersions()
@@ -475,11 +477,54 @@ async function saveCache(cacheKey: string): Promise<void> {
       throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
     }
 
-    const cacheId = await cache.saveCache([cachePath], cacheKey)
-    if (cacheId === -1) return
+    const excludedPaths = await stageRustCachePaths(cachePath)
+    try {
+      const cacheId = await cache.saveCache([cachePath], cacheKey)
+      if (cacheId === -1) return
 
-    core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+      core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+    } finally {
+      await restoreRustCachePaths(excludedPaths)
+    }
   })
+}
+
+type StagedCachePath = {
+  originalPath: string
+  stagedPath: string
+}
+
+async function stageRustCachePaths(
+  cachePath: string
+): Promise<StagedCachePath[]> {
+  const stagedPaths: StagedCachePath[] = []
+
+  for (const relativePath of RUST_CACHE_PATHS) {
+    const originalPath = path.join(cachePath, relativePath)
+    if (!fs.existsSync(originalPath)) continue
+
+    const stagedPath = path.join(
+      path.dirname(cachePath),
+      `${path.basename(cachePath)}-excluded-${relativePath.replaceAll(path.sep, '-')}-${process.pid}-${Date.now()}`
+    )
+
+    core.info(`Excluding ${originalPath} from mise cache`)
+    await fs.promises.rename(originalPath, stagedPath)
+    stagedPaths.push({ originalPath, stagedPath })
+  }
+
+  return stagedPaths
+}
+
+async function restoreRustCachePaths(
+  stagedPaths: StagedCachePath[]
+): Promise<void> {
+  for (const { originalPath, stagedPath } of stagedPaths.reverse()) {
+    if (!fs.existsSync(stagedPath)) continue
+
+    await fs.promises.mkdir(path.dirname(originalPath), { recursive: true })
+    await fs.promises.rename(stagedPath, originalPath)
+  }
 }
 
 async function getTarget(): Promise<string> {

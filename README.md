@@ -96,9 +96,11 @@ This gives you full control over cache invalidation based on the specific aspect
 
 ### Rust and Cargo Caches
 
-This action caches mise's own data, but it is not a replacement for a Cargo-aware
-cache. For Rust projects, cache Cargo dependencies, build artifacts, and
-Cargo-installed tools explicitly.
+This action caches mise's own data, but it does not save Rust toolchains.
+According to [mise's Rust documentation](https://mise.jdx.dev/lang/rust.html),
+Rust is managed by rustup, uses `RUSTUP_HOME` and `CARGO_HOME`, and does not live
+under mise's `installs` directory. For Rust projects, cache Cargo dependencies,
+build artifacts, and Cargo-installed tools explicitly.
 
 The usual setup is to run `Swatinem/rust-cache` after `mise-action`, so the cache
 key can include the Rust/Cargo environment and Cargo lockfiles:

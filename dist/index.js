@@ -89243,6 +89243,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 ];
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
+const RUST_CACHE_PATHS = [path$1.join('installs', 'rust')];
 async function run() {
     try {
         await setToolVersions();
@@ -89612,11 +89613,38 @@ async function saveCache(cacheKey) {
         if (!fs.existsSync(cachePath)) {
             throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
         }
-        const cacheId = await saveCache$1([cachePath], cacheKey);
-        if (cacheId === -1)
-            return;
-        info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
+        const excludedPaths = await stageRustCachePaths(cachePath);
+        try {
+            const cacheId = await saveCache$1([cachePath], cacheKey);
+            if (cacheId === -1)
+                return;
+            info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
+        }
+        finally {
+            await restoreRustCachePaths(excludedPaths);
+        }
     });
+}
+async function stageRustCachePaths(cachePath) {
+    const stagedPaths = [];
+    for (const relativePath of RUST_CACHE_PATHS) {
+        const originalPath = path$1.join(cachePath, relativePath);
+        if (!fs.existsSync(originalPath))
+            continue;
+        const stagedPath = path$1.join(path$1.dirname(cachePath), `${path$1.basename(cachePath)}-excluded-${relativePath.replaceAll(path$1.sep, '-')}-${process.pid}-${Date.now()}`);
+        info(`Excluding ${originalPath} from mise cache`);
+        await fs.promises.rename(originalPath, stagedPath);
+        stagedPaths.push({ originalPath, stagedPath });
+    }
+    return stagedPaths;
+}
+async function restoreRustCachePaths(stagedPaths) {
+    for (const { originalPath, stagedPath } of stagedPaths.reverse()) {
+        if (!fs.existsSync(stagedPath))
+            continue;
+        await fs.promises.mkdir(path$1.dirname(originalPath), { recursive: true });
+        await fs.promises.rename(stagedPath, originalPath);
+    }
 }
 async function getTarget() {
     const arch = process.arch === 'arm' ? 'armv7' : process.arch;
