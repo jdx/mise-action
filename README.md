@@ -94,6 +94,28 @@ You can also extend the default cache key:
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
 
+### Rust and Cargo Caches
+
+This action caches mise's own data, but it is not a replacement for a Cargo-aware
+cache. For Rust projects, cache Cargo dependencies, build artifacts, and
+Cargo-installed tools explicitly.
+
+The usual setup is to run `Swatinem/rust-cache` after `mise-action`, so the cache
+key can include the Rust/Cargo environment and Cargo lockfiles:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    install: true
+
+- uses: Swatinem/rust-cache@v2
+```
+
+`Swatinem/rust-cache` caches `~/.cargo` and `target` by default, including
+`~/.cargo/bin` for tools installed during the workflow. If your workflow uses a
+custom `CARGO_HOME`, or installs Cargo tools somewhere else, add that directory
+to your cache configuration manually.
+
 ## GitHub API Rate Limits
 
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
