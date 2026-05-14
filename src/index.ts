@@ -296,6 +296,7 @@ async function setupMise(
     miseBinDir,
     process.platform === 'win32' ? 'mise.exe' : 'mise'
   )
+  const miseShimPath = path.join(miseBinDir, 'mise-shim.exe')
   if (!fs.existsSync(path.join(miseBinPath))) {
     core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
     await fs.promises.mkdir(miseBinDir, { recursive: true })
@@ -318,11 +319,21 @@ async function setupMise(
     }
     const archivePath = path.join(os.tmpdir(), `mise${ext}`)
     switch (ext) {
-      case '.zip':
+      case '.zip': {
         await exec.exec('curl', ['-fsSL', url, '--output', archivePath])
-        await exec.exec('unzip', [archivePath, '-d', os.tmpdir()])
-        await io.mv(path.join(os.tmpdir(), 'mise/bin/mise.exe'), miseBinPath)
+        const extractDir = await fs.promises.mkdtemp(
+          path.join(os.tmpdir(), 'mise-action-')
+        )
+        try {
+          await exec.exec('unzip', [archivePath, '-d', extractDir])
+          const extractedMiseBinDir = path.join(extractDir, 'mise', 'bin')
+          await io.mv(path.join(extractedMiseBinDir, 'mise.exe'), miseBinPath)
+          await installWindowsMiseShim(extractedMiseBinDir, miseShimPath)
+        } finally {
+          await io.rmRF(extractDir)
+        }
         break
+      }
       case '.tar.zst':
         await exec.exec('sh', [
           '-c',
@@ -343,24 +354,19 @@ async function setupMise(
   } else {
     const requestedVersion = cleanVersion(core.getInput('version'))
     if (requestedVersion !== '') {
-      const versionOutput = await exec.getExecOutput(
-        miseBinPath,
-        ['version', '--json'],
-        { silent: true }
-      )
-      const versionJson = JSON.parse(versionOutput.stdout)
-      const version = cleanVersion(versionJson.version.split(' ')[0])
-      if (requestedVersion === version) {
+      const installedVersion = await getInstalledMiseVersion(miseBinPath)
+      if (requestedVersion === installedVersion) {
         core.info(`mise already installed`)
       } else {
         core.info(
-          `mise already installed (${version}), but different version requested (${requestedVersion})`
+          `mise already installed (${installedVersion}), but different version requested (${requestedVersion})`
         )
         await exec.exec(miseBinPath, ['self-update', requestedVersion, '-y'])
         core.info(`mise updated to version ${requestedVersion}`)
       }
     }
   }
+  await ensureWindowsMiseShim(miseBinPath, miseShimPath)
   // compare with provided hash
   const want = core.getInput('sha256')
   if (want) {
@@ -375,6 +381,71 @@ async function setupMise(
   }
 
   core.addPath(miseBinDir)
+}
+
+async function installWindowsMiseShim(
+  extractedMiseBinDir: string,
+  miseShimPath: string
+): Promise<void> {
+  if (process.platform !== 'win32') return
+
+  const extractedMiseShimPath = path.join(extractedMiseBinDir, 'mise-shim.exe')
+  if (!fs.existsSync(extractedMiseShimPath)) {
+    core.info('mise-shim.exe not found in the mise archive; skipping')
+    return
+  }
+
+  await io.mv(extractedMiseShimPath, miseShimPath)
+}
+
+async function ensureWindowsMiseShim(
+  miseBinPath: string,
+  miseShimPath: string
+): Promise<void> {
+  if (process.platform !== 'win32') return
+  if (fs.existsSync(miseShimPath)) return
+
+  core.info(
+    'mise-shim.exe not found next to mise.exe; installing it from the matching release archive'
+  )
+
+  let tempDir: string | undefined
+  try {
+    const installedVersion = await getInstalledMiseVersion(miseBinPath)
+    const archiveName = `mise-v${installedVersion}-${await getTarget()}.zip`
+    const url = `https://github.com/jdx/mise/releases/download/v${installedVersion}/${archiveName}`
+
+    tempDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'mise-action-'))
+    const archivePath = path.join(tempDir, archiveName)
+    const extractDir = path.join(tempDir, 'extract')
+
+    await exec.exec('curl', ['-fsSL', url, '--output', archivePath])
+    await exec.exec('unzip', [archivePath, '-d', extractDir])
+    await installWindowsMiseShim(
+      path.join(extractDir, 'mise', 'bin'),
+      miseShimPath
+    )
+  } catch (err) {
+    core.warning(`Failed to install mise-shim.exe: ${errorMessage(err)}`)
+  } finally {
+    if (tempDir) {
+      await io.rmRF(tempDir)
+    }
+  }
+}
+
+async function getInstalledMiseVersion(miseBinPath: string): Promise<string> {
+  const versionOutput = await exec.getExecOutput(
+    miseBinPath,
+    ['version', '--json'],
+    { silent: true }
+  )
+  const versionJson = JSON.parse(versionOutput.stdout) as { version: string }
+  return cleanVersion(versionJson.version.split(' ')[0])
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
 }
 
 async function zstdInstalled(): Promise<boolean> {
