@@ -65,6 +65,15 @@ jobs:
       - run: mise x jq -- jq --version
       - run: which jq
       - run: jq --version
+      - name: Check Windows shim binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $miseBinDir = Split-Path -Parent (Get-Command mise).Source
+          $miseShim = Join-Path $miseBinDir "mise-shim.exe"
+          if (!(Test-Path -LiteralPath $miseShim)) {
+            throw "mise-shim.exe was not installed next to mise.exe"
+          }
       - run: . scripts/test.sh
         shell: bash
 
