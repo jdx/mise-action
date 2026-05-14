@@ -89460,6 +89460,7 @@ async function setupMise(version, fetchFromGitHub = false) {
     const miseBinDir = path$1.join(miseDir(), 'bin');
     const miseBinPath = path$1.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     const miseShimPath = path$1.join(miseBinDir, 'mise-shim.exe');
+    let installedVersion;
     if (!fs.existsSync(path$1.join(miseBinPath))) {
         startGroup(version ? `Download mise@${version}` : 'Setup mise');
         await fs.promises.mkdir(miseBinDir, { recursive: true });
@@ -89480,20 +89481,14 @@ async function setupMise(version, fetchFromGitHub = false) {
         else {
             url = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/mise-v${resolvedVersion}-${await getTarget()}${ext}`;
         }
-        const archivePath = path$1.join(os.tmpdir(), `mise${ext}`);
+        installedVersion = resolvedVersion;
         switch (ext) {
             case '.zip': {
-                await exec('curl', ['-fsSL', url, '--output', archivePath]);
-                const extractDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
-                try {
-                    await exec('unzip', [archivePath, '-d', extractDir]);
+                await withExtractedZip(url, 'mise.zip', async (extractDir) => {
                     const extractedMiseBinDir = path$1.join(extractDir, 'mise', 'bin');
                     await mv(path$1.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
                     await installWindowsMiseShim(extractedMiseBinDir, miseShimPath);
-                }
-                finally {
-                    await rmRF(extractDir);
-                }
+                });
                 break;
             }
             case '.tar.zst':
@@ -89517,7 +89512,7 @@ async function setupMise(version, fetchFromGitHub = false) {
     else {
         const requestedVersion = cleanVersion(getInput('version'));
         if (requestedVersion !== '') {
-            const installedVersion = await getInstalledMiseVersion(miseBinPath);
+            installedVersion = await getInstalledMiseVersion(miseBinPath);
             if (requestedVersion === installedVersion) {
                 info(`mise already installed`);
             }
@@ -89525,10 +89520,11 @@ async function setupMise(version, fetchFromGitHub = false) {
                 info(`mise already installed (${installedVersion}), but different version requested (${requestedVersion})`);
                 await exec(miseBinPath, ['self-update', requestedVersion, '-y']);
                 info(`mise updated to version ${requestedVersion}`);
+                installedVersion = requestedVersion;
             }
         }
     }
-    await ensureWindowsMiseShim(miseBinPath, miseShimPath);
+    await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
     // compare with provided hash
     const want = getInput('sha256');
     if (want) {
@@ -89541,6 +89537,19 @@ async function setupMise(version, fetchFromGitHub = false) {
     }
     addPath(miseBinDir);
 }
+async function withExtractedZip(url, archiveName, fn) {
+    const tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
+    try {
+        const archivePath = path$1.join(tempDir, archiveName);
+        const extractDir = path$1.join(tempDir, 'extract');
+        await exec('curl', ['-fsSL', url, '--output', archivePath]);
+        await exec('unzip', [archivePath, '-d', extractDir]);
+        await fn(extractDir);
+    }
+    finally {
+        await rmRF(tempDir);
+    }
+}
 async function installWindowsMiseShim(extractedMiseBinDir, miseShimPath) {
     if (process.platform !== 'win32')
         return;
@@ -89551,31 +89560,22 @@ async function installWindowsMiseShim(extractedMiseBinDir, miseShimPath) {
     }
     await mv(extractedMiseShimPath, miseShimPath);
 }
-async function ensureWindowsMiseShim(miseBinPath, miseShimPath) {
+async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
     if (process.platform !== 'win32')
         return;
     if (fs.existsSync(miseShimPath))
         return;
     info('mise-shim.exe not found next to mise.exe; installing it from the matching release archive');
-    let tempDir;
     try {
-        const installedVersion = await getInstalledMiseVersion(miseBinPath);
+        const installedVersion = version || (await getInstalledMiseVersion(miseBinPath));
         const archiveName = `mise-v${installedVersion}-${await getTarget()}.zip`;
         const url = `https://github.com/jdx/mise/releases/download/v${installedVersion}/${archiveName}`;
-        tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
-        const archivePath = path$1.join(tempDir, archiveName);
-        const extractDir = path$1.join(tempDir, 'extract');
-        await exec('curl', ['-fsSL', url, '--output', archivePath]);
-        await exec('unzip', [archivePath, '-d', extractDir]);
-        await installWindowsMiseShim(path$1.join(extractDir, 'mise', 'bin'), miseShimPath);
+        await withExtractedZip(url, archiveName, async (extractDir) => {
+            await installWindowsMiseShim(path$1.join(extractDir, 'mise', 'bin'), miseShimPath);
+        });
     }
     catch (err) {
-        warning(`Failed to install mise-shim.exe: ${errorMessage(err)}`);
-    }
-    finally {
-        if (tempDir) {
-            await rmRF(tempDir);
-        }
+        warning(`Failed to install mise-shim.exe: ${errorMessage(err)}. Continuing because mise can fall back to file shim mode on Windows.`);
     }
 }
 async function getInstalledMiseVersion(miseBinPath) {
