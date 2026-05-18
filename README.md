@@ -94,6 +94,44 @@ You can also extend the default cache key:
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
 
+### Rust Toolchain Caches
+
+Rust is managed differently from most mise tools. mise wraps `rustup`, so the
+mise cache can restore the `installs/rust` entry while the actual rustup
+toolchain and components still live in `RUSTUP_HOME` and Cargo/rustup proxy
+binaries live in `CARGO_HOME`. If those homes are not restored with the mise
+cache, `mise install` can skip Rust and later `cargo fmt` or `cargo clippy`
+can fail with missing `rustfmt` or `clippy` components. See
+[jdx/mise-action#215](https://github.com/jdx/mise-action/issues/215).
+
+If `mise-action` installs Rust and you keep the mise cache enabled, configure
+mise's Rust homes under the mise data directory before running this action, and
+change the cache key so older Rust-marker-only caches are not reused:
+
+```yaml
+- name: Configure mise Rust homes
+  run: |
+    {
+      echo "MISE_RUSTUP_HOME=${HOME}/.local/share/mise/rustup"
+      echo "MISE_CARGO_HOME=${HOME}/.local/share/mise/cargo"
+    } >> "${GITHUB_ENV}"
+
+- uses: jdx/mise-action@v4
+  with:
+    install: true
+    cache_key: "{{default}}-rustup-cargo-home-v1"
+
+- uses: Swatinem/rust-cache@v2
+  with:
+    cache-bin: "false"
+```
+
+`MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` make mise place rustup toolchains,
+rustup metadata, and Cargo/rustup proxy binaries inside the directory saved by
+the mise cache. `Swatinem/rust-cache` can still be used after `mise-action` for
+Cargo registry, git dependency, and `target` build caches; `cache-bin: "false"`
+keeps Cargo binaries owned by the mise cache instead of both caches.
+
 ## GitHub API Rate Limits
 
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
