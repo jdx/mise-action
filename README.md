@@ -119,7 +119,7 @@ change the cache key so older Rust-marker-only caches are not reused:
 - uses: jdx/mise-action@v4
   with:
     install: true
-    cache_key: "{{default}}-rustup-cargo-home-v1"
+    cache_key: "{{default}}-rustup-cargo-home-v2"
 
 - uses: Swatinem/rust-cache@v2
   with:
