@@ -110,6 +110,7 @@ change the cache key so older Rust-marker-only caches are not reused:
 
 ```yaml
 - name: Configure mise Rust homes
+  shell: bash
   run: |
     {
       echo "MISE_RUSTUP_HOME=${HOME}/.local/share/mise/rustup"
@@ -128,9 +129,11 @@ change the cache key so older Rust-marker-only caches are not reused:
 
 `MISE_RUSTUP_HOME` and `MISE_CARGO_HOME` make mise place rustup toolchains,
 rustup metadata, and Cargo/rustup proxy binaries inside the directory saved by
-the mise cache. `Swatinem/rust-cache` can still be used after `mise-action` for
-Cargo registry, git dependency, and `target` build caches; `cache-bin: "false"`
-keeps Cargo binaries owned by the mise cache instead of both caches.
+the mise cache. If you set `mise_dir`, `MISE_DATA_DIR`, or `XDG_DATA_HOME`,
+adjust these paths so they stay under the mise data directory that this action
+caches. `Swatinem/rust-cache` can still be used after `mise-action` for Cargo
+registry, git dependency, and `target` build caches; `cache-bin: "false"` keeps
+Cargo binaries owned by the mise cache instead of both caches.
 
 ## GitHub API Rate Limits
 
