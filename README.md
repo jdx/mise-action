@@ -109,10 +109,14 @@ When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise ne
 
 ## Lock Files
 
-If a mise lock file such as `mise.lock` is present in the working directory
-or one of its parents, this action automatically runs `mise install --locked`.
-You can still pass `install_args`; `--locked` will be added automatically
-unless you already included it yourself.
+If a repo mise lock file such as `mise.lock` is present in the working
+directory or one of its parents, this action automatically runs
+`mise install --locked`. You can still pass `install_args`; `--locked`
+will be added automatically unless you already included it yourself.
+
+This auto-detection is intended for repo-managed config files. If you provide
+`mise_toml` or `tool_versions` inputs, the action does not automatically force
+locked mode.
 
 ## Alternative Installation
 

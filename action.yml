@@ -29,7 +29,7 @@ inputs:
     description: if false, will not run `mise install`
   install_args:
     required: false
-    description: Arguments to pass to `mise install` such as "bun" to only install bun. When a mise lock file is present, the action automatically adds `--locked` unless you already provided it.
+    description: Arguments to pass to `mise install` such as "bun" to only install bun. When a repo mise lock file is present, the action automatically adds `--locked` unless you already provided it.
   install_dir:
     required: false
     description: deprecated
