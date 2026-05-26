@@ -42,6 +42,11 @@ const MISE_CONFIG_FILE_PATTERNS = [
 const DEFAULT_CACHE_KEY_TEMPLATE =
   '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
+const MISE_LOCK_FILE_PATTERNS = [
+  /^\.?mise(?:\.[^.]+)?\.lock$/,
+  /^config(?:\.[^.]+)?\.lock$/
+]
+
 async function run(): Promise<void> {
   try {
     await setToolVersions()
@@ -490,8 +495,22 @@ async function setMiseToml(): Promise<void> {
 }
 
 const testMise = async (): Promise<number> => mise(['--version'])
-const miseInstall = async (): Promise<number> =>
-  mise([`install ${core.getInput('install_args')}`])
+const miseInstall = async (): Promise<number> => {
+  const installArgs = core.getInput('install_args').trim()
+  const useLocked =
+    hasMiseLockFile(getCwd()) && !/(^|\s)--locked(?:\s|$)/.test(installArgs)
+  const command = [
+    'install',
+    ...(useLocked ? ['--locked'] : []),
+    ...(installArgs ? [installArgs] : [])
+  ].join(' ')
+
+  if (useLocked) {
+    core.info('Detected a mise lock file, running `mise install --locked`')
+  }
+
+  return mise([command])
+}
 const miseLs = async (): Promise<number> => mise([`ls`])
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
@@ -530,6 +549,42 @@ function getCwd(): string {
     core.getInput('install_dir') ||
     process.cwd()
   )
+}
+
+function hasMiseLockFile(startDir: string): boolean {
+  let dir = path.resolve(startDir)
+
+  while (true) {
+    if (directoryHasMiseLockFile(dir)) return true
+
+    const parent = path.dirname(dir)
+    if (parent === dir) return false
+    dir = parent
+  }
+}
+
+function directoryHasMiseLockFile(dir: string): boolean {
+  return (
+    hasMatchingLockFile(dir) ||
+    hasMatchingLockFile(path.join(dir, '.config')) ||
+    hasMatchingLockFile(path.join(dir, '.config', 'mise')) ||
+    hasMatchingLockFile(path.join(dir, '.mise')) ||
+    hasMatchingLockFile(path.join(dir, 'mise'))
+  )
+}
+
+function hasMatchingLockFile(dir: string): boolean {
+  try {
+    return fs
+      .readdirSync(dir, { withFileTypes: true })
+      .some(
+        entry =>
+          entry.isFile() &&
+          MISE_LOCK_FILE_PATTERNS.some(pattern => pattern.test(entry.name))
+      )
+  } catch {
+    return false
+  }
 }
 
 function miseDir(): string {

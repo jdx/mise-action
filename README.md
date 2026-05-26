@@ -107,6 +107,13 @@ When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise ne
 
 **Note:** The action automatically uses `${{ github.token }}` as the default, so in most cases you don't need to explicitly provide it. However, if you encounter rate limit errors, make sure the token is being passed correctly.
 
+## Lock Files
+
+If a mise lock file such as `mise.lock` is present in the working directory
+or one of its parents, this action automatically runs `mise install --locked`.
+You can still pass `install_args`; `--locked` will be added automatically
+unless you already included it yourself.
+
 ## Alternative Installation
 
 Alternatively, mise is easy to use in GitHub Actions even without this:
