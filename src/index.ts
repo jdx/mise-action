@@ -43,6 +43,7 @@ const DEFAULT_CACHE_KEY_TEMPLATE =
   '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
+const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/]
 
 async function run(): Promise<void> {
@@ -493,10 +494,13 @@ async function setMiseToml(): Promise<void> {
 }
 
 const testMise = async (): Promise<number> => mise(['--version'])
+let supportsLockedInstall: boolean | undefined
+
 const miseInstall = async (): Promise<number> => {
   const installArgs = core.getInput('install_args').trim()
   const useLocked =
-    shouldUseLockedInstall() && !/(^|\s)--locked(?:\s|$)/.test(installArgs)
+    (await shouldUseLockedInstall()) &&
+    !/(^|\s)--locked(?:\s|$)/.test(installArgs)
   const command = [
     'install',
     ...(useLocked ? ['--locked'] : []),
@@ -549,9 +553,29 @@ function getCwd(): string {
   )
 }
 
-function shouldUseLockedInstall(): boolean {
+async function shouldUseLockedInstall(): Promise<boolean> {
   if (core.getInput('tool_versions') || core.getInput('mise_toml')) return false
+  if (!(await miseSupportsLockedInstall())) return false
   return hasMiseLockFile(getCwd())
+}
+
+async function miseSupportsLockedInstall(): Promise<boolean> {
+  if (supportsLockedInstall !== undefined) return supportsLockedInstall
+
+  const { stdout, stderr } = await exec.getExecOutput(
+    'mise',
+    ['install', '--help'],
+    {
+      cwd: getCwd(),
+      ignoreReturnCode: true,
+      silent: true
+    }
+  )
+
+  supportsLockedInstall = /(^|\s)--locked(?:[\s,]|$)/m.test(
+    `${stdout}\n${stderr}`
+  )
+  return supportsLockedInstall
 }
 
 function hasMiseLockFile(startDir: string): boolean {
@@ -571,7 +595,7 @@ function directoryHasMiseLockFile(dir: string): boolean {
     hasMatchingLockFile(dir, ROOT_MISE_LOCK_FILE_PATTERNS) ||
     hasMatchingLockFile(
       path.join(dir, '.config'),
-      ROOT_MISE_LOCK_FILE_PATTERNS
+      CONFIG_DIR_MISE_LOCK_FILE_PATTERNS
     ) ||
     hasMatchingLockFile(path.join(dir, '.config', 'mise'), [
       ...ROOT_MISE_LOCK_FILE_PATTERNS,
