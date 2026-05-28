@@ -42,6 +42,10 @@ const MISE_CONFIG_FILE_PATTERNS = [
 const DEFAULT_CACHE_KEY_TEMPLATE =
   '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
+const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
+const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
+const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/]
+
 async function run(): Promise<void> {
   try {
     await setToolVersions()
@@ -490,8 +494,25 @@ async function setMiseToml(): Promise<void> {
 }
 
 const testMise = async (): Promise<number> => mise(['--version'])
-const miseInstall = async (): Promise<number> =>
-  mise([`install ${core.getInput('install_args')}`])
+let supportsLockedInstall: boolean | undefined
+
+const miseInstall = async (): Promise<number> => {
+  const installArgs = core.getInput('install_args').trim()
+  const useLocked =
+    (await shouldUseLockedInstall()) &&
+    !/(^|\s)--locked(?:\s|$)/.test(installArgs)
+  const command = [
+    'install',
+    ...(useLocked ? ['--locked'] : []),
+    ...(installArgs ? [installArgs] : [])
+  ].join(' ')
+
+  if (useLocked) {
+    core.info('Detected a mise lock file, running `mise install --locked`')
+  }
+
+  return mise([command])
+}
 const miseLs = async (): Promise<number> => mise([`ls`])
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
@@ -530,6 +551,81 @@ function getCwd(): string {
     core.getInput('install_dir') ||
     process.cwd()
   )
+}
+
+async function shouldUseLockedInstall(): Promise<boolean> {
+  if (core.getInput('tool_versions') || core.getInput('mise_toml')) return false
+  if (!(await miseSupportsLockedInstall())) return false
+  return hasMiseLockFile(getCwd())
+}
+
+async function miseSupportsLockedInstall(): Promise<boolean> {
+  if (supportsLockedInstall !== undefined) return supportsLockedInstall
+
+  const { stdout, stderr } = await exec.getExecOutput(
+    'mise',
+    ['install', '--help'],
+    {
+      cwd: getCwd(),
+      ignoreReturnCode: true,
+      silent: true
+    }
+  )
+
+  supportsLockedInstall = /(^|\s)--locked(?:[\s,]|$)/m.test(
+    `${stdout}\n${stderr}`
+  )
+  return supportsLockedInstall
+}
+
+function hasMiseLockFile(startDir: string): boolean {
+  let dir = path.resolve(startDir)
+
+  while (true) {
+    if (directoryHasMiseLockFile(dir)) return true
+
+    const parent = path.dirname(dir)
+    if (parent === dir) return false
+    dir = parent
+  }
+}
+
+function directoryHasMiseLockFile(dir: string): boolean {
+  return (
+    hasMatchingLockFile(dir, ROOT_MISE_LOCK_FILE_PATTERNS) ||
+    hasMatchingLockFile(
+      path.join(dir, '.config'),
+      CONFIG_DIR_MISE_LOCK_FILE_PATTERNS
+    ) ||
+    hasMatchingLockFile(path.join(dir, '.config', 'mise'), [
+      ...ROOT_MISE_LOCK_FILE_PATTERNS,
+      ...CONFIG_MISE_LOCK_FILE_PATTERNS
+    ]) ||
+    hasMatchingLockFile(path.join(dir, '.mise'), [
+      ...ROOT_MISE_LOCK_FILE_PATTERNS,
+      ...CONFIG_MISE_LOCK_FILE_PATTERNS
+    ]) ||
+    hasMatchingLockFile(path.join(dir, 'mise'), [
+      ...ROOT_MISE_LOCK_FILE_PATTERNS,
+      ...CONFIG_MISE_LOCK_FILE_PATTERNS
+    ])
+  )
+}
+
+function hasMatchingLockFile(dir: string, patterns: RegExp[]): boolean {
+  try {
+    const stat = fs.statSync(dir, { throwIfNoEntry: false })
+    if (!stat?.isDirectory()) return false
+
+    return fs
+      .readdirSync(dir, { withFileTypes: true })
+      .some(
+        entry =>
+          entry.isFile() && patterns.some(pattern => pattern.test(entry.name))
+      )
+  } catch {
+    return false
+  }
 }
 
 function miseDir(): string {
