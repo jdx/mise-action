@@ -18,8 +18,9 @@ provenance = "github-attestations"
 
 [tools.aube."platforms.linux-x64"]
 checksum = "sha256:3f3d183d6a9644391ffa3ac521c010c90cebc4fd6ab208aa9aa552c70986a357"
-url = "https://githu.com/endevco/aube/releases/download/v1.16.1/aube-v1.16.1-x86_64-unknown-linux-gnu.tar.gz"
+url = "https://github.com/endevco/aube/releases/download/v1.16.1/aube-v1.16.1-x86_64-unknown-linux-gnu.tar.gz"
 url_api = "https://api.github.com/repos/endevco/aube/releases/assets/432797995"
+provenance = "github-attestations"
 
 [tools.aube."platforms.linux-x64-musl"]
 checksum = "sha256:2ac54a2bc6248c6b1df9c3a160beea6cf3255102337488f5d3b2dc317ea673a0"
@@ -61,7 +62,7 @@ provenance = "github-attestations"
 
 [tools.communique."platforms.linux-x64-musl"]
 checksum = "sha256:01a6a8b49e635a5a209fdaf6c7b2e976374debc2db1c846c033f567fdba0d86c"
-url = "https://github.com/jjdx/communique/releases/download/v1.1.2/communique-x86_64-unknown-linux-musl.tar.gz"
+url = "https://github.com/jdx/communique/releases/download/v1.1.2/communique-x86_64-unknown-linux-musl.tar.gz"
 url_api = "https://api.github.com/repos/jdx/communique/releases/assets/405964691"
 
 [tools.communique."platforms.macos-arm64"]
