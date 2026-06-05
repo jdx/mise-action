@@ -30550,7 +30550,7 @@ function requireBraceExpansion () {
 
 	    N = [];
 
-	    for (var i = x; test(i, y); i += incr) {
+	    for (var i = x; test(i, y) && N.length < max; i += incr) {
 	      var c;
 	      if (isAlphaSequence) {
 	        c = String.fromCharCode(i);
@@ -71996,7 +71996,7 @@ NetworkError.isNetworkErrorCode = (code) => {
 };
 class UsageError extends Error {
     constructor() {
-        const message = `Cache storage quota has been hit. Unable to upload any new cache entries. Usage is recalculated every 6-12 hours.\nMore info on storage limits: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#calculating-minute-and-storage-spending`;
+        const message = `Cache storage quota has been hit. Unable to upload any new cache entries.\nMore info on storage limits: https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions#calculating-minute-and-storage-spending`;
         super(message);
         this.name = 'UsageError';
     }
@@ -72707,7 +72707,7 @@ function getCacheServiceURL() {
     }
 }
 
-var version = "6.0.0";
+var version = "6.0.1";
 var require$$0 = {
 	version: version};
 

@@ -264,7 +264,7 @@ SOFTWARE.
 ---
 
 Name: brace-expansion
-Version: 1.1.14
+Version: 1.1.15
 License: MIT
 Private: false
 Description: Brace expansion as known from sh/bash
@@ -355,7 +355,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 Name: @actions/cache
-Version: 6.0.0
+Version: 6.0.1
 License: MIT
 Private: false
 Description: Actions cache lib
