@@ -94,6 +94,11 @@ You can also extend the default cache key:
 
 This gives you full control over cache invalidation based on the specific aspects that matter to your workflow.
 
+### Rust Cache
+
+Rust has a known cache interaction because mise installs Rust through `rustup`.
+See [jdx/mise-action#215](https://github.com/jdx/mise-action/issues/215).
+
 ## GitHub API Rate Limits
 
 When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
