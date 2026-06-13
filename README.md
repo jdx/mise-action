@@ -42,6 +42,10 @@ jobs:
       - run: node ./my_app.js
 ```
 
+## Sponsors
+
+[View all sponsors](https://en.dev/sponsors.html).
+
 ## Cache Configuration
 
 You can customize the cache key used by the action:
