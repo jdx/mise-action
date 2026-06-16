@@ -116,6 +116,19 @@ When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise ne
 
 **Note:** The action automatically uses `${{ github.token }}` as the default, so in most cases you don't need to explicitly provide it. However, if you encounter rate limit errors, make sure the token is being passed correctly.
 
+## Proxy Configuration
+
+The action downloads mise using Node.js `fetch`, so it does not require `curl`
+or `wget` to be installed in the runner container.
+
+If your runner uses `HTTP_PROXY`, `HTTPS_PROXY`, or `NO_PROXY`, enable Node's
+environment proxy support before the action runs:
+
+```yaml
+env:
+  NODE_USE_ENV_PROXY: "1"
+```
+
 ## Lock Files
 
 If a repo mise lock file such as `mise.lock` is present in the working

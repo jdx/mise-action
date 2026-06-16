@@ -49,6 +49,7 @@ import process$1 from 'node:process';
 import https$1 from 'node:https';
 import require$$1$5 from 'tty';
 import fs$1 from 'node:fs';
+import { pipeline } from 'stream/promises';
 
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -89246,6 +89247,14 @@ const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if versi
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/];
+const ACTIVE_PROXY_ENV_VARS = [
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'http_proxy',
+    'https_proxy'
+];
+const FETCH_TIMEOUT_MS = 300_000;
+let warnedFetchProxy = false;
 async function run() {
     try {
         await setToolVersions();
@@ -89266,8 +89275,8 @@ async function run() {
         // etc.) don't silently send the runner's OIDC token to
         // a third-party cache without explicit consent.
         //
-        // Note: `setupMise` fetches the mise binary itself with
-        // `curl`, which doesn't go through mise's HTTP layer —
+        // Note: `setupMise` fetches the mise binary itself with Node's
+        // `fetch`, which doesn't go through mise's HTTP layer —
         // the wings rewriter only kicks in once the resulting
         // mise binary runs `mise install` and friends. Ordering
         // here is irrelevant for binary acceleration; we just
@@ -89495,25 +89504,19 @@ async function setupMise(version, fetchFromGitHub = false) {
             case '.zip': {
                 await withExtractedZip(url, 'mise.zip', async (extractDir) => {
                     const extractedMiseBinDir = path$1.join(extractDir, 'mise', 'bin');
-                    await mv(path$1.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
+                    await moveFile(path$1.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
                     await installWindowsMiseShim(extractedMiseBinDir, miseShimPath);
                 });
                 break;
             }
             case '.tar.zst':
-                await exec('sh', [
-                    '-c',
-                    `curl -fsSL ${url} | tar --zstd -xf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
-                ]);
+                await installFromTar(url, 'mise.tar.zst', ['--zstd'], miseBinPath);
                 break;
             case '.tar.gz':
-                await exec('sh', [
-                    '-c',
-                    `curl -fsSL ${url} | tar -xzf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
-                ]);
+                await installFromTar(url, 'mise.tar.gz', ['-z'], miseBinPath);
                 break;
             default:
-                await exec('sh', ['-c', `curl -fsSL ${url} > ${miseBinPath}`]);
+                await downloadFile(url, miseBinPath);
                 await exec('chmod', ['+x', miseBinPath]);
                 break;
         }
@@ -89551,7 +89554,7 @@ async function withExtractedZip(url, archiveName, fn) {
     try {
         const archivePath = path$1.join(tempDir, archiveName);
         const extractDir = path$1.join(tempDir, 'extract');
-        await exec('curl', ['-fsSL', url, '--output', archivePath]);
+        await downloadFile(url, archivePath);
         await exec('unzip', [archivePath, '-d', extractDir]);
         await fn(extractDir);
     }
@@ -89567,7 +89570,7 @@ async function installWindowsMiseShim(extractedMiseBinDir, miseShimPath) {
         info('mise-shim.exe not found in the mise archive; skipping');
         return;
     }
-    await mv(extractedMiseShimPath, miseShimPath);
+    await moveFile(extractedMiseShimPath, miseShimPath);
 }
 async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
     if (process.platform !== 'win32')
@@ -89587,6 +89590,34 @@ async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
         warning(`Failed to install mise-shim.exe: ${errorMessage(err)}. Continuing because mise can fall back to file shim mode on Windows.`);
     }
 }
+async function installFromTar(url, archiveName, tarArgs, miseBinPath) {
+    const tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
+    try {
+        const archivePath = path$1.join(tempDir, archiveName);
+        await downloadFile(url, archivePath);
+        await exec('tar', [...tarArgs, '-xf', archivePath, '-C', tempDir]);
+        await moveFile(path$1.join(tempDir, 'mise', 'bin', 'mise'), miseBinPath);
+    }
+    finally {
+        await rmRF(tempDir);
+    }
+}
+async function moveFile(sourcePath, targetPath) {
+    try {
+        await mv(sourcePath, targetPath);
+    }
+    catch (err) {
+        if (!isCrossDeviceRename(err))
+            throw err;
+        await fs.promises.copyFile(sourcePath, targetPath);
+        await fs.promises.unlink(sourcePath);
+    }
+}
+function isCrossDeviceRename(err) {
+    return (err instanceof Error &&
+        'code' in err &&
+        err.code === 'EXDEV');
+}
 async function getInstalledMiseVersion(miseBinPath) {
     const versionOutput = await getExecOutput(miseBinPath, ['version', '--json'], { silent: true });
     const versionJson = JSON.parse(versionOutput.stdout);
@@ -89605,11 +89636,50 @@ async function zstdInstalled() {
     }
 }
 async function latestMiseVersion() {
-    const rsp = await getExecOutput('curl', [
-        '-fsSL',
-        'https://mise.jdx.dev/VERSION'
-    ]);
-    return rsp.stdout.trim();
+    return (await fetchText('https://mise.jdx.dev/VERSION')).trim();
+}
+async function fetchText(url) {
+    const rsp = await fetchUrl(url);
+    return await rsp.text();
+}
+async function downloadFile(url, filePath) {
+    const rsp = await fetchUrl(url);
+    if (!rsp.body) {
+        throw new Error(`Failed to download ${url}: empty response body`);
+    }
+    const tempFilePath = path$1.join(path$1.dirname(filePath), `.${path$1.basename(filePath)}.${crypto$1.randomUUID()}.tmp`);
+    try {
+        await pipeline(Readable.fromWeb(rsp.body), fs.createWriteStream(tempFilePath));
+        await moveFile(tempFilePath, filePath);
+    }
+    catch (err) {
+        await fs.promises.rm(tempFilePath, { force: true });
+        throw err;
+    }
+}
+async function fetchUrl(url) {
+    warnIfFetchMayIgnoreProxy();
+    const rsp = await fetch(url, {
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
+    });
+    if (!rsp.ok) {
+        throw new Error(`Failed to download ${url}: ${rsp.status} ${rsp.statusText}`);
+    }
+    return rsp;
+}
+function warnIfFetchMayIgnoreProxy() {
+    if (warnedFetchProxy)
+        return;
+    warnedFetchProxy = true;
+    const proxyEnvVar = ACTIVE_PROXY_ENV_VARS.find(name => process.env[name]);
+    if (!proxyEnvVar)
+        return;
+    if (process.env.NODE_USE_ENV_PROXY === '1')
+        return;
+    if (process.execArgv.includes('--use-env-proxy'))
+        return;
+    warning(`${proxyEnvVar} is set, but Node env proxy support is not enabled. ` +
+        'Set NODE_USE_ENV_PROXY=1 at the workflow or job level if mise downloads need to use HTTP_PROXY, HTTPS_PROXY, or NO_PROXY.');
 }
 async function setToolVersions() {
     const toolVersions = getInput('tool_versions');
