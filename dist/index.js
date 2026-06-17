@@ -89821,7 +89821,7 @@ async function processCacheKeyTemplate(template) {
         }
     }
     let bootstrapHash = '';
-    if (bootstrap || bootstrapSkip || bootstrapArgs) {
+    if (bootstrap === 'true' || bootstrapSkip || bootstrapArgs) {
         bootstrapHash = crypto$1
             .createHash('sha256')
             .update([bootstrap, bootstrapSkip, bootstrapArgs].join('\0'))

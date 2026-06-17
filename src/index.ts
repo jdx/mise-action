@@ -745,7 +745,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   }
 
   let bootstrapHash = ''
-  if (bootstrap || bootstrapSkip || bootstrapArgs) {
+  if (bootstrap === 'true' || bootstrapSkip || bootstrapArgs) {
     bootstrapHash = crypto
       .createHash('sha256')
       .update([bootstrap, bootstrapSkip, bootstrapArgs].join('\0'))
