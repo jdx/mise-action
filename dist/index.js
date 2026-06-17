@@ -89585,10 +89585,10 @@ async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
 async function getDownloadTool() {
     if (cachedDownloadTool)
         return cachedDownloadTool;
-    if (await which('curl', true)) {
+    if (await which('curl')) {
         cachedDownloadTool = 'curl';
     }
-    else if (await which('wget', true)) {
+    else if (await which('wget')) {
         cachedDownloadTool = 'wget';
     }
     else {

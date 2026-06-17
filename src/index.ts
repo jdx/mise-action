@@ -455,9 +455,9 @@ async function ensureWindowsMiseShim(
 
 async function getDownloadTool(): Promise<DownloadTool> {
   if (cachedDownloadTool) return cachedDownloadTool
-  if (await io.which('curl', true)) {
+  if (await io.which('curl')) {
     cachedDownloadTool = 'curl'
-  } else if (await io.which('wget', true)) {
+  } else if (await io.which('wget')) {
     cachedDownloadTool = 'wget'
   } else {
     throw new Error('Neither curl nor wget is available to download mise')
