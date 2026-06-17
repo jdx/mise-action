@@ -349,13 +349,16 @@ async function setupMise(
           '--zstd',
           '-x'
         ])
-        await io.mv(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
+        // Use cp, not mv: the extraction temp dir and the mise
+        // bin dir can live on different mounts (e.g. inside Alpine
+        // containers), and rename across devices fails with EXDEV.
+        await io.cp(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
         break
       }
       case '.tar.gz': {
         const archivePath = await tc.downloadTool(url)
         const extractDir = await tc.extractTar(archivePath)
-        await io.mv(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
+        await io.cp(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
         break
       }
       default:
