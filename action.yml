@@ -26,10 +26,20 @@ inputs:
   install:
     required: false
     default: "true"
-    description: if false, will not run `mise install`
+    description: if false, will not run `mise install` or `mise bootstrap`
   install_args:
     required: false
     description: Arguments to pass to `mise install` such as "bun" to only install bun. When a repo mise lock file is present, the action automatically adds `--locked` unless you already provided it.
+  bootstrap:
+    required: false
+    default: "false"
+    description: if true, will run `mise bootstrap` instead of `mise install`
+  bootstrap_skip:
+    required: false
+    description: Comma-separated bootstrap parts to skip, such as "tools,task". Passed as `mise bootstrap --skip`.
+  bootstrap_args:
+    required: false
+    description: Additional arguments to pass to `mise bootstrap`.
   install_dir:
     required: false
     description: deprecated
@@ -49,8 +59,8 @@ inputs:
     required: false
     description: |
       Override the complete cache key (ignores all other cache key options).
-      Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}}, 
-      {{mise_env}}, {{install_args_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables, 
+      Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}},
+      {{mise_env}}, {{install_args_hash}}, {{bootstrap_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables,
       and conditional logic like {{#if version}}...{{/if}}
   experimental:
     required: false
