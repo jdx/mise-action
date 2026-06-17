@@ -89800,7 +89800,7 @@ async function processCacheKeyTemplate(template) {
     // Get all available variables
     const version = getInput('version');
     const installArgs = getInput('install_args');
-    const bootstrap = getInput('bootstrap');
+    const bootstrap = getBooleanInput('bootstrap');
     const bootstrapSkip = getInput('bootstrap_skip');
     const bootstrapArgs = getInput('bootstrap_args');
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
@@ -89821,10 +89821,10 @@ async function processCacheKeyTemplate(template) {
         }
     }
     let bootstrapHash = '';
-    if (bootstrap === 'true' || bootstrapSkip || bootstrapArgs) {
+    if (bootstrap) {
         bootstrapHash = crypto$1
             .createHash('sha256')
-            .update([bootstrap, bootstrapSkip, bootstrapArgs].join('\0'))
+            .update([String(bootstrap), bootstrapSkip, bootstrapArgs].join('\0'))
             .digest('hex');
     }
     // Prepare base template data

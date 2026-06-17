@@ -721,7 +721,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   // Get all available variables
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
-  const bootstrap = core.getInput('bootstrap')
+  const bootstrap = core.getBooleanInput('bootstrap')
   const bootstrapSkip = core.getInput('bootstrap_skip')
   const bootstrapArgs = core.getInput('bootstrap_args')
   const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
@@ -745,10 +745,10 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   }
 
   let bootstrapHash = ''
-  if (bootstrap === 'true' || bootstrapSkip || bootstrapArgs) {
+  if (bootstrap) {
     bootstrapHash = crypto
       .createHash('sha256')
-      .update([bootstrap, bootstrapSkip, bootstrapArgs].join('\0'))
+      .update([String(bootstrap), bootstrapSkip, bootstrapArgs].join('\0'))
       .digest('hex')
   }
 
