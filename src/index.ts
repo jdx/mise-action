@@ -40,7 +40,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
+  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
@@ -86,10 +86,13 @@ async function run(): Promise<void> {
     }
     await testMise()
     if (core.getBooleanInput('install')) {
-      await miseInstall()
-      if (cacheKey && core.getBooleanInput('cache_save')) {
-        await saveCache(cacheKey)
+      if (core.getBooleanInput('bootstrap')) {
+        await miseBootstrap()
+      } else {
+        await miseInstall()
       }
+      if (cacheKey && core.getBooleanInput('cache_save'))
+        await saveCache(cacheKey)
     }
     await miseLs()
     const loadEnv = core.getBooleanInput('env')
@@ -243,7 +246,12 @@ async function setEnvVars(): Promise<void> {
       core.exportVariable(k, v)
     }
   }
-  if (core.getBooleanInput('experimental')) set('MISE_EXPERIMENTAL', '1')
+  if (
+    core.getBooleanInput('experimental') ||
+    core.getBooleanInput('bootstrap')
+  ) {
+    set('MISE_EXPERIMENTAL', '1')
+  }
 
   const logLevel = core.getInput('log_level')
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
@@ -513,6 +521,30 @@ const miseInstall = async (): Promise<number> => {
 
   return mise([command])
 }
+const miseBootstrap = async (): Promise<number> => {
+  const installArgs = core.getInput('install_args').trim()
+  if (installArgs) {
+    throw new Error(
+      '`install_args` cannot be used when `bootstrap` is true because `mise bootstrap` does not support partial tool install args.'
+    )
+  }
+
+  const bootstrapSkip = core.getInput('bootstrap_skip').trim()
+  const bootstrapArgs = core.getInput('bootstrap_args').trim()
+  const useLocked = await shouldUseLockedInstall()
+  const command = [
+    ...(useLocked ? ['--locked'] : []),
+    'bootstrap',
+    ...(bootstrapSkip ? ['--skip', bootstrapSkip] : []),
+    ...(bootstrapArgs ? [bootstrapArgs] : [])
+  ].join(' ')
+
+  if (useLocked) {
+    core.info('Detected a mise lock file, running `mise --locked bootstrap`')
+  }
+
+  return mise([command])
+}
 const miseLs = async (): Promise<number> => mise([`ls`])
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
@@ -689,6 +721,9 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   // Get all available variables
   const version = core.getInput('version')
   const installArgs = core.getInput('install_args')
+  const bootstrap = core.getInput('bootstrap')
+  const bootstrapSkip = core.getInput('bootstrap_skip')
+  const bootstrapArgs = core.getInput('bootstrap_args')
   const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
   const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
   const platform = `${await getTarget()}-${getRunnerImageId()}`
@@ -709,6 +744,14 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     }
   }
 
+  let bootstrapHash = ''
+  if (bootstrap || bootstrapSkip || bootstrapArgs) {
+    bootstrapHash = crypto
+      .createHash('sha256')
+      .update([bootstrap, bootstrapSkip, bootstrapArgs].join('\0'))
+      .digest('hex')
+  }
+
   // Prepare base template data
   const baseTemplateData = {
     version,
@@ -716,7 +759,8 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     platform,
     file_hash: fileHash,
     mise_env: miseEnv,
-    install_args_hash: installArgsHash
+    install_args_hash: installArgsHash,
+    bootstrap_hash: bootstrapHash
   }
 
   // Calculate the default cache key by processing the default template

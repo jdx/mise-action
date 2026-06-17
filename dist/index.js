@@ -89242,7 +89242,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `**/.tool-versions`
 ];
 // Default cache key template
-const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
+const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/];
@@ -89284,10 +89284,14 @@ async function run() {
         }
         await testMise();
         if (getBooleanInput('install')) {
-            await miseInstall();
-            if (cacheKey && getBooleanInput('cache_save')) {
-                await saveCache(cacheKey);
+            if (getBooleanInput('bootstrap')) {
+                await miseBootstrap();
             }
+            else {
+                await miseInstall();
+            }
+            if (cacheKey && getBooleanInput('cache_save'))
+                await saveCache(cacheKey);
         }
         await miseLs();
         const loadEnv = getBooleanInput('env');
@@ -89422,8 +89426,10 @@ async function setEnvVars() {
             exportVariable(k, v);
         }
     };
-    if (getBooleanInput('experimental'))
+    if (getBooleanInput('experimental') ||
+        getBooleanInput('bootstrap')) {
         set('MISE_EXPERIMENTAL', '1');
+    }
     const logLevel = getInput('log_level');
     if (logLevel)
         set('MISE_LOG_LEVEL', logLevel);
@@ -89633,6 +89639,25 @@ const miseInstall = async () => {
     }
     return mise([command]);
 };
+const miseBootstrap = async () => {
+    const installArgs = getInput('install_args').trim();
+    if (installArgs) {
+        throw new Error('`install_args` cannot be used when `bootstrap` is true because `mise bootstrap` does not support partial tool install args.');
+    }
+    const bootstrapSkip = getInput('bootstrap_skip').trim();
+    const bootstrapArgs = getInput('bootstrap_args').trim();
+    const useLocked = await shouldUseLockedInstall();
+    const command = [
+        ...(useLocked ? ['--locked'] : []),
+        'bootstrap',
+        ...(bootstrapSkip ? ['--skip', bootstrapSkip] : []),
+        ...(bootstrapArgs ? [bootstrapArgs] : [])
+    ].join(' ');
+    if (useLocked) {
+        info('Detected a mise lock file, running `mise --locked bootstrap`');
+    }
+    return mise([command]);
+};
 const miseLs = async () => mise([`ls`]);
 const miseReshim = async () => mise([`reshim`, `-f`]);
 const mise = async (args) => await group(`Running mise ${args.join(' ')}`, async () => {
@@ -89775,6 +89800,9 @@ async function processCacheKeyTemplate(template) {
     // Get all available variables
     const version = getInput('version');
     const installArgs = getInput('install_args');
+    const bootstrap = getInput('bootstrap');
+    const bootstrapSkip = getInput('bootstrap_skip');
+    const bootstrapArgs = getInput('bootstrap_args');
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
     const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
     const platform = `${await getTarget()}-${getRunnerImageId()}`;
@@ -89792,6 +89820,13 @@ async function processCacheKeyTemplate(template) {
             installArgsHash = crypto$1.createHash('sha256').update(tools).digest('hex');
         }
     }
+    let bootstrapHash = '';
+    if (bootstrap || bootstrapSkip || bootstrapArgs) {
+        bootstrapHash = crypto$1
+            .createHash('sha256')
+            .update([bootstrap, bootstrapSkip, bootstrapArgs].join('\0'))
+            .digest('hex');
+    }
     // Prepare base template data
     const baseTemplateData = {
         version,
@@ -89799,7 +89834,8 @@ async function processCacheKeyTemplate(template) {
         platform,
         file_hash: fileHash,
         mise_env: miseEnv,
-        install_args_hash: installArgsHash
+        install_args_hash: installArgsHash,
+        bootstrap_hash: bootstrapHash
     };
     // Calculate the default cache key by processing the default template
     const defaultTemplate = libExports.compile(DEFAULT_CACHE_KEY_TEMPLATE);

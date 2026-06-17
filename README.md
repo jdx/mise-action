@@ -19,6 +19,9 @@ jobs:
           version: 2026.3.10 # [default: latest] mise version to install
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
+          bootstrap: false # [default: false] run `mise bootstrap` instead of `mise install`
+          bootstrap_skip: "tools,task" # [default: ""] comma-separated parts to skip when bootstrapping
+          bootstrap_args: "--yes" # [default: ""] additional arguments to `mise bootstrap`
           cache: true # [default: true] cache mise using GitHub's cache
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
@@ -72,6 +75,7 @@ Available template variables:
 - `{{file_hash}}` - Hash of all mise configuration files
 - `{{mise_env}}` - The MISE_ENV environment variable value
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
+- `{{bootstrap_hash}}` - SHA256 hash of bootstrap mode, skip list, and args
 - `{{default}}` - The processed default cache key (useful for extending)
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.
@@ -122,6 +126,21 @@ will be added automatically unless you already included it yourself.
 This auto-detection is intended for repo-managed config files. If you provide
 `mise_toml` or `tool_versions` inputs, the action does not automatically force
 locked mode.
+
+## Bootstrap
+
+Set `bootstrap: true` to run `mise bootstrap` instead of `mise install`:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    bootstrap: true
+```
+
+When a repo mise lock file is present, the action automatically runs
+`mise --locked bootstrap`. `install_args` cannot be combined with
+`bootstrap: true`; use `bootstrap_skip` and `bootstrap_args` for bootstrap
+customization.
 
 ## Alternative Installation
 
