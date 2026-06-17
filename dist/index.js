@@ -89836,12 +89836,6 @@ async function setupMise(version, fetchFromGitHub = false) {
             }
             case '.tar.zst': {
                 const archivePath = await downloadTool(url);
-                // Extract straight into miseDir(): the tarball is laid out
-                // as `mise/{bin,man,share,...}`, so stripping the leading
-                // `mise/` component drops the binary at miseBinPath and the
-                // rest in their native mise data-dir locations. This avoids
-                // a temp dir and a cross-device copy (rename fails EXDEV when
-                // the temp dir and miseDir() are on different mounts).
                 await extractTar(archivePath, miseDir(), [
                     '--zstd',
                     '-x',
