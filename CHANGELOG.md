@@ -1,6 +1,26 @@
 # Changelog
 
 ---
+## [4.2.0](https://github.com/jdx/mise-action/compare/v4.1.0..v4.2.0) - 2026-06-17
+
+### 🚀 Features
+
+- support bootstrap mode (#522) by [@jdx](https://github.com/jdx) in [#522](https://github.com/jdx/mise-action/pull/522)
+
+### 🐛 Bug Fixes
+
+- fall back to wget when curl is unavailable (#521) by [@risu729](https://github.com/risu729) in [#521](https://github.com/jdx/mise-action/pull/521)
+
+### 📚 Documentation
+
+- link rust cache issue (#496) by [@risu729](https://github.com/risu729) in [#496](https://github.com/jdx/mise-action/pull/496)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** fix zizmor version comments (#506) by [@jdx](https://github.com/jdx) in [#506](https://github.com/jdx/mise-action/pull/506)
+- **(ci)** use pr-closer action (#505) by [@jdx](https://github.com/jdx) in [#505](https://github.com/jdx/mise-action/pull/505)
+
+---
 ## [4.1.0](https://github.com/jdx/mise-action/compare/v4.0.1..v4.1.0) - 2026-06-04
 
 ### 🚀 Features
@@ -12,6 +32,7 @@
 
 - **(ci)** add gh auth setup-git to release-plz.sh (#473) by [@jdx](https://github.com/jdx) in [#473](https://github.com/jdx/mise-action/pull/473)
 - **(ci)** pin codeql-action with exact version comment (#481) by [@jdx](https://github.com/jdx) in [#481](https://github.com/jdx/mise-action/pull/481)
+- **(ci)** resolve zizmor findings (#503) by [@jdx](https://github.com/jdx) in [#503](https://github.com/jdx/mise-action/pull/503)
 - include runner image in cache key to prevent cross-provider collisions (#456) by [@jdx](https://github.com/jdx) in [#456](https://github.com/jdx/mise-action/pull/456)
 - install mise-shim.exe on Windows (#476) by [@risu729](https://github.com/risu729) in [#476](https://github.com/jdx/mise-action/pull/476)
 
