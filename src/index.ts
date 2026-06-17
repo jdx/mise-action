@@ -531,7 +531,9 @@ const miseBootstrap = async (): Promise<number> => {
 
   const bootstrapSkip = core.getInput('bootstrap_skip').trim()
   const bootstrapArgs = core.getInput('bootstrap_args').trim()
-  const useLocked = await shouldUseLockedInstall()
+  const useLocked =
+    (await shouldUseLockedInstall()) &&
+    !/(^|\s)--locked(?:\s|$)/.test(bootstrapArgs)
   const command = [
     ...(useLocked ? ['--locked'] : []),
     'bootstrap',

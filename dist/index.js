@@ -89646,7 +89646,8 @@ const miseBootstrap = async () => {
     }
     const bootstrapSkip = getInput('bootstrap_skip').trim();
     const bootstrapArgs = getInput('bootstrap_args').trim();
-    const useLocked = await shouldUseLockedInstall();
+    const useLocked = (await shouldUseLockedInstall()) &&
+        !/(^|\s)--locked(?:\s|$)/.test(bootstrapArgs);
     const command = [
         ...(useLocked ? ['--locked'] : []),
         'bootstrap',
