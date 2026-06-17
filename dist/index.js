@@ -89654,7 +89654,8 @@ async function installFromTarUrl(url, tarArgs, miseBinPath) {
         tar.kill();
         throw err;
     }
-    await mv(path$1.join(tmpdir, 'mise', 'bin', 'mise'), miseBinPath);
+    const extractedMisePath = path$1.join(tmpdir, 'mise', 'bin', 'mise');
+    await exec('mv', [extractedMisePath, miseBinPath]);
 }
 async function getInstalledMiseVersion(miseBinPath) {
     const versionOutput = await getExecOutput(miseBinPath, ['version', '--json'], { silent: true });

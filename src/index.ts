@@ -531,7 +531,8 @@ async function installFromTarUrl(
     throw err
   }
 
-  await io.mv(path.join(tmpdir, 'mise', 'bin', 'mise'), miseBinPath)
+  const extractedMisePath = path.join(tmpdir, 'mise', 'bin', 'mise')
+  await exec.exec('mv', [extractedMisePath, miseBinPath])
 }
 
 async function getInstalledMiseVersion(miseBinPath: string): Promise<string> {
