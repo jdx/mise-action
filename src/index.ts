@@ -345,20 +345,26 @@ async function setupMise(
       }
       case '.tar.zst': {
         const archivePath = await tc.downloadTool(url)
-        const extractDir = await tc.extractTar(archivePath, undefined, [
+        // Extract straight into miseDir(): the tarball is laid out
+        // as `mise/{bin,man,share,...}`, so stripping the leading
+        // `mise/` component drops the binary at miseBinPath and the
+        // rest in their native mise data-dir locations. This avoids
+        // a temp dir and a cross-device copy (rename fails EXDEV when
+        // the temp dir and miseDir() are on different mounts).
+        await tc.extractTar(archivePath, miseDir(), [
           '--zstd',
-          '-x'
+          '-x',
+          '--strip-components=1'
         ])
-        // Use cp, not mv: the extraction temp dir and the mise
-        // bin dir can live on different mounts (e.g. inside Alpine
-        // containers), and rename across devices fails with EXDEV.
-        await io.cp(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
         break
       }
       case '.tar.gz': {
         const archivePath = await tc.downloadTool(url)
-        const extractDir = await tc.extractTar(archivePath)
-        await io.cp(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
+        await tc.extractTar(archivePath, miseDir(), [
+          '-x',
+          '-z',
+          '--strip-components=1'
+        ])
         break
       }
       default:
