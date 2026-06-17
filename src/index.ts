@@ -3,6 +3,8 @@ import * as io from '@actions/io'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
+import * as tc from '@actions/tool-cache'
+import * as httpm from '@actions/http-client'
 import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
@@ -67,8 +69,9 @@ async function run(): Promise<void> {
     // etc.) don't silently send the runner's OIDC token to
     // a third-party cache without explicit consent.
     //
-    // Note: `setupMise` fetches the mise binary itself with
-    // `curl`, which doesn't go through mise's HTTP layer —
+    // Note: `setupMise` downloads the mise binary itself over
+    // HTTP (via `@actions/tool-cache`), which doesn't go
+    // through mise's HTTP layer —
     // the wings rewriter only kicks in once the resulting
     // mise binary runs `mise install` and friends. Ordering
     // here is irrelevant for binary acceleration; we just
@@ -340,20 +343,23 @@ async function setupMise(
         })
         break
       }
-      case '.tar.zst':
-        await exec.exec('sh', [
-          '-c',
-          `curl -fsSL ${url} | tar --zstd -xf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
+      case '.tar.zst': {
+        const archivePath = await tc.downloadTool(url)
+        const extractDir = await tc.extractTar(archivePath, undefined, [
+          '--zstd',
+          '-x'
         ])
+        await io.mv(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
         break
-      case '.tar.gz':
-        await exec.exec('sh', [
-          '-c',
-          `curl -fsSL ${url} | tar -xzf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
-        ])
+      }
+      case '.tar.gz': {
+        const archivePath = await tc.downloadTool(url)
+        const extractDir = await tc.extractTar(archivePath)
+        await io.mv(path.join(extractDir, 'mise', 'bin', 'mise'), miseBinPath)
         break
+      }
       default:
-        await exec.exec('sh', ['-c', `curl -fsSL ${url} > ${miseBinPath}`])
+        await tc.downloadTool(url, miseBinPath)
         await exec.exec('chmod', ['+x', miseBinPath])
         break
     }
@@ -402,9 +408,9 @@ async function withExtractedZip(
     const archivePath = path.join(tempDir, archiveName)
     const extractDir = path.join(tempDir, 'extract')
 
-    await exec.exec('curl', ['-fsSL', url, '--output', archivePath])
-    await exec.exec('unzip', [archivePath, '-d', extractDir])
-    await fn(extractDir)
+    await tc.downloadTool(url, archivePath)
+    const extracted = await tc.extractZip(archivePath, extractDir)
+    await fn(extracted)
   } finally {
     await io.rmRF(tempDir)
   }
@@ -480,11 +486,14 @@ async function zstdInstalled(): Promise<boolean> {
 }
 
 async function latestMiseVersion(): Promise<string> {
-  const rsp = await exec.getExecOutput('curl', [
-    '-fsSL',
-    'https://mise.jdx.dev/VERSION'
-  ])
-  return rsp.stdout.trim()
+  const http = new httpm.HttpClient('mise-action')
+  const rsp = await http.get('https://mise.jdx.dev/VERSION')
+  if (rsp.message.statusCode !== 200) {
+    throw new Error(
+      `Failed to fetch latest mise version: ${rsp.message.statusCode} ${rsp.message.statusMessage}`
+    )
+  }
+  return (await rsp.readBody()).trim()
 }
 
 async function setToolVersions(): Promise<void> {

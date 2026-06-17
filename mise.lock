@@ -69,6 +69,7 @@ url_api = "https://api.github.com/repos/jdx/communique/releases/assets/405964691
 checksum = "sha256:459993e31a6c4ccbd09882f5679a2bc1ea5d9068701ecefc411a00fb69ce82e6"
 url = "https://github.com/jdx/communique/releases/download/v1.1.2/communique-aarch64-apple-darwin.tar.gz"
 url_api = "https://api.github.com/repos/jdx/communique/releases/assets/405964098"
+provenance = "github-attestations"
 
 [tools.communique."platforms.windows-x64"]
 checksum = "sha256:3cc0e880ac2168aed3163223627bbd1eee62e07a9901cb85cb507c6c8927bc93"

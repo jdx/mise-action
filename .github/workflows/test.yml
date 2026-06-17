@@ -39,7 +39,7 @@ jobs:
           - name: alpine
             runs-on: ubuntu-latest
             container: alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601
-            requirements: apk add --no-cache curl bash
+            requirements: apk add --no-cache bash
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runs-on }}
     container: ${{ matrix.container }}
