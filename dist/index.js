@@ -89652,6 +89652,8 @@ async function installFromTarUrl(url, tarArgs, miseBinPath) {
     catch (err) {
         downloader.kill();
         tar.kill();
+        downloadExit.catch(() => { });
+        tarExit.catch(() => { });
         throw err;
     }
     const extractedMisePath = path$1.join(tmpdir, 'mise', 'bin', 'mise');

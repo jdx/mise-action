@@ -528,6 +528,8 @@ async function installFromTarUrl(
   } catch (err) {
     downloader.kill()
     tar.kill()
+    downloadExit.catch(() => {})
+    tarExit.catch(() => {})
     throw err
   }
 
