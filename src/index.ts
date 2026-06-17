@@ -7,6 +7,8 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import { spawn } from 'child_process'
+import { pipeline } from 'stream/promises'
 import * as Handlebars from 'handlebars'
 
 // Configuration file patterns for cache key generation
@@ -46,6 +48,9 @@ const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/]
 
+type DownloadTool = 'curl' | 'wget'
+let cachedDownloadTool: DownloadTool | undefined
+
 async function run(): Promise<void> {
   try {
     await setToolVersions()
@@ -68,7 +73,7 @@ async function run(): Promise<void> {
     // a third-party cache without explicit consent.
     //
     // Note: `setupMise` fetches the mise binary itself with
-    // `curl`, which doesn't go through mise's HTTP layer —
+    // `curl` or `wget`, which doesn't go through mise's HTTP layer —
     // the wings rewriter only kicks in once the resulting
     // mise binary runs `mise install` and friends. Ordering
     // here is irrelevant for binary acceleration; we just
@@ -341,19 +346,13 @@ async function setupMise(
         break
       }
       case '.tar.zst':
-        await exec.exec('sh', [
-          '-c',
-          `curl -fsSL ${url} | tar --zstd -xf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
-        ])
+        await installFromTarUrl(url, ['--zstd', '-xf', '-'], miseBinPath)
         break
       case '.tar.gz':
-        await exec.exec('sh', [
-          '-c',
-          `curl -fsSL ${url} | tar -xzf - -C ${os.tmpdir()} && mv ${os.tmpdir()}/mise/bin/mise ${miseBinPath}`
-        ])
+        await installFromTarUrl(url, ['-xzf', '-'], miseBinPath)
         break
       default:
-        await exec.exec('sh', ['-c', `curl -fsSL ${url} > ${miseBinPath}`])
+        await downloadToFile(url, miseBinPath)
         await exec.exec('chmod', ['+x', miseBinPath])
         break
     }
@@ -402,7 +401,7 @@ async function withExtractedZip(
     const archivePath = path.join(tempDir, archiveName)
     const extractDir = path.join(tempDir, 'extract')
 
-    await exec.exec('curl', ['-fsSL', url, '--output', archivePath])
+    await downloadToFile(url, archivePath)
     await exec.exec('unzip', [archivePath, '-d', extractDir])
     await fn(extractDir)
   } finally {
@@ -456,6 +455,88 @@ async function ensureWindowsMiseShim(
   }
 }
 
+async function getDownloadTool(): Promise<DownloadTool> {
+  if (cachedDownloadTool) return cachedDownloadTool
+  if (await io.which('curl')) {
+    cachedDownloadTool = 'curl'
+  } else if (await io.which('wget')) {
+    cachedDownloadTool = 'wget'
+  } else {
+    throw new Error('Neither curl nor wget is available to download mise')
+  }
+  core.info(`Using ${cachedDownloadTool} to download mise`)
+  return cachedDownloadTool
+}
+
+async function downloadToFile(url: string, filePath: string): Promise<void> {
+  const tool = await getDownloadTool()
+  if (tool === 'curl') {
+    await exec.exec('curl', ['-fsSL', url, '--output', filePath])
+  } else {
+    await exec.exec('wget', ['-qO', filePath, url])
+  }
+}
+
+async function downloadText(url: string): Promise<string> {
+  const tool = await getDownloadTool()
+  if (tool === 'curl') {
+    const rsp = await exec.getExecOutput('curl', ['-fsSL', url])
+    return rsp.stdout.trim()
+  }
+  const rsp = await exec.getExecOutput('wget', ['-qO-', url])
+  return rsp.stdout.trim()
+}
+
+async function installFromTarUrl(
+  url: string,
+  tarArgs: string[],
+  miseBinPath: string
+): Promise<void> {
+  const tmpdir = os.tmpdir()
+  const tool = await getDownloadTool()
+  const downloader = spawn(
+    tool,
+    tool === 'curl' ? ['-fsSL', url] : ['-qO-', url],
+    { stdio: ['ignore', 'pipe', 'inherit'] }
+  )
+  const tar = spawn('tar', [...tarArgs, '-C', tmpdir], {
+    stdio: ['pipe', 'inherit', 'inherit']
+  })
+
+  if (!downloader.stdout) {
+    throw new Error(`Failed to start ${tool} download stream`)
+  }
+
+  const downloadExit = new Promise<void>((resolve, reject) => {
+    downloader.on('error', reject)
+    downloader.on('close', code => {
+      if (code === 0) resolve()
+      else reject(new Error(`${tool} exited with code ${code}`))
+    })
+  })
+  const tarExit = new Promise<void>((resolve, reject) => {
+    tar.on('error', reject)
+    tar.on('close', code => {
+      if (code === 0) resolve()
+      else reject(new Error(`tar exited with code ${code}`))
+    })
+  })
+
+  try {
+    await pipeline(downloader.stdout, tar.stdin!)
+    await Promise.all([downloadExit, tarExit])
+  } catch (err) {
+    downloader.kill()
+    tar.kill()
+    downloadExit.catch(() => {})
+    tarExit.catch(() => {})
+    throw err
+  }
+
+  const extractedMisePath = path.join(tmpdir, 'mise', 'bin', 'mise')
+  await exec.exec('mv', [extractedMisePath, miseBinPath])
+}
+
 async function getInstalledMiseVersion(miseBinPath: string): Promise<string> {
   const versionOutput = await exec.getExecOutput(
     miseBinPath,
@@ -480,11 +561,7 @@ async function zstdInstalled(): Promise<boolean> {
 }
 
 async function latestMiseVersion(): Promise<string> {
-  const rsp = await exec.getExecOutput('curl', [
-    '-fsSL',
-    'https://mise.jdx.dev/VERSION'
-  ])
-  return rsp.stdout.trim()
+  return downloadText('https://mise.jdx.dev/VERSION')
 }
 
 async function setToolVersions(): Promise<void> {
