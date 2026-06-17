@@ -7,6 +7,8 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import { spawn } from 'child_process'
+import { pipeline } from 'stream/promises'
 import * as Handlebars from 'handlebars'
 
 // Configuration file patterns for cache key generation
@@ -344,10 +346,10 @@ async function setupMise(
         break
       }
       case '.tar.zst':
-        await installFromTarUrl(url, '--zstd -xf -', miseBinPath)
+        await installFromTarUrl(url, ['--zstd', '-xf', '-'], miseBinPath)
         break
       case '.tar.gz':
-        await installFromTarUrl(url, '-xzf -', miseBinPath)
+        await installFromTarUrl(url, ['-xzf', '-'], miseBinPath)
         break
       default:
         await downloadToFile(url, miseBinPath)
@@ -466,11 +468,6 @@ async function getDownloadTool(): Promise<DownloadTool> {
   return cachedDownloadTool
 }
 
-async function downloadToStdoutShell(url: string): Promise<string> {
-  const tool = await getDownloadTool()
-  return tool === 'curl' ? `curl -fsSL ${url}` : `wget -qO- ${url}`
-}
-
 async function downloadToFile(url: string, filePath: string): Promise<void> {
   const tool = await getDownloadTool()
   if (tool === 'curl') {
@@ -492,15 +489,49 @@ async function downloadText(url: string): Promise<string> {
 
 async function installFromTarUrl(
   url: string,
-  tarFlags: string,
+  tarArgs: string[],
   miseBinPath: string
 ): Promise<void> {
   const tmpdir = os.tmpdir()
-  const download = await downloadToStdoutShell(url)
-  await exec.exec('sh', [
-    '-c',
-    `${download} | tar ${tarFlags} -C ${tmpdir} && mv ${tmpdir}/mise/bin/mise ${miseBinPath}`
-  ])
+  const tool = await getDownloadTool()
+  const downloader = spawn(
+    tool,
+    tool === 'curl' ? ['-fsSL', url] : ['-qO-', url],
+    { stdio: ['ignore', 'pipe', 'inherit'] }
+  )
+  const tar = spawn('tar', [...tarArgs, '-C', tmpdir], {
+    stdio: ['pipe', 'inherit', 'inherit']
+  })
+
+  if (!downloader.stdout) {
+    throw new Error(`Failed to start ${tool} download stream`)
+  }
+
+  const downloadExit = new Promise<void>((resolve, reject) => {
+    downloader.on('error', reject)
+    downloader.on('close', code => {
+      if (code === 0) resolve()
+      else reject(new Error(`${tool} exited with code ${code}`))
+    })
+  })
+  const tarExit = new Promise<void>((resolve, reject) => {
+    tar.on('error', reject)
+    tar.on('close', code => {
+      if (code === 0) resolve()
+      else reject(new Error(`tar exited with code ${code}`))
+    })
+  })
+
+  try {
+    await pipeline(downloader.stdout, tar.stdin!)
+    await Promise.all([downloadExit, tarExit])
+  } catch (err) {
+    downloader.kill()
+    tar.kill()
+    throw err
+  }
+
+  await io.mv(path.join(tmpdir, 'mise', 'bin', 'mise'), miseBinPath)
 }
 
 async function getInstalledMiseVersion(miseBinPath: string): Promise<string> {

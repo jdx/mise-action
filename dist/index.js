@@ -38,6 +38,7 @@ import require$$1$3 from 'node:console';
 import require$$1$4 from 'node:dns';
 import require$$5$4, { StringDecoder } from 'string_decoder';
 import * as child from 'child_process';
+import { spawn } from 'child_process';
 import { setTimeout as setTimeout$1 } from 'timers';
 import * as stream from 'stream';
 import { Readable } from 'stream';
@@ -49,6 +50,7 @@ import process$1 from 'node:process';
 import https$1 from 'node:https';
 import require$$1$5 from 'tty';
 import fs$1 from 'node:fs';
+import { pipeline } from 'stream/promises';
 
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -89502,10 +89504,10 @@ async function setupMise(version, fetchFromGitHub = false) {
                 break;
             }
             case '.tar.zst':
-                await installFromTarUrl(url, '--zstd -xf -', miseBinPath);
+                await installFromTarUrl(url, ['--zstd', '-xf', '-'], miseBinPath);
                 break;
             case '.tar.gz':
-                await installFromTarUrl(url, '-xzf -', miseBinPath);
+                await installFromTarUrl(url, ['-xzf', '-'], miseBinPath);
                 break;
             default:
                 await downloadToFile(url, miseBinPath);
@@ -89597,10 +89599,6 @@ async function getDownloadTool() {
     info(`Using ${cachedDownloadTool} to download mise`);
     return cachedDownloadTool;
 }
-async function downloadToStdoutShell(url) {
-    const tool = await getDownloadTool();
-    return tool === 'curl' ? `curl -fsSL ${url}` : `wget -qO- ${url}`;
-}
 async function downloadToFile(url, filePath) {
     const tool = await getDownloadTool();
     if (tool === 'curl') {
@@ -89619,13 +89617,44 @@ async function downloadText(url) {
     const rsp = await getExecOutput('wget', ['-qO-', url]);
     return rsp.stdout.trim();
 }
-async function installFromTarUrl(url, tarFlags, miseBinPath) {
+async function installFromTarUrl(url, tarArgs, miseBinPath) {
     const tmpdir = os.tmpdir();
-    const download = await downloadToStdoutShell(url);
-    await exec('sh', [
-        '-c',
-        `${download} | tar ${tarFlags} -C ${tmpdir} && mv ${tmpdir}/mise/bin/mise ${miseBinPath}`
-    ]);
+    const tool = await getDownloadTool();
+    const downloader = spawn(tool, tool === 'curl' ? ['-fsSL', url] : ['-qO-', url], { stdio: ['ignore', 'pipe', 'inherit'] });
+    const tar = spawn('tar', [...tarArgs, '-C', tmpdir], {
+        stdio: ['pipe', 'inherit', 'inherit']
+    });
+    if (!downloader.stdout) {
+        throw new Error(`Failed to start ${tool} download stream`);
+    }
+    const downloadExit = new Promise((resolve, reject) => {
+        downloader.on('error', reject);
+        downloader.on('close', code => {
+            if (code === 0)
+                resolve();
+            else
+                reject(new Error(`${tool} exited with code ${code}`));
+        });
+    });
+    const tarExit = new Promise((resolve, reject) => {
+        tar.on('error', reject);
+        tar.on('close', code => {
+            if (code === 0)
+                resolve();
+            else
+                reject(new Error(`tar exited with code ${code}`));
+        });
+    });
+    try {
+        await pipeline(downloader.stdout, tar.stdin);
+        await Promise.all([downloadExit, tarExit]);
+    }
+    catch (err) {
+        downloader.kill();
+        tar.kill();
+        throw err;
+    }
+    await mv(path$1.join(tmpdir, 'mise', 'bin', 'mise'), miseBinPath);
 }
 async function getInstalledMiseVersion(miseBinPath) {
     const versionOutput = await getExecOutput(miseBinPath, ['version', '--json'], { silent: true });
