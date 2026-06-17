@@ -2,4 +2,4 @@
 
 npm ci
 npm run all
-git add dist
+git add -f dist

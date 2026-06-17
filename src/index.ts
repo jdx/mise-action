@@ -7,8 +7,6 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
-import { Readable } from 'stream'
-import { pipeline } from 'stream/promises'
 import * as Handlebars from 'handlebars'
 
 // Configuration file patterns for cache key generation
@@ -47,14 +45,9 @@ const DEFAULT_CACHE_KEY_TEMPLATE =
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/]
-const ACTIVE_PROXY_ENV_VARS = [
-  'HTTP_PROXY',
-  'HTTPS_PROXY',
-  'http_proxy',
-  'https_proxy'
-]
-const FETCH_TIMEOUT_MS = 300_000
-let warnedFetchProxy = false
+
+type DownloadTool = 'curl' | 'wget'
+let cachedDownloadTool: DownloadTool | undefined
 
 async function run(): Promise<void> {
   try {
@@ -77,8 +70,8 @@ async function run(): Promise<void> {
     // etc.) don't silently send the runner's OIDC token to
     // a third-party cache without explicit consent.
     //
-    // Note: `setupMise` fetches the mise binary itself with Node's
-    // `fetch`, which doesn't go through mise's HTTP layer —
+    // Note: `setupMise` fetches the mise binary itself with
+    // `curl` or `wget`, which doesn't go through mise's HTTP layer —
     // the wings rewriter only kicks in once the resulting
     // mise binary runs `mise install` and friends. Ordering
     // here is irrelevant for binary acceleration; we just
@@ -345,22 +338,19 @@ async function setupMise(
       case '.zip': {
         await withExtractedZip(url, 'mise.zip', async extractDir => {
           const extractedMiseBinDir = path.join(extractDir, 'mise', 'bin')
-          await moveFile(
-            path.join(extractedMiseBinDir, 'mise.exe'),
-            miseBinPath
-          )
+          await io.mv(path.join(extractedMiseBinDir, 'mise.exe'), miseBinPath)
           await installWindowsMiseShim(extractedMiseBinDir, miseShimPath)
         })
         break
       }
       case '.tar.zst':
-        await installFromTar(url, 'mise.tar.zst', ['--zstd'], miseBinPath)
+        await installFromTarUrl(url, '--zstd -xf -', miseBinPath)
         break
       case '.tar.gz':
-        await installFromTar(url, 'mise.tar.gz', ['-z'], miseBinPath)
+        await installFromTarUrl(url, '-xzf -', miseBinPath)
         break
       default:
-        await downloadFile(url, miseBinPath)
+        await downloadToFile(url, miseBinPath)
         await exec.exec('chmod', ['+x', miseBinPath])
         break
     }
@@ -409,7 +399,7 @@ async function withExtractedZip(
     const archivePath = path.join(tempDir, archiveName)
     const extractDir = path.join(tempDir, 'extract')
 
-    await downloadFile(url, archivePath)
+    await downloadToFile(url, archivePath)
     await exec.exec('unzip', [archivePath, '-d', extractDir])
     await fn(extractDir)
   } finally {
@@ -429,7 +419,7 @@ async function installWindowsMiseShim(
     return
   }
 
-  await moveFile(extractedMiseShimPath, miseShimPath)
+  await io.mv(extractedMiseShimPath, miseShimPath)
 }
 
 async function ensureWindowsMiseShim(
@@ -463,41 +453,54 @@ async function ensureWindowsMiseShim(
   }
 }
 
-async function installFromTar(
+async function getDownloadTool(): Promise<DownloadTool> {
+  if (cachedDownloadTool) return cachedDownloadTool
+  if (await io.which('curl', true)) {
+    cachedDownloadTool = 'curl'
+  } else if (await io.which('wget', true)) {
+    cachedDownloadTool = 'wget'
+  } else {
+    throw new Error('Neither curl nor wget is available to download mise')
+  }
+  core.info(`Using ${cachedDownloadTool} to download mise`)
+  return cachedDownloadTool
+}
+
+async function downloadToStdoutShell(url: string): Promise<string> {
+  const tool = await getDownloadTool()
+  return tool === 'curl' ? `curl -fsSL ${url}` : `wget -qO- ${url}`
+}
+
+async function downloadToFile(url: string, filePath: string): Promise<void> {
+  const tool = await getDownloadTool()
+  if (tool === 'curl') {
+    await exec.exec('curl', ['-fsSL', url, '--output', filePath])
+  } else {
+    await exec.exec('wget', ['-qO', filePath, url])
+  }
+}
+
+async function downloadText(url: string): Promise<string> {
+  const tool = await getDownloadTool()
+  if (tool === 'curl') {
+    const rsp = await exec.getExecOutput('curl', ['-fsSL', url])
+    return rsp.stdout.trim()
+  }
+  const rsp = await exec.getExecOutput('wget', ['-qO-', url])
+  return rsp.stdout.trim()
+}
+
+async function installFromTarUrl(
   url: string,
-  archiveName: string,
-  tarArgs: string[],
+  tarFlags: string,
   miseBinPath: string
 ): Promise<void> {
-  const tempDir = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), 'mise-action-')
-  )
-  try {
-    const archivePath = path.join(tempDir, archiveName)
-    await downloadFile(url, archivePath)
-    await exec.exec('tar', [...tarArgs, '-xf', archivePath, '-C', tempDir])
-    await moveFile(path.join(tempDir, 'mise', 'bin', 'mise'), miseBinPath)
-  } finally {
-    await io.rmRF(tempDir)
-  }
-}
-
-async function moveFile(sourcePath: string, targetPath: string): Promise<void> {
-  try {
-    await io.mv(sourcePath, targetPath)
-  } catch (err) {
-    if (!isCrossDeviceRename(err)) throw err
-    await fs.promises.copyFile(sourcePath, targetPath)
-    await fs.promises.unlink(sourcePath)
-  }
-}
-
-function isCrossDeviceRename(err: unknown): boolean {
-  return (
-    err instanceof Error &&
-    'code' in err &&
-    (err as NodeJS.ErrnoException).code === 'EXDEV'
-  )
+  const tmpdir = os.tmpdir()
+  const download = await downloadToStdoutShell(url)
+  await exec.exec('sh', [
+    '-c',
+    `${download} | tar ${tarFlags} -C ${tmpdir} && mv ${tmpdir}/mise/bin/mise ${miseBinPath}`
+  ])
 }
 
 async function getInstalledMiseVersion(miseBinPath: string): Promise<string> {
@@ -524,62 +527,7 @@ async function zstdInstalled(): Promise<boolean> {
 }
 
 async function latestMiseVersion(): Promise<string> {
-  return (await fetchText('https://mise.jdx.dev/VERSION')).trim()
-}
-
-async function fetchText(url: string): Promise<string> {
-  const rsp = await fetchUrl(url)
-  return await rsp.text()
-}
-
-async function downloadFile(url: string, filePath: string): Promise<void> {
-  const rsp = await fetchUrl(url)
-  if (!rsp.body) {
-    throw new Error(`Failed to download ${url}: empty response body`)
-  }
-
-  const tempFilePath = path.join(
-    path.dirname(filePath),
-    `.${path.basename(filePath)}.${crypto.randomUUID()}.tmp`
-  )
-  try {
-    await pipeline(
-      Readable.fromWeb(rsp.body),
-      fs.createWriteStream(tempFilePath)
-    )
-    await moveFile(tempFilePath, filePath)
-  } catch (err) {
-    await fs.promises.rm(tempFilePath, { force: true })
-    throw err
-  }
-}
-
-async function fetchUrl(url: string): Promise<Response> {
-  warnIfFetchMayIgnoreProxy()
-  const rsp = await fetch(url, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
-  })
-  if (!rsp.ok) {
-    throw new Error(
-      `Failed to download ${url}: ${rsp.status} ${rsp.statusText}`
-    )
-  }
-  return rsp
-}
-
-function warnIfFetchMayIgnoreProxy(): void {
-  if (warnedFetchProxy) return
-  warnedFetchProxy = true
-
-  const proxyEnvVar = ACTIVE_PROXY_ENV_VARS.find(name => process.env[name])
-  if (!proxyEnvVar) return
-  if (process.env.NODE_USE_ENV_PROXY === '1') return
-  if (process.execArgv.includes('--use-env-proxy')) return
-
-  core.warning(
-    `${proxyEnvVar} is set, but Node env proxy support is not enabled. ` +
-      'Set NODE_USE_ENV_PROXY=1 at the workflow or job level if mise downloads need to use HTTP_PROXY, HTTPS_PROXY, or NO_PROXY.'
-  )
+  return downloadText('https://mise.jdx.dev/VERSION')
 }
 
 async function setToolVersions(): Promise<void> {
