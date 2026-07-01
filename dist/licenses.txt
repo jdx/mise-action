@@ -355,7 +355,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 Name: @actions/cache
-Version: 6.0.1
+Version: 6.1.0
 License: MIT
 Private: false
 Description: Actions cache lib
