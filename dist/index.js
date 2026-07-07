@@ -38,7 +38,6 @@ import require$$1$3 from 'node:console';
 import require$$1$4 from 'node:dns';
 import require$$5$4, { StringDecoder } from 'string_decoder';
 import * as child from 'child_process';
-import { spawn } from 'child_process';
 import { setTimeout as setTimeout$1 } from 'timers';
 import * as stream from 'stream';
 import { Readable } from 'stream';
@@ -50,7 +49,6 @@ import process$1 from 'node:process';
 import https$1 from 'node:https';
 import require$$1$5 from 'tty';
 import fs$1 from 'node:fs';
-import { pipeline } from 'stream/promises';
 
 // We use any as a valid input type
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -89308,6 +89306,10 @@ const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if versi
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/];
+const MISE_MINISIGN_PUBLIC_KEY = 'RWTC3g8W3z4RZK3V3qv7fa1QY4JEWyBtqIHW+85QlJpZc5yG+uNYNBSZ';
+const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 };
+const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
+const verifiedShasums = new Map();
 let cachedDownloadTool;
 async function run() {
     try {
@@ -89545,34 +89547,55 @@ async function setupMise(version, fetchFromGitHub = false) {
                     : '.tar.gz';
         let resolvedVersion = version || (await latestMiseVersion());
         resolvedVersion = resolvedVersion.replace(/^v/, '');
-        let url;
-        if (!fetchFromGitHub && !version) {
-            // Only for latest version
-            url = `https://mise.jdx.dev/mise-latest-${await getTarget()}${ext}`;
-        }
-        else {
-            url = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/mise-v${resolvedVersion}-${await getTarget()}${ext}`;
-        }
+        const target = await getTarget();
+        const assetName = `mise-v${resolvedVersion}-${target}${ext}`;
+        const rawAssetName = `mise-v${resolvedVersion}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
+        const fetchFromCdn = !fetchFromGitHub && !version;
+        const githubUrl = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/${assetName}`;
+        const cdnUrl = `https://mise.jdx.dev/mise-latest-${target}${process.platform === 'win32' ? '.exe' : ''}`;
         installedVersion = resolvedVersion;
-        switch (ext) {
-            case '.zip': {
-                await withExtractedZip(url, 'mise.zip', async (extractDir) => {
-                    const extractedMiseBinDir = path$1.join(extractDir, 'mise', 'bin');
-                    await mv(path$1.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
-                    await installWindowsMiseShim(extractedMiseBinDir, miseShimPath);
-                });
-                break;
+        const installFromUrl = async (downloadUrl, downloadAssetName, checksumAssetName, extractArchive) => {
+            await withDownloadedMiseAsset(downloadUrl, resolvedVersion, downloadAssetName, checksumAssetName, async (downloadPath, tempDir) => {
+                if (!extractArchive) {
+                    await mv(downloadPath, miseBinPath);
+                    await exec('chmod', ['+x', miseBinPath]);
+                    return;
+                }
+                switch (ext) {
+                    case '.zip':
+                        await withExtractedZip(downloadPath, tempDir, async (extractDir) => {
+                            const extractedMiseBinDir = path$1.join(extractDir, 'mise', 'bin');
+                            await mv(path$1.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
+                            await installWindowsMiseShim(extractedMiseBinDir, miseShimPath);
+                        });
+                        break;
+                    case '.tar.zst':
+                        await installFromTarFile(downloadPath, ['--zstd', '-xf'], tempDir, miseBinPath);
+                        break;
+                    case '.tar.gz':
+                        await installFromTarFile(downloadPath, ['-xzf'], tempDir, miseBinPath);
+                        break;
+                    default:
+                        await mv(downloadPath, miseBinPath);
+                        await exec('chmod', ['+x', miseBinPath]);
+                        break;
+                }
+            });
+        };
+        try {
+            if (fetchFromCdn) {
+                await installFromUrl(cdnUrl, rawAssetName, rawAssetName, false);
             }
-            case '.tar.zst':
-                await installFromTarUrl(url, ['--zstd', '-xf', '-'], miseBinPath);
-                break;
-            case '.tar.gz':
-                await installFromTarUrl(url, ['-xzf', '-'], miseBinPath);
-                break;
-            default:
-                await downloadToFile(url, miseBinPath);
-                await exec('chmod', ['+x', miseBinPath]);
-                break;
+            else {
+                await installFromUrl(githubUrl, assetName, assetName, true);
+            }
+        }
+        catch (err) {
+            if (!fetchFromCdn) {
+                throw err;
+            }
+            warning(`Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`);
+            await installFromUrl(githubUrl, assetName, assetName, true);
         }
     }
     else {
@@ -89603,18 +89626,10 @@ async function setupMise(version, fetchFromGitHub = false) {
     }
     addPath(miseBinDir);
 }
-async function withExtractedZip(url, archiveName, fn) {
-    const tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
-    try {
-        const archivePath = path$1.join(tempDir, archiveName);
-        const extractDir = path$1.join(tempDir, 'extract');
-        await downloadToFile(url, archivePath);
-        await exec('unzip', [archivePath, '-d', extractDir]);
-        await fn(extractDir);
-    }
-    finally {
-        await rmRF(tempDir);
-    }
+async function withExtractedZip(archivePath, tempDir, fn) {
+    const extractDir = path$1.join(tempDir, 'extract');
+    await exec('unzip', [archivePath, '-d', extractDir]);
+    await fn(extractDir);
 }
 async function installWindowsMiseShim(extractedMiseBinDir, miseShimPath) {
     if (process.platform !== 'win32')
@@ -89636,8 +89651,10 @@ async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
         const installedVersion = version || (await getInstalledMiseVersion(miseBinPath));
         const archiveName = `mise-v${installedVersion}-${await getTarget()}.zip`;
         const url = `https://github.com/jdx/mise/releases/download/v${installedVersion}/${archiveName}`;
-        await withExtractedZip(url, archiveName, async (extractDir) => {
-            await installWindowsMiseShim(path$1.join(extractDir, 'mise', 'bin'), miseShimPath);
+        await withDownloadedMiseAsset(url, installedVersion, archiveName, archiveName, async (downloadPath, tempDir) => {
+            await withExtractedZip(downloadPath, tempDir, async (extractDir) => {
+                await installWindowsMiseShim(path$1.join(extractDir, 'mise', 'bin'), miseShimPath);
+            });
         });
     }
     catch (err) {
@@ -89669,54 +89686,138 @@ async function downloadToFile(url, filePath) {
     }
 }
 async function downloadText(url) {
+    return (await downloadRawText(url)).trim();
+}
+async function downloadRawText(url) {
     const tool = await getDownloadTool();
     if (tool === 'curl') {
-        const rsp = await getExecOutput('curl', ['-fsSL', url]);
-        return rsp.stdout.trim();
+        const rsp = await getExecOutput('curl', ['-fsSL', url], {
+            silent: true
+        });
+        return rsp.stdout;
     }
-    const rsp = await getExecOutput('wget', ['-qO-', url]);
-    return rsp.stdout.trim();
+    const rsp = await getExecOutput('wget', ['-qO-', url], {
+        silent: true
+    });
+    return rsp.stdout;
 }
-async function installFromTarUrl(url, tarArgs, miseBinPath) {
-    const tmpdir = os.tmpdir();
-    const tool = await getDownloadTool();
-    const downloader = spawn(tool, tool === 'curl' ? ['-fsSL', url] : ['-qO-', url], { stdio: ['ignore', 'pipe', 'inherit'] });
-    const tar = spawn('tar', [...tarArgs, '-C', tmpdir], {
-        stdio: ['pipe', 'inherit', 'inherit']
-    });
-    if (!downloader.stdout) {
-        throw new Error(`Failed to start ${tool} download stream`);
-    }
-    const downloadExit = new Promise((resolve, reject) => {
-        downloader.on('error', reject);
-        downloader.on('close', code => {
-            if (code === 0)
-                resolve();
-            else
-                reject(new Error(`${tool} exited with code ${code}`));
-        });
-    });
-    const tarExit = new Promise((resolve, reject) => {
-        tar.on('error', reject);
-        tar.on('close', code => {
-            if (code === 0)
-                resolve();
-            else
-                reject(new Error(`tar exited with code ${code}`));
-        });
-    });
+async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName, fn) {
+    const tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
     try {
-        await pipeline(downloader.stdout, tar.stdin);
-        await Promise.all([downloadExit, tarExit]);
+        const downloadPath = path$1.join(tempDir, assetName);
+        await downloadToFile(url, downloadPath);
+        if (verifyAssetName) {
+            await verifyDownloadedMiseAsset(downloadPath, version, verifyAssetName);
+        }
+        await fn(downloadPath, tempDir);
+    }
+    finally {
+        await rmRF(tempDir);
+    }
+}
+async function verifyDownloadedMiseAsset(filePath, version, assetName) {
+    if (getInput('sha256')) {
+        return;
+    }
+    const shasums = await verifiedMiseShasums(version);
+    if (!shasums) {
+        return;
+    }
+    const want = checksumForAsset(shasums, assetName);
+    const got = await sha256File(filePath);
+    if (got !== want) {
+        throw new Error(`SHA256 mismatch: expected ${want}, got ${got} for ${assetName}`);
+    }
+    info(`Verified ${assetName} against signed checksums`);
+}
+async function verifiedMiseShasums(version) {
+    const cached = verifiedShasums.get(version);
+    if (cached) {
+        return cached;
+    }
+    try {
+        const shasumsUrl = `https://github.com/jdx/mise/releases/download/v${version}/SHASUMS256.txt`;
+        const minisigUrl = `${shasumsUrl}.minisig`;
+        const shasums = await downloadRawText(shasumsUrl);
+        const minisig = await downloadRawText(minisigUrl);
+        verifyMinisign(shasums, minisig);
+        verifiedShasums.set(version, shasums);
+        return shasums;
     }
     catch (err) {
-        downloader.kill();
-        tar.kill();
-        downloadExit.catch(() => { });
-        tarExit.catch(() => { });
+        if (miseReleasePredatesMinisign(version)) {
+            warning(`Could not verify signed checksums for mise ${version}: ${errorMessage(err)}. Continuing because this pinned version predates mise minisign checksums.`);
+            return undefined;
+        }
         throw err;
     }
-    const extractedMisePath = path$1.join(tmpdir, 'mise', 'bin', 'mise');
+}
+function checksumForAsset(shasums, assetName) {
+    for (const line of shasums.split(/\r?\n/)) {
+        const match = line.match(/^([a-fA-F0-9]{64})\s+\*?(.+)$/);
+        if (match && path$1.basename(match[2]) === assetName) {
+            return match[1].toLowerCase();
+        }
+    }
+    throw new Error(`No checksum found for ${assetName}`);
+}
+function verifyMinisign(data, minisig) {
+    const lines = minisig.trimEnd().split(/\r?\n/);
+    if (lines.length < 4) {
+        throw new Error('Invalid minisign signature');
+    }
+    const publicKeyBytes = Buffer.from(MISE_MINISIGN_PUBLIC_KEY, 'base64');
+    const signatureBytes = Buffer.from(lines[1], 'base64');
+    const trustedSignatureBytes = Buffer.from(lines[3], 'base64');
+    if (publicKeyBytes.length !== 42 ||
+        signatureBytes.length !== 74 ||
+        trustedSignatureBytes.length !== 64) {
+        throw new Error('Invalid minisign signature format');
+    }
+    if (!publicKeyBytes.subarray(2, 10).equals(signatureBytes.subarray(2, 10))) {
+        throw new Error('Minisign key id mismatch');
+    }
+    const publicKey = crypto$1.createPublicKey({
+        key: Buffer.concat([ED25519_SPKI_PREFIX, publicKeyBytes.subarray(10)]),
+        format: 'der',
+        type: 'spki'
+    });
+    const dataDigest = crypto$1.createHash('blake2b512').update(data).digest();
+    const dataSignature = signatureBytes.subarray(10);
+    if (!crypto$1.verify(null, dataDigest, publicKey, dataSignature)) {
+        throw new Error('Invalid SHASUMS256.txt minisign signature');
+    }
+    const trustedComment = lines[2].replace(/^trusted comment: /, '');
+    const trustedCommentData = Buffer.concat([
+        dataSignature,
+        Buffer.from(trustedComment)
+    ]);
+    if (!crypto$1.verify(null, trustedCommentData, publicKey, trustedSignatureBytes)) {
+        throw new Error('Invalid minisign trusted comment signature');
+    }
+}
+function miseReleasePredatesMinisign(version) {
+    const match = cleanVersion(version).match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+    if (!match) {
+        return false;
+    }
+    const [, year, month, patch] = match.map(Number);
+    if (year !== MISE_MINISIGN_STARTED_AT.year) {
+        return year < MISE_MINISIGN_STARTED_AT.year;
+    }
+    if (month !== MISE_MINISIGN_STARTED_AT.month) {
+        return month < MISE_MINISIGN_STARTED_AT.month;
+    }
+    return patch < MISE_MINISIGN_STARTED_AT.patch;
+}
+async function sha256File(filePath) {
+    const hash = crypto$1.createHash('sha256');
+    const fileBuffer = await fs.promises.readFile(filePath);
+    return hash.update(fileBuffer).digest('hex');
+}
+async function installFromTarFile(archivePath, tarArgs, tempDir, miseBinPath) {
+    await exec('tar', [...tarArgs, archivePath, '-C', tempDir]);
+    const extractedMisePath = path$1.join(tempDir, 'mise', 'bin', 'mise');
     await exec('mv', [extractedMisePath, miseBinPath]);
 }
 async function getInstalledMiseVersion(miseBinPath) {
