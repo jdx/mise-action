@@ -89562,30 +89562,42 @@ async function setupMise(version, fetchFromGitHub = false) {
         }
         installedVersion = resolvedVersion;
         const installFromUrl = async (downloadUrl, checksumAssetName) => {
+            let installedBinPath = miseBinPath;
+            let installedShimPath = miseShimPath;
             await withDownloadedMiseAsset(downloadUrl, resolvedVersion, assetName, checksumAssetName, async (downloadPath, tempDir) => {
+                if (!checksumAssetName) {
+                    const candidateDir = path$1.join(tempDir, 'candidate', 'bin');
+                    await fs.promises.mkdir(candidateDir, { recursive: true });
+                    installedBinPath = path$1.join(candidateDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
+                    installedShimPath = path$1.join(candidateDir, 'mise-shim.exe');
+                }
                 switch (ext) {
                     case '.zip':
                         await withExtractedZip(downloadPath, tempDir, async (extractDir) => {
                             const extractedMiseBinDir = path$1.join(extractDir, 'mise', 'bin');
-                            await mv(path$1.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
-                            await installWindowsMiseShim(extractedMiseBinDir, miseShimPath);
+                            await mv(path$1.join(extractedMiseBinDir, 'mise.exe'), installedBinPath);
+                            await installWindowsMiseShim(extractedMiseBinDir, installedShimPath);
                         });
                         break;
                     case '.tar.zst':
-                        await installFromTarFile(downloadPath, ['--zstd', '-xf'], tempDir, miseBinPath);
+                        await installFromTarFile(downloadPath, ['--zstd', '-xf'], tempDir, installedBinPath);
                         break;
                     case '.tar.gz':
-                        await installFromTarFile(downloadPath, ['-xzf'], tempDir, miseBinPath);
+                        await installFromTarFile(downloadPath, ['-xzf'], tempDir, installedBinPath);
                         break;
                     default:
-                        await mv(downloadPath, miseBinPath);
-                        await exec('chmod', ['+x', miseBinPath]);
+                        await mv(downloadPath, installedBinPath);
+                        await exec('chmod', ['+x', installedBinPath]);
                         break;
                 }
+                if (!checksumAssetName) {
+                    await verifyDownloadedMiseAsset(installedBinPath, resolvedVersion, rawAssetName);
+                    await mv(installedBinPath, miseBinPath);
+                    if (fs.existsSync(installedShimPath)) {
+                        await mv(installedShimPath, miseShimPath);
+                    }
+                }
             });
-            if (!checksumAssetName) {
-                await verifyDownloadedMiseAsset(miseBinPath, resolvedVersion, rawAssetName);
-            }
         };
         try {
             await installFromUrl(url, verifyAssetName);

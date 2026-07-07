@@ -350,12 +350,23 @@ async function setupMise(
       downloadUrl: string,
       checksumAssetName: string | undefined
     ): Promise<void> => {
+      let installedBinPath = miseBinPath
+      let installedShimPath = miseShimPath
       await withDownloadedMiseAsset(
         downloadUrl,
         resolvedVersion,
         assetName,
         checksumAssetName,
         async (downloadPath, tempDir) => {
+          if (!checksumAssetName) {
+            const candidateDir = path.join(tempDir, 'candidate', 'bin')
+            await fs.promises.mkdir(candidateDir, { recursive: true })
+            installedBinPath = path.join(
+              candidateDir,
+              process.platform === 'win32' ? 'mise.exe' : 'mise'
+            )
+            installedShimPath = path.join(candidateDir, 'mise-shim.exe')
+          }
           switch (ext) {
             case '.zip':
               await withExtractedZip(
@@ -369,11 +380,11 @@ async function setupMise(
                   )
                   await io.mv(
                     path.join(extractedMiseBinDir, 'mise.exe'),
-                    miseBinPath
+                    installedBinPath
                   )
                   await installWindowsMiseShim(
                     extractedMiseBinDir,
-                    miseShimPath
+                    installedShimPath
                   )
                 }
               )
@@ -383,7 +394,7 @@ async function setupMise(
                 downloadPath,
                 ['--zstd', '-xf'],
                 tempDir,
-                miseBinPath
+                installedBinPath
               )
               break
             case '.tar.gz':
@@ -391,23 +402,27 @@ async function setupMise(
                 downloadPath,
                 ['-xzf'],
                 tempDir,
-                miseBinPath
+                installedBinPath
               )
               break
             default:
-              await io.mv(downloadPath, miseBinPath)
-              await exec.exec('chmod', ['+x', miseBinPath])
+              await io.mv(downloadPath, installedBinPath)
+              await exec.exec('chmod', ['+x', installedBinPath])
               break
+          }
+          if (!checksumAssetName) {
+            await verifyDownloadedMiseAsset(
+              installedBinPath,
+              resolvedVersion,
+              rawAssetName
+            )
+            await io.mv(installedBinPath, miseBinPath)
+            if (fs.existsSync(installedShimPath)) {
+              await io.mv(installedShimPath, miseShimPath)
+            }
           }
         }
       )
-      if (!checksumAssetName) {
-        await verifyDownloadedMiseAsset(
-          miseBinPath,
-          resolvedVersion,
-          rawAssetName
-        )
-      }
     }
     try {
       await installFromUrl(url, verifyAssetName)
