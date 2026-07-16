@@ -1,6 +1,23 @@
 # Changelog
 
 ---
+## [4.2.1](https://github.com/jdx/mise-action/compare/v4.2.0..v4.2.1) - 2026-07-16
+
+### 🐛 Bug Fixes
+
+- verify mise downloads with signed checksums (#548) by [@jdx](https://github.com/jdx) in [#548](https://github.com/jdx/mise-action/pull/548)
+- exclude PATH from environment export (#556) by [@jdx](https://github.com/jdx) in [#556](https://github.com/jdx/mise-action/pull/556)
+
+### 🔍 Other Changes
+
+- Enable Entire for Codex (#529) by [@jdx](https://github.com/jdx) in [#529](https://github.com/jdx/mise-action/pull/529)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** automate weekly releases (#557) by [@jdx](https://github.com/jdx) in [#557](https://github.com/jdx/mise-action/pull/557)
+- **(release)** skip ai reviews for release prs (#549) by [@jdx](https://github.com/jdx) in [#549](https://github.com/jdx/mise-action/pull/549)
+
+---
 ## [4.2.0](https://github.com/jdx/mise-action/compare/v4.1.0..v4.2.0) - 2026-06-17
 
 ### 🚀 Features
