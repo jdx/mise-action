@@ -59,6 +59,7 @@ jobs:
 
             [env]
             MY_ENV_VAR = "abc"
+            _.path = ["{{config_root}}/mise-env-path"]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise --version

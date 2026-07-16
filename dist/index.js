@@ -89428,9 +89428,9 @@ async function exportMiseEnv() {
                 cwd
             });
             const actualVars = JSON.parse(actualOutput.stdout);
-            // Export all environment variables
+            // Export environment variables while leaving PATH management to the action
             for (const [key, value] of Object.entries(actualVars)) {
-                if (typeof value === 'string') {
+                if (typeof value === 'string' && key.toUpperCase() !== 'PATH') {
                     exportVariable(key, value);
                 }
             }
