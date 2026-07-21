@@ -27,8 +27,18 @@ if [ -n "$latest_release_version" ] && [ "$cur_pkg_version" = "$latest_release_v
 		echo "Found $commits_since_release commits since $latest_tag"
 	fi
 
-	# Get the next version and changelog from git-cliff
+	# Get the next version from git-cliff
 	version="$(git cliff --bumped-version)"
+
+	# If git-cliff couldn't bump the version (e.g. only chore/deps commits
+	# since the last release), there's nothing to release. Bailing here avoids
+	# a later `npm version <same>` failure ("Version not changed").
+	if [ "$version" = "$latest_tag" ] || [ "${version#v}" = "$cur_pkg_version" ]; then
+		echo "No version bump from commits since $latest_tag; nothing to release."
+		exit 0
+	fi
+
+	# Get the changelog from git-cliff
 	changelog="$(git cliff --bump --unreleased | tail -n +2)"
 
 	if [ "${DRY_RUN:-1}" == 1 ]; then
