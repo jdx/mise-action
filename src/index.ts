@@ -326,7 +326,7 @@ async function setupMise(
         ? '.zip'
         : version && version.startsWith('2024')
           ? ''
-          : (await zstdInstalled())
+          : (await tarSupportsZstd())
             ? '.tar.zst'
             : '.tar.gz'
     let resolvedVersion = version || (await latestMiseVersion())
@@ -728,9 +728,10 @@ function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-async function zstdInstalled(): Promise<boolean> {
+async function tarSupportsZstd(): Promise<boolean> {
   try {
     await exec.exec('zstd', ['--version'])
+    await exec.exec('tar', ['--zstd', '--version'])
     return true
   } catch {
     return false
