@@ -89542,7 +89542,7 @@ async function setupMise(version, fetchFromGitHub = false) {
             ? '.zip'
             : version && version.startsWith('2024')
                 ? ''
-                : (await zstdInstalled())
+                : (await tarSupportsZstd())
                     ? '.tar.zst'
                     : '.tar.gz';
         let resolvedVersion = version || (await latestMiseVersion());
@@ -89828,9 +89828,10 @@ async function getInstalledMiseVersion(miseBinPath) {
 function errorMessage(err) {
     return err instanceof Error ? err.message : String(err);
 }
-async function zstdInstalled() {
+async function tarSupportsZstd() {
     try {
         await exec('zstd', ['--version']);
+        await exec('tar', ['--zstd', '--version']);
         return true;
     }
     catch {
