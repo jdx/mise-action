@@ -53,7 +53,7 @@ You can customize the cache key used by the action:
 - uses: jdx/mise-action@v4
   with:
     cache_key: "my-custom-cache-key"  # Override the entire cache key
-    cache_key_prefix: "mise-v1"       # Or just change the prefix (default: "mise-v0")
+    cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
 ```
 
 ### Template Variables in Cache Keys
