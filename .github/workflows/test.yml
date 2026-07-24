@@ -50,6 +50,14 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
+      - name: Create mise PATH fixtures
+        shell: bash
+        run: |
+          for fixture in first second; do
+            mkdir -p "mise-env-path-$fixture"
+            printf '#!/usr/bin/env bash\necho %s\n' "$fixture" > "mise-env-path-$fixture/mise-path-order"
+            chmod +x "mise-env-path-$fixture/mise-path-order"
+          done
       - name: Setup mise
         uses: ./
         with:
@@ -59,7 +67,10 @@ jobs:
 
             [env]
             MY_ENV_VAR = "abc"
-            _.path = ["{{config_root}}/mise-env-path"]
+            _.path = [
+              "{{config_root}}/mise-env-path-first",
+              "{{config_root}}/mise-env-path-second",
+            ]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: mise --version
@@ -77,6 +88,30 @@ jobs:
           }
       - run: . scripts/test.sh
         shell: bash
+
+  path_opt_out:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Setup mise without PATH export
+        uses: ./
+        with:
+          install: false
+          export_path: false
+          mise_toml: |
+            [env]
+            MY_ENV_VAR = "abc"
+            _.path = ["{{config_root}}/mise-env-path"]
+      - name: Check PATH export opt-out
+        shell: bash
+        run: |
+          test "$MY_ENV_VAR" = "abc"
+          if [[ "$PATH" == *"mise-env-path"* ]]; then
+            echo "mise env path unexpectedly exported to PATH: $PATH" >&2
+            exit 1
+          fi
 
   specific_version:
     runs-on: ubuntu-latest
