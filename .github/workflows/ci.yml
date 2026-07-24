@@ -27,8 +27,8 @@ jobs:
           persist-credentials: false
 
       # `mise.toml` pins both Node and aube; mise-action installs
-      # whatever's listed there. Reads `package-lock.json`
-      # directly — no separate `aube-lock.yaml` to maintain.
+      # whatever's listed there. `aube ci` installs exactly the
+      # dependency graph recorded in `aube-lock.yaml`.
       # `.npmrc` pins `node-linker=hoisted` so the layout is
       # npm-flat (rollup's `--configPlugin` resolution
       # requires this).

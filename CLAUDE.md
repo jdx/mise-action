@@ -9,16 +9,15 @@ This is a GitHub Action that installs and configures mise, a polyglot runtime ma
 ## Development Commands
 
 This project uses [aube](https://aube.en.dev) as its package
-manager (en.dev's pnpm-compat PM, native Rust). It reads
-`package-lock.json` directly — no separate `aube-lock.yaml`.
+manager (en.dev's pnpm-compat PM, native Rust), with
+`aube-lock.yaml` as the canonical dependency lockfile.
 `mise install` will install the pinned aube version
-automatically; you can also use `npm` if you prefer (the
-`.npmrc`'s `node-linker=hoisted` pin is aube-specific and
-ignored by npm).
+automatically. The `.npmrc` pins aube's linker to a flat,
+npm-style layout.
 
 ```bash
 # Install dependencies
-aube install
+aube install --frozen-lockfile
 
 # Build, format, lint, and package
 aubr all

@@ -1,5 +1,5 @@
 # shellcheck disable=SC1091
 
-npm ci
-npm run all
+aube ci
+aubr all
 git add -f dist
