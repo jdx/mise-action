@@ -89448,7 +89448,7 @@ async function exportMiseEnv() {
             const output = await getExecOutput('mise', ['env', '--dotenv'], {
                 cwd
             });
-            fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+            exportMiseDotenv(output.stdout);
             await exportMisePathFromJson(cwd);
         }
     }
@@ -89457,10 +89457,17 @@ async function exportMiseEnv() {
         const output = await getExecOutput('mise', ['env', '--dotenv'], {
             cwd
         });
-        fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+        exportMiseDotenv(output.stdout);
         await exportMisePathFromJson(cwd);
     }
     endGroup();
+}
+function exportMiseDotenv(dotenv) {
+    // PATH must flow through GITHUB_PATH so it composes with PATH changes from
+    // other actions and honors export_path. Keep using the dotenv output for
+    // older mise versions, but never persist its complete PATH snapshot.
+    const withoutPath = dotenv.replace(/^PATH=.*(?:\r?\n|$)/gim, '');
+    fs.appendFileSync(process.env.GITHUB_ENV, withoutPath);
 }
 function normalizePathEntry(entry) {
     const normalized = path$1.normalize(entry);
