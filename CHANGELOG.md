@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [4.2.3](https://github.com/jdx/mise-action/compare/v4.2.2..v4.2.3) - 2026-07-24
+
+### 🐛 Bug Fixes
+
+- export mise path entries to subsequent steps (#575) by [@jdx](https://github.com/jdx) in [#575](https://github.com/jdx/mise-action/pull/575)
+
+---
 ## [4.2.2](https://github.com/jdx/mise-action/compare/v4.2.1..v4.2.2) - 2026-07-24
 
 ### 🐛 Bug Fixes
