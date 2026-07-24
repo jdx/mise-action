@@ -92,7 +92,11 @@ inputs:
     default: "true"
     description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.
   env:
-    description: "Automatically load mise env vars into GITHUB_ENV. Note that PATH modifications are not part of this."
+    description: Automatically load mise environment variables for subsequent steps.
+    required: false
+    default: "true"
+  export_path:
+    description: Add PATH entries produced by mise, including [env] _.path, to subsequent steps through GITHUB_PATH.
     required: false
     default: "true"
   wings_enabled:
