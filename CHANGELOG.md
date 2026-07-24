@@ -1,6 +1,23 @@
 # Changelog
 
 ---
+## [4.2.2](https://github.com/jdx/mise-action/compare/v4.2.1..v4.2.2) - 2026-07-24
+
+### 🐛 Bug Fixes
+
+- **(release-plz)** exit when git-cliff produces no version bump (#566) by [@jdx](https://github.com/jdx) in [#566](https://github.com/jdx/mise-action/pull/566)
+- ensure `tar` supports Zstd (#569) by [@JackMyers001](https://github.com/JackMyers001) in [#569](https://github.com/jdx/mise-action/pull/569)
+
+### 📚 Documentation
+
+- update default value of `cache_key_prefix` (#570) by [@muzimuzhi](https://github.com/muzimuzhi) in [#570](https://github.com/jdx/mise-action/pull/570)
+
+### New Contributors
+
+* @muzimuzhi made their first contribution in [#570](https://github.com/jdx/mise-action/pull/570)
+* @JackMyers001 made their first contribution in [#569](https://github.com/jdx/mise-action/pull/569)
+
+---
 ## [4.2.1](https://github.com/jdx/mise-action/compare/v4.2.0..v4.2.1) - 2026-07-16
 
 ### 🐛 Bug Fixes
