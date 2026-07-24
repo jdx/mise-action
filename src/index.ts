@@ -186,9 +186,15 @@ async function exportMiseEnv(): Promise<void> {
       })
       const actualVars = JSON.parse(actualOutput.stdout)
 
-      // Export environment variables while leaving PATH management to the action
+      // Export environment variables and add only mise's PATH changes through
+      // GITHUB_PATH. Exporting the complete computed PATH through GITHUB_ENV
+      // would snapshot the runner environment and interfere with other actions.
       for (const [key, value] of Object.entries(actualVars)) {
-        if (typeof value === 'string' && key.toUpperCase() !== 'PATH') {
+        if (typeof value !== 'string') continue
+
+        if (key.toUpperCase() === 'PATH') {
+          exportMisePath(value)
+        } else {
           core.exportVariable(key, value)
         }
       }
@@ -198,17 +204,92 @@ async function exportMiseEnv(): Promise<void> {
       const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
         cwd
       })
-      fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
+      exportMiseDotenv(output.stdout)
+      await exportMisePathFromJson(cwd)
     }
   } else {
     // Fall back to the old --dotenv format for older versions
     const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
       cwd
     })
-    fs.appendFileSync(process.env.GITHUB_ENV!, output.stdout)
+    exportMiseDotenv(output.stdout)
+    await exportMisePathFromJson(cwd)
   }
 
   core.endGroup()
+}
+
+function exportMiseDotenv(dotenv: string): void {
+  // PATH must flow through GITHUB_PATH so it composes with PATH changes from
+  // other actions and honors export_path. Keep using the dotenv output for
+  // older mise versions, but never persist its complete PATH snapshot.
+  const withoutPath = dotenv.replace(/^PATH=.*(?:\r?\n|$)/gim, '')
+  fs.appendFileSync(process.env.GITHUB_ENV!, withoutPath)
+}
+
+function normalizePathEntry(entry: string): string {
+  const normalized = path.normalize(entry)
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized
+}
+
+function getMisePathAdditions(computedPath: string): string[] {
+  const currentEntries = (process.env.PATH || '')
+    .split(path.delimiter)
+    .filter(Boolean)
+  const computedEntries = computedPath.split(path.delimiter).filter(Boolean)
+  const normalizedCurrent = currentEntries.map(normalizePathEntry)
+  const normalizedComputed = computedEntries.map(normalizePathEntry)
+
+  // mise prepends its tool and [env] _.path entries to the existing PATH.
+  // Prefer the prefix before the unchanged current PATH so entries that mise
+  // intentionally promotes retain their position.
+  if (normalizedCurrent.length > 0) {
+    for (
+      let index = 0;
+      index <= normalizedComputed.length - normalizedCurrent.length;
+      index++
+    ) {
+      const currentPathStartsHere = normalizedCurrent.every(
+        (entry, offset) => normalizedComputed[index + offset] === entry
+      )
+      if (currentPathStartsHere) return computedEntries.slice(0, index)
+    }
+  }
+
+  // Fall back to a set difference if mise normalized the inherited PATH.
+  const currentSet = new Set(normalizedCurrent)
+  return computedEntries.filter(
+    entry => !currentSet.has(normalizePathEntry(entry))
+  )
+}
+
+function exportMisePath(computedPath: string): void {
+  if (!core.getBooleanInput('export_path')) return
+
+  const additions = getMisePathAdditions(computedPath)
+  for (const entry of additions.reverse()) {
+    core.info(`Adding ${entry} to PATH`)
+    core.addPath(entry)
+  }
+}
+
+async function exportMisePathFromJson(cwd: string): Promise<void> {
+  if (!core.getBooleanInput('export_path')) return
+
+  try {
+    const output = await exec.getExecOutput('mise', ['env', '--json'], {
+      cwd,
+      silent: true
+    })
+    const vars = JSON.parse(output.stdout)
+    const pathEntry = Object.entries(vars).find(
+      ([key, value]) =>
+        key.toUpperCase() === 'PATH' && typeof value === 'string'
+    )
+    if (pathEntry) exportMisePath(pathEntry[1] as string)
+  } catch {
+    core.warning('Unable to export mise PATH entries from JSON output')
+  }
 }
 
 function cleanVersion(version: string) {
