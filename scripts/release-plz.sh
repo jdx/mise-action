@@ -65,7 +65,7 @@ if [ -n "$latest_release_version" ] && [ "$cur_pkg_version" = "$latest_release_v
 	# Create a PR with the version bump
 	npm version "${version#v}" --no-git-tag-version
 
-	git add package.json package-lock.json
+	git add package.json
 	git status
 
 	# Create release branch and commit
