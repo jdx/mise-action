@@ -95545,6 +95545,7 @@ async function miseSupportsLockedInstall() {
         return supportsLockedInstall;
     const { stdout, stderr } = await getExecOutput('mise', ['install', '--help'], {
         cwd: getCwd(),
+        env: { ...process.env, NO_COLOR: '1' },
         ignoreReturnCode: true,
         silent: true
     });

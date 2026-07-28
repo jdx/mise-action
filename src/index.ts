@@ -937,6 +937,7 @@ async function miseSupportsLockedInstall(): Promise<boolean> {
     ['install', '--help'],
     {
       cwd: getCwd(),
+      env: { ...process.env, NO_COLOR: '1' },
       ignoreReturnCode: true,
       silent: true
     }
