@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [4.2.4](https://github.com/jdx/mise-action/compare/v4.2.3..v4.2.4) - 2026-07-28
+
+### 🐛 Bug Fixes
+
+- locking support detection with force-colored output (#580) by [@scop](https://github.com/scop) in [#580](https://github.com/jdx/mise-action/pull/580)
+
+---
 ## [4.2.3](https://github.com/jdx/mise-action/compare/v4.2.2..v4.2.3) - 2026-07-24
 
 ### 🐛 Bug Fixes
