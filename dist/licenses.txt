@@ -1198,7 +1198,7 @@ SOFTWARE.
 ---
 
 Name: @azure/storage-common
-Version: 12.4.1
+Version: 12.5.0
 License: MIT
 Private: false
 Description: Azure Storage Common Client Library for JavaScript
