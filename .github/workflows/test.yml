@@ -210,6 +210,48 @@ jobs:
       - run: which jq
       - run: jq --version
 
+  download_retry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Create flaky curl wrapper
+        shell: bash
+        run: |
+          real_curl="$(command -v curl)"
+          mock_bin="$RUNNER_TEMP/mock-bin"
+          mkdir -p "$mock_bin"
+          cat > "$mock_bin/curl" <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          attempt=0
+          if [[ -f "\$MISE_ACTION_CURL_ATTEMPTS" ]]; then
+            read -r attempt < "\$MISE_ACTION_CURL_ATTEMPTS"
+          fi
+          attempt=\$((attempt + 1))
+          printf '%s\n' "\$attempt" > "\$MISE_ACTION_CURL_ATTEMPTS"
+          if (( attempt <= 2 )); then
+            echo "simulated transient curl failure" >&2
+            exit 60
+          fi
+          exec "$real_curl" "\$@"
+          EOF
+          chmod +x "$mock_bin/curl"
+          echo "$mock_bin" >> "$GITHUB_PATH"
+          echo "MISE_ACTION_CURL_ATTEMPTS=$RUNNER_TEMP/curl-attempts" >> "$GITHUB_ENV"
+      - name: Setup mise after transient download failures
+        uses: ./
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-download-retry
+          version: 2025.7.3
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
+      - name: Check download attempts
+        shell: bash
+        run: test "$(cat "$MISE_ACTION_CURL_ATTEMPTS")" = 3
+
   final:
     needs:
       - build
@@ -217,6 +259,7 @@ jobs:
       - specific_version
       - checksum_failure
       - custom_cache_key
+      - download_retry
       - fetch_from_github
     runs-on: ubuntu-latest
     timeout-minutes: 1
