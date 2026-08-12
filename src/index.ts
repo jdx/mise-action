@@ -53,6 +53,8 @@ const verifiedShasums = new Map<string, string>()
 
 type DownloadTool = 'curl' | 'wget'
 let cachedDownloadTool: DownloadTool | undefined
+const DOWNLOAD_RETRIES = 5
+const DOWNLOAD_RETRY_DELAY_MS = 2000
 
 async function run(): Promise<void> {
   try {
@@ -611,13 +613,29 @@ async function getDownloadTool(): Promise<DownloadTool> {
   return cachedDownloadTool
 }
 
+async function retryDownload<T>(fn: () => Promise<T>): Promise<T> {
+  for (let retry = 0; ; retry++) {
+    try {
+      return await fn()
+    } catch (err) {
+      if (retry === DOWNLOAD_RETRIES) throw err
+      core.warning(
+        `Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`
+      )
+      await new Promise(resolve => setTimeout(resolve, DOWNLOAD_RETRY_DELAY_MS))
+    }
+  }
+}
+
 async function downloadToFile(url: string, filePath: string): Promise<void> {
   const tool = await getDownloadTool()
-  if (tool === 'curl') {
-    await exec.exec('curl', ['-fsSL', url, '--output', filePath])
-  } else {
-    await exec.exec('wget', ['-qO', filePath, url])
-  }
+  await retryDownload(async () => {
+    if (tool === 'curl') {
+      await exec.exec('curl', ['-fsSL', url, '--output', filePath])
+    } else {
+      await exec.exec('wget', ['-qO', filePath, url])
+    }
+  })
 }
 
 async function downloadText(url: string): Promise<string> {
@@ -626,16 +644,18 @@ async function downloadText(url: string): Promise<string> {
 
 async function downloadRawText(url: string): Promise<string> {
   const tool = await getDownloadTool()
-  if (tool === 'curl') {
-    const rsp = await exec.getExecOutput('curl', ['-fsSL', url], {
+  return retryDownload(async () => {
+    if (tool === 'curl') {
+      const rsp = await exec.getExecOutput('curl', ['-fsSL', url], {
+        silent: true
+      })
+      return rsp.stdout
+    }
+    const rsp = await exec.getExecOutput('wget', ['-qO-', url], {
       silent: true
     })
     return rsp.stdout
-  }
-  const rsp = await exec.getExecOutput('wget', ['-qO-', url], {
-    silent: true
   })
-  return rsp.stdout
 }
 
 async function withDownloadedMiseAsset(

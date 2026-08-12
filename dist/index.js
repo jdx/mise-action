@@ -94996,6 +94996,8 @@ const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 };
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const verifiedShasums = new Map();
 let cachedDownloadTool;
+const DOWNLOAD_RETRIES = 5;
+const DOWNLOAD_RETRY_DELAY_MS = 2000;
 async function run() {
     try {
         await setToolVersions();
@@ -95428,30 +95430,47 @@ async function getDownloadTool() {
     info(`Using ${cachedDownloadTool} to download mise`);
     return cachedDownloadTool;
 }
+async function retryDownload(fn) {
+    for (let retry = 0;; retry++) {
+        try {
+            return await fn();
+        }
+        catch (err) {
+            if (retry === DOWNLOAD_RETRIES)
+                throw err;
+            warning(`Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`);
+            await new Promise(resolve => setTimeout(resolve, DOWNLOAD_RETRY_DELAY_MS));
+        }
+    }
+}
 async function downloadToFile(url, filePath) {
     const tool = await getDownloadTool();
-    if (tool === 'curl') {
-        await exec('curl', ['-fsSL', url, '--output', filePath]);
-    }
-    else {
-        await exec('wget', ['-qO', filePath, url]);
-    }
+    await retryDownload(async () => {
+        if (tool === 'curl') {
+            await exec('curl', ['-fsSL', url, '--output', filePath]);
+        }
+        else {
+            await exec('wget', ['-qO', filePath, url]);
+        }
+    });
 }
 async function downloadText(url) {
     return (await downloadRawText(url)).trim();
 }
 async function downloadRawText(url) {
     const tool = await getDownloadTool();
-    if (tool === 'curl') {
-        const rsp = await getExecOutput('curl', ['-fsSL', url], {
+    return retryDownload(async () => {
+        if (tool === 'curl') {
+            const rsp = await getExecOutput('curl', ['-fsSL', url], {
+                silent: true
+            });
+            return rsp.stdout;
+        }
+        const rsp = await getExecOutput('wget', ['-qO-', url], {
             silent: true
         });
         return rsp.stdout;
-    }
-    const rsp = await getExecOutput('wget', ['-qO-', url], {
-        silent: true
     });
-    return rsp.stdout;
 }
 async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName, fn) {
     const tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
