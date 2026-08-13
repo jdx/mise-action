@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [4.2.4](https://github.com/jdx/mise-action/compare/v4.2.3..v4.2.4) - 2026-07-28
+## [4.2.5](https://github.com/jdx/mise-action/compare/v4.2.4..v4.2.5) - 2026-08-12
+
+### 🐛 Bug Fixes
+
+- retry mise downloads after transient failures (#597) by [@jdx](https://github.com/jdx) in [#597](https://github.com/jdx/mise-action/pull/597)
+
+---
+## [4.2.4](https://github.com/jdx/mise-action/compare/v4.2.3..v4.2.4) - 2026-08-01
 
 ### 🐛 Bug Fixes
 
