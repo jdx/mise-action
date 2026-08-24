@@ -95066,6 +95066,8 @@ const verifiedShasums = new Map();
 let cachedDownloadTool;
 const DOWNLOAD_RETRIES = 5;
 const DOWNLOAD_RETRY_DELAY_MS = 2000;
+class NonRetryableError extends Error {
+}
 async function run() {
     try {
         await setToolVersions();
@@ -95372,7 +95374,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         await fs.promises.mkdir(miseBinDir, { recursive: true });
         const ext = process.platform === 'win32'
             ? '.zip'
-            : version && version.startsWith('2024')
+            : resolvedVersion.startsWith('2024')
                 ? ''
                 : (await tarSupportsZstd())
                     ? '.tar.zst'
@@ -95515,7 +95517,7 @@ async function retryDownload(fn) {
             return await fn();
         }
         catch (err) {
-            if (retry === DOWNLOAD_RETRIES)
+            if (err instanceof NonRetryableError || retry === DOWNLOAD_RETRIES)
                 throw err;
             warning(`Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`);
             await new Promise(resolve => setTimeout(resolve, DOWNLOAD_RETRY_DELAY_MS));
@@ -95771,9 +95773,15 @@ async function githubMiseReleases(page) {
     if (githubToken)
         headers.Authorization = `Bearer ${githubToken}`;
     return retryDownload(async () => {
-        const response = await fetch(`https://api.github.com/repos/jdx/mise/releases?per_page=100&page=${page}`, { headers });
+        const response = await fetch(`https://api.github.com/repos/jdx/mise/releases?per_page=100&page=${page}`, { headers, signal: AbortSignal.timeout(30_000) });
         if (!response.ok) {
-            throw new Error(`GitHub releases API returned ${response.status} ${response.statusText}`);
+            const message = `GitHub releases API returned ${response.status} ${response.statusText}`;
+            if (response.status >= 400 &&
+                response.status < 500 &&
+                response.status !== 429) {
+                throw new NonRetryableError(message);
+            }
+            throw new Error(message);
         }
         return (await response.json());
     });
@@ -95783,21 +95791,28 @@ async function latestMiseVersion(minimumReleaseAge) {
         return downloadText('https://mise.jdx.dev/VERSION');
     }
     const cutoff = minimumReleaseAgeCutoff(minimumReleaseAge);
+    let newestRelease;
     for (let page = 1;; page++) {
         const releases = await githubMiseReleases(page);
-        const release = releases.find(release => {
+        for (const release of releases) {
             if (release.draft || release.prerelease)
-                return false;
+                continue;
             const releasedAt = new Date(release.published_at || release.created_at);
-            return releasedAt <= cutoff;
-        });
-        if (release) {
-            const releasedAt = release.published_at || release.created_at;
-            info(`Selected mise ${cleanVersion(release.tag_name)}, released ${releasedAt}, with minimum_release_age=${minimumReleaseAge}`);
-            return cleanVersion(release.tag_name);
+            if (Number.isNaN(releasedAt.getTime()) || releasedAt > cutoff)
+                continue;
+            if (!newestRelease ||
+                releasedAt >
+                    new Date(newestRelease.published_at || newestRelease.created_at)) {
+                newestRelease = release;
+            }
         }
         if (releases.length < 100)
             break;
+    }
+    if (newestRelease) {
+        const releasedAt = newestRelease.published_at || newestRelease.created_at;
+        info(`Selected mise ${cleanVersion(newestRelease.tag_name)}, released ${releasedAt}, with minimum_release_age=${minimumReleaseAge}`);
+        return cleanVersion(newestRelease.tag_name);
     }
     throw new Error(`No stable mise release satisfies minimum_release_age=${minimumReleaseAge}`);
 }

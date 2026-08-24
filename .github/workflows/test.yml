@@ -148,6 +148,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Install an age-filtered 2024 mise release
+        uses: ./
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 2024-09-06
+          mise_dir: ${{ runner.temp }}/mise-age-2024
       - name: Install the latest mise release
         uses: ./
         with:
@@ -167,7 +174,7 @@ jobs:
         run: |
           cutoff=$(date -u -d '7 days ago' +%s)
           expected=$(gh api 'repos/jdx/mise/releases?per_page=100' --jq \
-            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff))[0].tag_name" | sed 's/^v//')
+            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff)) | max_by(.published_at // .created_at).tag_name" | sed 's/^v//')
           actual=$(mise version --json | jq -r '.version | split(" ")[0]')
           test "$actual" = "$expected"
 

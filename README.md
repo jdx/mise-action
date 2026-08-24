@@ -64,6 +64,8 @@ absolute ISO dates and timestamps. The action selects the newest stable,
 non-draft mise release published before the cutoff. An explicit `version`
 takes precedence over `minimum_release_age`.
 
+## Environment and PATH Export
+
 The action exports environment variables and PATH entries configured by mise
 to subsequent workflow steps. PATH entries are added individually through
 `GITHUB_PATH`, so the runner's complete PATH is not copied into `GITHUB_ENV`.
