@@ -56,6 +56,8 @@ let cachedDownloadTool: DownloadTool | undefined
 const DOWNLOAD_RETRIES = 5
 const DOWNLOAD_RETRY_DELAY_MS = 2000
 
+class NonRetryableError extends Error {}
+
 async function run(): Promise<void> {
   try {
     await setToolVersions()
@@ -88,8 +90,9 @@ async function run(): Promise<void> {
     setupWings()
 
     const version = core.getInput('version')
+    const minimumReleaseAge = core.getInput('minimum_release_age')
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
-    await setupMise(version, fetchFromGitHub)
+    await setupMise(version, fetchFromGitHub, minimumReleaseAge)
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
@@ -392,7 +395,8 @@ async function restoreMiseCache(): Promise<string | undefined> {
 
 async function setupMise(
   version: string,
-  fetchFromGitHub = false
+  fetchFromGitHub = false,
+  minimumReleaseAge = ''
 ): Promise<void> {
   const miseBinDir = path.join(miseDir(), 'bin')
   const miseBinPath = path.join(
@@ -400,6 +404,23 @@ async function setupMise(
     process.platform === 'win32' ? 'mise.exe' : 'mise'
   )
   const miseShimPath = path.join(miseBinDir, 'mise-shim.exe')
+  const useMinimumReleaseAge = !version && Boolean(minimumReleaseAge.trim())
+  if (version && minimumReleaseAge.trim()) {
+    core.info(
+      '`minimum_release_age` is ignored because an explicit mise version was provided'
+    )
+  }
+  let resolvedVersion = cleanVersion(version)
+  if (
+    !resolvedVersion &&
+    (!fs.existsSync(miseBinPath) || useMinimumReleaseAge)
+  ) {
+    resolvedVersion = cleanVersion(
+      await latestMiseVersion(
+        useMinimumReleaseAge ? minimumReleaseAge : undefined
+      )
+    )
+  }
   let installedVersion: string | undefined
   if (!fs.existsSync(path.join(miseBinPath))) {
     core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
@@ -407,19 +428,19 @@ async function setupMise(
     const ext =
       process.platform === 'win32'
         ? '.zip'
-        : version && version.startsWith('2024')
+        : resolvedVersion.startsWith('2024')
           ? ''
           : (await tarSupportsZstd())
             ? '.tar.zst'
             : '.tar.gz'
-    let resolvedVersion = version || (await latestMiseVersion())
-    resolvedVersion = resolvedVersion.replace(/^v/, '')
     const target = await getTarget()
     const assetName = `mise-v${resolvedVersion}-${target}${ext}`
     const rawAssetName = `mise-v${resolvedVersion}-${target}${
       process.platform === 'win32' ? '.exe' : ''
     }`
-    const fetchFromCdn = !fetchFromGitHub && !version
+    // The CDN only exposes the newest binary. An age-filtered release must be
+    // downloaded by its exact version from GitHub.
+    const fetchFromCdn = !fetchFromGitHub && !version && !useMinimumReleaseAge
     const githubUrl = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/${assetName}`
     const cdnUrl = `https://mise.jdx.dev/mise-latest-${target}${
       process.platform === 'win32' ? '.exe' : ''
@@ -504,7 +525,9 @@ async function setupMise(
       await installFromUrl(githubUrl, assetName, assetName, true)
     }
   } else {
-    const requestedVersion = cleanVersion(core.getInput('version'))
+    const requestedVersion =
+      cleanVersion(core.getInput('version')) ||
+      (useMinimumReleaseAge ? resolvedVersion : '')
     if (requestedVersion !== '') {
       installedVersion = await getInstalledMiseVersion(miseBinPath)
       if (requestedVersion === installedVersion) {
@@ -618,7 +641,8 @@ async function retryDownload<T>(fn: () => Promise<T>): Promise<T> {
     try {
       return await fn()
     } catch (err) {
-      if (retry === DOWNLOAD_RETRIES) throw err
+      if (err instanceof NonRetryableError || retry === DOWNLOAD_RETRIES)
+        throw err
       core.warning(
         `Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`
       )
@@ -839,8 +863,178 @@ async function tarSupportsZstd(): Promise<boolean> {
   }
 }
 
-async function latestMiseVersion(): Promise<string> {
-  return downloadText('https://mise.jdx.dev/VERSION')
+type GitHubRelease = {
+  tag_name: string
+  draft: boolean
+  prerelease: boolean
+  created_at: string
+  published_at: string | null
+}
+
+function subtractUtcMonths(date: Date, months: number): void {
+  const day = date.getUTCDate()
+  date.setUTCDate(1)
+  date.setUTCMonth(date.getUTCMonth() - months)
+  const lastDay = new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)
+  ).getUTCDate()
+  date.setUTCDate(Math.min(day, lastDay))
+}
+
+function hasValidIsoCalendarDate(input: string): boolean {
+  const match = input.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return false
+  const [, yearText, monthText, dayText] = match
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const daysInMonth = [
+    31,
+    leapYear ? 29 : 28,
+    31,
+    30,
+    31,
+    30,
+    31,
+    31,
+    30,
+    31,
+    30,
+    31
+  ]
+  return month >= 1 && month <= 12 && day >= 1 && day <= daysInMonth[month - 1]
+}
+
+function minimumReleaseAgeCutoff(value: string, now = new Date()): Date {
+  const input = value.trim()
+  if (/^\d{4}-\d{2}-\d{2}$/.test(input) && hasValidIsoCalendarDate(input)) {
+    const cutoff = new Date(`${input}T23:59:59Z`)
+    if (!Number.isNaN(cutoff.getTime())) return cutoff
+  }
+  if (/^\d{4}-\d{2}-\d{2}T/.test(input) && hasValidIsoCalendarDate(input)) {
+    const cutoff = new Date(input)
+    if (!Number.isNaN(cutoff.getTime())) return cutoff
+  }
+  if (/^\d+$/.test(input)) {
+    return new Date(now.getTime() - Number(input) * 1000)
+  }
+
+  const duration = /(\d+)(mo|ms|us|ns|y|w|d|h|m|s)/gy
+  let offset = 0
+  let months = 0
+  let milliseconds = 0
+  for (let match = duration.exec(input); match; match = duration.exec(input)) {
+    if (match.index !== offset) break
+    offset = duration.lastIndex
+    const amount = Number(match[1])
+    switch (match[2]) {
+      case 'y':
+        months += amount * 12
+        break
+      case 'mo':
+        months += amount
+        break
+      case 'w':
+        milliseconds += amount * 7 * 24 * 60 * 60 * 1000
+        break
+      case 'd':
+        milliseconds += amount * 24 * 60 * 60 * 1000
+        break
+      case 'h':
+        milliseconds += amount * 60 * 60 * 1000
+        break
+      case 'm':
+        milliseconds += amount * 60 * 1000
+        break
+      case 's':
+        milliseconds += amount * 1000
+        break
+      case 'ms':
+        milliseconds += amount
+        break
+      case 'us':
+        milliseconds += amount / 1000
+        break
+      case 'ns':
+        milliseconds += amount / 1_000_000
+        break
+    }
+  }
+  if (!input || offset !== input.length) {
+    throw new Error(
+      `Invalid minimum_release_age: ${value}. Expected a duration such as 24h, 7d, 6mo, or 1y, or an ISO date or timestamp.`
+    )
+  }
+
+  const cutoff = new Date(now)
+  if (months) subtractUtcMonths(cutoff, months)
+  cutoff.setTime(cutoff.getTime() - milliseconds)
+  return cutoff
+}
+
+async function githubMiseReleases(page: number): Promise<GitHubRelease[]> {
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github+json',
+    'User-Agent': 'mise-action',
+    'X-GitHub-Api-Version': '2022-11-28'
+  }
+  const githubToken = core.getInput('github_token')
+  if (githubToken) headers.Authorization = `Bearer ${githubToken}`
+
+  return retryDownload(async () => {
+    const response = await fetch(
+      `https://api.github.com/repos/jdx/mise/releases?per_page=100&page=${page}`,
+      { headers, signal: AbortSignal.timeout(30_000) }
+    )
+    if (!response.ok) {
+      const message = `GitHub releases API returned ${response.status} ${response.statusText}`
+      if (
+        response.status >= 400 &&
+        response.status < 500 &&
+        response.status !== 429
+      ) {
+        throw new NonRetryableError(message)
+      }
+      throw new Error(message)
+    }
+    return (await response.json()) as GitHubRelease[]
+  })
+}
+
+async function latestMiseVersion(minimumReleaseAge?: string): Promise<string> {
+  if (!minimumReleaseAge) {
+    return downloadText('https://mise.jdx.dev/VERSION')
+  }
+
+  const cutoff = minimumReleaseAgeCutoff(minimumReleaseAge)
+  let newestRelease: GitHubRelease | undefined
+  for (let page = 1; ; page++) {
+    const releases = await githubMiseReleases(page)
+    for (const release of releases) {
+      if (release.draft || release.prerelease) continue
+      const releasedAt = new Date(release.published_at || release.created_at)
+      if (Number.isNaN(releasedAt.getTime()) || releasedAt > cutoff) continue
+      if (
+        !newestRelease ||
+        releasedAt >
+          new Date(newestRelease.published_at || newestRelease.created_at)
+      ) {
+        newestRelease = release
+      }
+    }
+    if (releases.length < 100) break
+  }
+  if (newestRelease) {
+    const releasedAt = newestRelease.published_at || newestRelease.created_at
+    core.info(
+      `Selected mise ${cleanVersion(newestRelease.tag_name)}, released ${releasedAt}, with minimum_release_age=${minimumReleaseAge}`
+    )
+    return cleanVersion(newestRelease.tag_name)
+  }
+  throw new Error(
+    `No stable mise release satisfies minimum_release_age=${minimumReleaseAge}`
+  )
 }
 
 async function setToolVersions(): Promise<void> {
