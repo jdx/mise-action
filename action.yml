@@ -8,6 +8,11 @@ inputs:
   version:
     required: false
     description: The version of mise to use. If not specified, will use the latest release.
+  minimum_release_age:
+    required: false
+    description: |
+      When version is not specified, only install stable mise releases older than this threshold.
+      Accepts relative durations such as 24h, 7d, 6mo, or 1y, and absolute ISO dates or timestamps.
   sha256:
     required: false
     description: The SHA256 checksum of the mise binary to verify the download.

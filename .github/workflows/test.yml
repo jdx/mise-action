@@ -142,6 +142,35 @@ jobs:
           version: v2025.7.3 # should trim the `v`
           sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
 
+  minimum_release_age:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the latest mise release
+        uses: ./
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 0s
+      - name: Replace it with an age-filtered release
+        uses: ./
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 7d
+      - name: Check the selected release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cutoff=$(date -u -d '7 days ago' +%s)
+          expected=$(gh api 'repos/jdx/mise/releases?per_page=100' --jq \
+            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff))[0].tag_name" | sed 's/^v//')
+          actual=$(mise version --json | jq -r '.version | split(" ")[0]')
+          test "$actual" = "$expected"
+
   checksum_failure:
     runs-on: ubuntu-latest
     steps:

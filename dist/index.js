@@ -95096,8 +95096,9 @@ async function run() {
         // comment as overstating what the early call accelerates.
         setupWings();
         const version = getInput('version');
+        const minimumReleaseAge = getInput('minimum_release_age');
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
-        await setupMise(version, fetchFromGitHub);
+        await setupMise(version, fetchFromGitHub, minimumReleaseAge);
         await setEnvVars();
         if (getBooleanInput('reshim')) {
             await miseReshim();
@@ -95352,10 +95353,19 @@ async function restoreMiseCache() {
     }
     info(`mise cache restored from key: ${cacheKey}`);
 }
-async function setupMise(version, fetchFromGitHub = false) {
+async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '') {
     const miseBinDir = path$1.join(miseDir(), 'bin');
     const miseBinPath = path$1.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     const miseShimPath = path$1.join(miseBinDir, 'mise-shim.exe');
+    const useMinimumReleaseAge = !version && Boolean(minimumReleaseAge.trim());
+    if (version && minimumReleaseAge.trim()) {
+        info('`minimum_release_age` is ignored because an explicit mise version was provided');
+    }
+    let resolvedVersion = cleanVersion(version);
+    if (!resolvedVersion &&
+        (!fs.existsSync(miseBinPath) || useMinimumReleaseAge)) {
+        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+    }
     let installedVersion;
     if (!fs.existsSync(path$1.join(miseBinPath))) {
         startGroup(version ? `Download mise@${version}` : 'Setup mise');
@@ -95367,12 +95377,12 @@ async function setupMise(version, fetchFromGitHub = false) {
                 : (await tarSupportsZstd())
                     ? '.tar.zst'
                     : '.tar.gz';
-        let resolvedVersion = version || (await latestMiseVersion());
-        resolvedVersion = resolvedVersion.replace(/^v/, '');
         const target = await getTarget();
         const assetName = `mise-v${resolvedVersion}-${target}${ext}`;
         const rawAssetName = `mise-v${resolvedVersion}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
-        const fetchFromCdn = !fetchFromGitHub && !version;
+        // The CDN only exposes the newest binary. An age-filtered release must be
+        // downloaded by its exact version from GitHub.
+        const fetchFromCdn = !fetchFromGitHub && !version && !useMinimumReleaseAge;
         const githubUrl = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/${assetName}`;
         const cdnUrl = `https://mise.jdx.dev/mise-latest-${target}${process.platform === 'win32' ? '.exe' : ''}`;
         installedVersion = resolvedVersion;
@@ -95421,7 +95431,8 @@ async function setupMise(version, fetchFromGitHub = false) {
         }
     }
     else {
-        const requestedVersion = cleanVersion(getInput('version'));
+        const requestedVersion = cleanVersion(getInput('version')) ||
+            (useMinimumReleaseAge ? resolvedVersion : '');
         if (requestedVersion !== '') {
             installedVersion = await getInstalledMiseVersion(miseBinPath);
             if (requestedVersion === installedVersion) {
@@ -95677,8 +95688,118 @@ async function tarSupportsZstd() {
         return false;
     }
 }
-async function latestMiseVersion() {
-    return downloadText('https://mise.jdx.dev/VERSION');
+function subtractUtcMonths(date, months) {
+    const day = date.getUTCDate();
+    date.setUTCDate(1);
+    date.setUTCMonth(date.getUTCMonth() - months);
+    const lastDay = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)).getUTCDate();
+    date.setUTCDate(Math.min(day, lastDay));
+}
+function minimumReleaseAgeCutoff(value, now = new Date()) {
+    const input = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) {
+        const cutoff = new Date(`${input}T23:59:59Z`);
+        if (!Number.isNaN(cutoff.getTime()))
+            return cutoff;
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(input)) {
+        const cutoff = new Date(input);
+        if (!Number.isNaN(cutoff.getTime()))
+            return cutoff;
+    }
+    if (/^\d+$/.test(input)) {
+        return new Date(now.getTime() - Number(input) * 1000);
+    }
+    const duration = /(\d+)(mo|ms|us|ns|y|w|d|h|m|s)/gy;
+    let offset = 0;
+    let months = 0;
+    let milliseconds = 0;
+    for (let match = duration.exec(input); match; match = duration.exec(input)) {
+        if (match.index !== offset)
+            break;
+        offset = duration.lastIndex;
+        const amount = Number(match[1]);
+        switch (match[2]) {
+            case 'y':
+                months += amount * 12;
+                break;
+            case 'mo':
+                months += amount;
+                break;
+            case 'w':
+                milliseconds += amount * 7 * 24 * 60 * 60 * 1000;
+                break;
+            case 'd':
+                milliseconds += amount * 24 * 60 * 60 * 1000;
+                break;
+            case 'h':
+                milliseconds += amount * 60 * 60 * 1000;
+                break;
+            case 'm':
+                milliseconds += amount * 60 * 1000;
+                break;
+            case 's':
+                milliseconds += amount * 1000;
+                break;
+            case 'ms':
+                milliseconds += amount;
+                break;
+            case 'us':
+                milliseconds += amount / 1000;
+                break;
+            case 'ns':
+                milliseconds += amount / 1_000_000;
+                break;
+        }
+    }
+    if (!input || offset !== input.length) {
+        throw new Error(`Invalid minimum_release_age: ${value}. Expected a duration such as 24h, 7d, 6mo, or 1y, or an ISO date or timestamp.`);
+    }
+    const cutoff = new Date(now);
+    if (months)
+        subtractUtcMonths(cutoff, months);
+    cutoff.setTime(cutoff.getTime() - milliseconds);
+    return cutoff;
+}
+async function githubMiseReleases(page) {
+    const headers = {
+        Accept: 'application/vnd.github+json',
+        'User-Agent': 'mise-action',
+        'X-GitHub-Api-Version': '2022-11-28'
+    };
+    const githubToken = getInput('github_token');
+    if (githubToken)
+        headers.Authorization = `Bearer ${githubToken}`;
+    return retryDownload(async () => {
+        const response = await fetch(`https://api.github.com/repos/jdx/mise/releases?per_page=100&page=${page}`, { headers });
+        if (!response.ok) {
+            throw new Error(`GitHub releases API returned ${response.status} ${response.statusText}`);
+        }
+        return (await response.json());
+    });
+}
+async function latestMiseVersion(minimumReleaseAge) {
+    if (!minimumReleaseAge) {
+        return downloadText('https://mise.jdx.dev/VERSION');
+    }
+    const cutoff = minimumReleaseAgeCutoff(minimumReleaseAge);
+    for (let page = 1;; page++) {
+        const releases = await githubMiseReleases(page);
+        const release = releases.find(release => {
+            if (release.draft || release.prerelease)
+                return false;
+            const releasedAt = new Date(release.published_at || release.created_at);
+            return releasedAt <= cutoff;
+        });
+        if (release) {
+            const releasedAt = release.published_at || release.created_at;
+            info(`Selected mise ${cleanVersion(release.tag_name)}, released ${releasedAt}, with minimum_release_age=${minimumReleaseAge}`);
+            return cleanVersion(release.tag_name);
+        }
+        if (releases.length < 100)
+            break;
+    }
+    throw new Error(`No stable mise release satisfies minimum_release_age=${minimumReleaseAge}`);
 }
 async function setToolVersions() {
     const toolVersions = getInput('tool_versions');

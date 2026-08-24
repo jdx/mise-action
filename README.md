@@ -17,6 +17,7 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           version: 2026.3.10 # [default: latest] mise version to install
+          # minimum_release_age: 7d # select mise releases at least 7 days old instead of setting version
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           bootstrap: false # [default: false] run `mise bootstrap` instead of `mise install`
@@ -46,6 +47,22 @@ jobs:
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
+
+## Minimum Release Age
+
+To avoid installing a newly published mise release immediately, set
+`minimum_release_age` and omit `version`:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    minimum_release_age: 7d
+```
+
+Relative durations such as `24h`, `7d`, `6mo`, and `1y` are supported, as are
+absolute ISO dates and timestamps. The action selects the newest stable,
+non-draft mise release published before the cutoff. An explicit `version`
+takes precedence over `minimum_release_age`.
 
 The action exports environment variables and PATH entries configured by mise
 to subsequent workflow steps. PATH entries are added individually through
