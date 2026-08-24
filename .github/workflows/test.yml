@@ -152,6 +152,7 @@ jobs:
         uses: ./
         with:
           cache: false
+          env: false
           install: false
           minimum_release_age: 2024-09-06
           mise_dir: ${{ runner.temp }}/mise-age-2024
