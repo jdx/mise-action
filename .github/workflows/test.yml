@@ -167,6 +167,17 @@ jobs:
           cache: false
           install: false
           minimum_release_age: 7d
+      - name: Reject an invalid calendar date
+        id: invalid-calendar-date
+        uses: ./
+        continue-on-error: true
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 2024-02-31
+      - name: Check invalid calendar date rejection
+        if: steps.invalid-calendar-date.outcome != 'failure'
+        run: exit 1
       - name: Check the selected release
         env:
           GH_TOKEN: ${{ github.token }}
