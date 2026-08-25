@@ -1060,12 +1060,12 @@ SOFTWARE.
 ---
 
 Name: is-unsafe
-Version: 2.0.0
+Version: 2.0.2
 License: MIT
 Private: false
 Description: Zero-dependency, DOM-free, pure predicate for detecting unsafe strings across HTML, XML, SVG, SQL, SHELL, and REGEX contexts
 Repository: https://github.com/NaturalIntelligence/is-unsafe
-Author: Amit Gupta (https://solothought.work/)
+Author: Amit Gupta (https://solothought.com/)
 License Text:
 ===
 
