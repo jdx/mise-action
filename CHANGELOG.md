@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [4.2.5](https://github.com/jdx/mise-action/compare/v4.2.4..v4.2.5) - 2026-08-12
+## [4.3.0](https://github.com/jdx/mise-action/compare/v4.2.5..v4.3.0) - 2026-08-24
+
+### 🚀 Features
+
+- add minimum release age for mise (#604) by [@jdx](https://github.com/jdx) in [#604](https://github.com/jdx/mise-action/pull/604)
+
+---
+## [4.2.5](https://github.com/jdx/mise-action/compare/v4.2.4..v4.2.5) - 2026-08-13
 
 ### 🐛 Bug Fixes
 
