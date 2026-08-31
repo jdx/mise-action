@@ -879,7 +879,7 @@ SOFTWARE.
 ---
 
 Name: fast-xml-parser
-Version: 5.11.0
+Version: 5.11.1
 License: MIT
 Private: false
 Description: Validate XML, Parse XML, Build XML without C/C++ based libraries
