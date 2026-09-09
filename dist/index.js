@@ -95669,7 +95669,19 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
             }
             else {
                 info(`mise already installed (${installedVersion}), but different version requested (${requestedVersion})`);
-                await exec(miseBinPath, ['self-update', requestedVersion, '-y']);
+                // setEnvVars runs after setupMise, so MISE_GITHUB_TOKEN isn't in
+                // the env yet; pass it through so self-update's GitHub API call is
+                // authenticated and doesn't hit the unauthenticated rate limit.
+                const githubToken = getInput('github_token');
+                const selfUpdateOptions = githubToken
+                    ? {
+                        env: {
+                            ...process.env,
+                            MISE_GITHUB_TOKEN: process.env.MISE_GITHUB_TOKEN || githubToken
+                        }
+                    }
+                    : undefined;
+                await exec(miseBinPath, ['self-update', requestedVersion, '-y'], selfUpdateOptions);
                 info(`mise updated to version ${requestedVersion}`);
                 installedVersion = requestedVersion;
             }
