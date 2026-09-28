@@ -7,11 +7,12 @@ branding:
 inputs:
   version:
     required: false
-    description: The version of mise to use. If not specified, will use the latest release.
+    description: The version of mise to use. If not specified, uses the newest release satisfying minimum_release_age.
   minimum_release_age:
     required: false
+    default: "24h"
     description: |
-      When version is not specified, only install stable mise releases older than this threshold.
+      When version is not specified, only install stable mise releases older than this threshold. Defaults to 24h; set 0s to disable the delay.
       Accepts relative durations such as 24h, 7d, 6mo, or 1y, and absolute ISO dates or timestamps.
   sha256:
     required: false

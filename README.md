@@ -17,7 +17,7 @@ jobs:
       - uses: jdx/mise-action@v4
         with:
           version: 2026.3.10 # [default: latest] mise version to install
-          # minimum_release_age: 7d # select mise releases at least 7 days old instead of setting version
+          # minimum_release_age: 7d # default: 24h; use 0s to disable the delay
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           bootstrap: false # [default: false] run `mise bootstrap` instead of `mise install`
@@ -50,8 +50,8 @@ jobs:
 
 ## Minimum Release Age
 
-To avoid installing a newly published mise release immediately, set
-`minimum_release_age` and omit `version`:
+By default, the action installs the newest stable mise release that is at least
+24 hours old. To change the delay, set `minimum_release_age` and omit `version`:
 
 ```yaml
 - uses: jdx/mise-action@v4
@@ -62,7 +62,10 @@ To avoid installing a newly published mise release immediately, set
 Relative durations such as `24h`, `7d`, `6mo`, and `1y` are supported, as are
 absolute ISO dates and timestamps. The action selects the newest stable,
 non-draft mise release published before the cutoff. An explicit `version`
-takes precedence over `minimum_release_age`.
+takes precedence over `minimum_release_age` and can install a release immediately.
+Set `minimum_release_age: 0s` to select the latest stable release without a delay.
+This input controls the mise binary; it does not set the release-age policy for
+tools installed by mise.
 
 ## Environment and PATH Export
 
