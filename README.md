@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v4
         with:
-          version: 2026.3.10 # [default: latest] mise version to install
+          version: 2026.3.10 # [default: newest release at least 24h old] mise version to install
           # minimum_release_age: 7d # default: 24h; use 0s to disable the delay
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
