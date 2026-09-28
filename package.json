@@ -18,7 +18,8 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "all": "npm run format:write && npm run lint && npm run package",
+    "all": "npm run format:write && npm run lint && npm run test && npm run package",
+    "test": "node --test scripts/release-index.test.mjs",
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
