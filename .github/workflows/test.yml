@@ -59,7 +59,7 @@ jobs:
             chmod +x "mise-env-path-$fixture/mise-path-order"
           done
       - name: Setup mise
-        uses: ./
+        uses: $/
         with:
           mise_toml: |
             [tools]
@@ -96,7 +96,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise without PATH export
-        uses: ./
+        uses: $/
         with:
           install: false
           export_path: false
@@ -122,7 +122,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise
-        uses: ./
+        uses: $/
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
@@ -135,7 +135,7 @@ jobs:
       - run: which bun
       - run: bun -v
       - name: Update mise
-        uses: ./
+        uses: $/
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
@@ -149,7 +149,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install mise with the default release age
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
@@ -164,7 +164,7 @@ jobs:
           gh api "repos/jdx/mise/releases/tags/v$version" | jq -e --argjson cutoff "$cutoff" \
             '.draft == false and .prerelease == false and (.published_at | fromdateiso8601) <= $cutoff'
       - name: Install an age-filtered 2024 mise release
-        uses: ./
+        uses: $/
         with:
           cache: false
           env: false
@@ -172,20 +172,20 @@ jobs:
           minimum_release_age: 2024-09-06
           mise_dir: ${{ runner.temp }}/mise-age-2024
       - name: Install the latest mise release
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
           minimum_release_age: 0s
       - name: Replace it with an age-filtered release
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
           minimum_release_age: 7d
       - name: Reject an invalid calendar date
         id: invalid-calendar-date
-        uses: ./
+        uses: $/
         continue-on-error: true
         with:
           cache: false
@@ -213,7 +213,7 @@ jobs:
           persist-credentials: false
       - name: Setup mise
         id: bad
-        uses: ./
+        uses: $/
         with:
           version: 2024.9.6
           sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
@@ -241,7 +241,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise with custom cache key
-        uses: ./
+        uses: $/
         with:
           cache_key: "custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}"
           install_args: "jq@1.7.1"
@@ -260,7 +260,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise from mise.jdx.dev
-        uses: ./
+        uses: $/
         with:
           fetch_from_github: true
           cache: false
@@ -304,7 +304,7 @@ jobs:
           echo "$mock_bin" >> "$GITHUB_PATH"
           echo "MISE_ACTION_CURL_ATTEMPTS=$RUNNER_TEMP/curl-attempts" >> "$GITHUB_ENV"
       - name: Setup mise after transient download failures
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
