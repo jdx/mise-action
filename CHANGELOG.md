@@ -1,7 +1,33 @@
 # Changelog
 
 ---
-## [4.3.0](https://github.com/jdx/mise-action/compare/v4.2.5..v4.3.0) - 2026-08-24
+## [5.0.0](https://github.com/jdx/mise-action/compare/v4.3.0..v5.0.0) - 2026-09-28
+
+### 🚀 Features
+
+- **breaking** default minimum release age to 24 hours (#632) by [@jdx](https://github.com/jdx) in [279d505](https://github.com/jdx/mise-action/commit/279d5058bda2d067bb8ae4ee4662aced8e496382)
+
+### 🐛 Bug Fixes
+
+- fix: authenticate mise self-update to avoid GitHub API rate limits (#619) by [@hegde5](https://github.com/hegde5) in [#619](https://github.com/jdx/mise-action/pull/619)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(entire)** store checkpoints in a private repository by [@jdx](https://github.com/jdx) in [15b2b0f](https://github.com/jdx/mise-action/commit/15b2b0f0ffa0e8844885e126bde40b70921eb370)
+- **(entire)** commit codex session hooks by [@jdx](https://github.com/jdx) in [b0eb15f](https://github.com/jdx/mise-action/commit/b0eb15f90170a6222c19c94844cc4eda232738cb)
+- **(entire)** commit claude session hooks by [@jdx](https://github.com/jdx) in [6ac0f83](https://github.com/jdx/mise-action/commit/6ac0f83023a6be3397e0b7e6882530dd095bcea5)
+- **(entire)** restore lower-cost trail findings by [@jdx](https://github.com/jdx) in [aa79241](https://github.com/jdx/mise-action/commit/aa792413b7229c1e010f817293d81eeb4a14581a)
+- remove entire and codex agent hooks by [@jdx](https://github.com/jdx) in [07f40cf](https://github.com/jdx/mise-action/commit/07f40cfcc0594453c27b9bdf0960aad84425b024)
+- add entire trail runners (#624) by [@jdx](https://github.com/jdx) in [#624](https://github.com/jdx/mise-action/pull/624)
+- remove Entire trail runners (#630) by [@jdx](https://github.com/jdx) in [#630](https://github.com/jdx/mise-action/pull/630)
+- float jdx tools and aube on latest without a release-age delay (#631) by [@jdx](https://github.com/jdx) in [#631](https://github.com/jdx/mise-action/pull/631)
+
+### New Contributors
+
+* @hegde5 made their first contribution in [#619](https://github.com/jdx/mise-action/pull/619)
+
+---
+## [4.3.0](https://github.com/jdx/mise-action/compare/v4.2.5..v4.3.0) - 2026-08-25
 
 ### 🚀 Features
 
