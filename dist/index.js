@@ -95354,6 +95354,43 @@ function requireLib () {
 
 var libExports = requireLib();
 
+/** Select the highest eligible mise calendar version from the published index. */
+function selectMiseRelease(index, cutoff) {
+    if (!Number.isFinite(cutoff.getTime())) {
+        throw new Error('Invalid minimum release age cutoff');
+    }
+    let selected;
+    let selectedKey;
+    for (const line of index.split(/\r?\n/)) {
+        if (!line.trim())
+            continue;
+        const match = /^v(\d+\.\d+\.\d+)\t(\d+)$/.exec(line);
+        if (!match)
+            throw new Error('Invalid mise release index row');
+        const version = match[1];
+        const key = version.split('.').map(Number);
+        const publishedAt = Number(match[2]);
+        if (!key.every(Number.isSafeInteger) ||
+            !Number.isSafeInteger(publishedAt) ||
+            !Number.isFinite(new Date(publishedAt * 1000).getTime())) {
+            throw new Error('Invalid mise release index row');
+        }
+        if (publishedAt * 1000 > cutoff.getTime())
+            continue;
+        // This comparator is only for mise's numeric calendar versions, not tools.
+        const previousKey = selectedKey;
+        const difference = previousKey
+            ? key.map((part, i) => part - previousKey[i]).find(part => part !== 0) ||
+                0
+            : 1;
+        if (difference > 0) {
+            selected = { version, publishedAt };
+            selectedKey = key;
+        }
+    }
+    return selected;
+}
+
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -96128,58 +96165,18 @@ function minimumReleaseAgeCutoff(value, now = new Date()) {
     cutoff.setTime(cutoff.getTime() - milliseconds);
     return cutoff;
 }
-async function githubMiseReleases(page) {
-    const headers = {
-        Accept: 'application/vnd.github+json',
-        'User-Agent': 'mise-action',
-        'X-GitHub-Api-Version': '2022-11-28'
-    };
-    const githubToken = getInput('github_token');
-    if (githubToken)
-        headers.Authorization = `Bearer ${githubToken}`;
-    return retryDownload(async () => {
-        const response = await fetch(`https://api.github.com/repos/jdx/mise/releases?per_page=100&page=${page}`, { headers, signal: AbortSignal.timeout(30_000) });
-        if (!response.ok) {
-            const message = `GitHub releases API returned ${response.status} ${response.statusText}`;
-            if (response.status >= 400 &&
-                response.status < 500 &&
-                response.status !== 429) {
-                throw new NonRetryableError(message);
-            }
-            throw new Error(message);
-        }
-        return (await response.json());
-    });
-}
 async function latestMiseVersion(minimumReleaseAge) {
     if (!minimumReleaseAge) {
         return downloadText('https://mise.jdx.dev/VERSION');
     }
     const cutoff = minimumReleaseAgeCutoff(minimumReleaseAge);
-    let newestRelease;
-    for (let page = 1;; page++) {
-        const releases = await githubMiseReleases(page);
-        for (const release of releases) {
-            if (release.draft || release.prerelease)
-                continue;
-            const releasedAt = new Date(release.published_at || release.created_at);
-            if (Number.isNaN(releasedAt.getTime()) || releasedAt > cutoff)
-                continue;
-            if (!newestRelease ||
-                releasedAt >
-                    new Date(newestRelease.published_at || newestRelease.created_at)) {
-                newestRelease = release;
-            }
-        }
-        if (releases.length < 100)
-            break;
+    const index = await downloadText('https://mise.jdx.dev/releases.tsv');
+    const release = selectMiseRelease(index, cutoff);
+    if (!release) {
+        throw new Error(`No stable mise release satisfies minimum_release_age=${minimumReleaseAge}`);
     }
-    if (newestRelease) {
-        const releasedAt = newestRelease.published_at || newestRelease.created_at;
-        info(`Selected mise ${cleanVersion(newestRelease.tag_name)}, released ${releasedAt}, with minimum_release_age=${minimumReleaseAge}`);
-        return cleanVersion(newestRelease.tag_name);
-    }
-    throw new Error(`No stable mise release satisfies minimum_release_age=${minimumReleaseAge}`);
+    info(`Selected mise ${release.version}, released ${new Date(release.publishedAt * 1000).toISOString()}, with minimum_release_age=${minimumReleaseAge}`);
+    return release.version;
 }
 async function setToolVersions() {
     const toolVersions = getInput('tool_versions');

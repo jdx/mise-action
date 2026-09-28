@@ -30,7 +30,7 @@ jobs:
           EOF
       
       - name: Setup mise
-        uses: ./
+        uses: $/
       
       - name: Verify environment variables are exported
         run: |

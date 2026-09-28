@@ -59,7 +59,7 @@ jobs:
             chmod +x "mise-env-path-$fixture/mise-path-order"
           done
       - name: Setup mise
-        uses: ./
+        uses: $/
         with:
           mise_toml: |
             [tools]
@@ -96,7 +96,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise without PATH export
-        uses: ./
+        uses: $/
         with:
           install: false
           export_path: false
@@ -122,7 +122,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise
-        uses: ./
+        uses: $/
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
@@ -135,7 +135,7 @@ jobs:
       - run: which bun
       - run: bun -v
       - name: Update mise
-        uses: ./
+        uses: $/
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
@@ -148,8 +148,59 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Record index requests and block GitHub API requests
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/age-network-bin"
+          echo "MISE_ACTION_REAL_CURL=$(command -v curl)" >> "$GITHUB_ENV"
+          echo "MISE_ACTION_REQUEST_LOG=$RUNNER_TEMP/age-network-requests" >> "$GITHUB_ENV"
+          cat > "$RUNNER_TEMP/age-network-bin/curl" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          for arg in "$@"; do
+            if [[ "$arg" == https://api.github.com/* ]]; then
+              echo "Release selection must not call the GitHub API" >&2
+              exit 1
+            fi
+            if [[ "$arg" == https://mise.jdx.dev/releases.tsv ]]; then
+              echo "$arg" >> "$MISE_ACTION_REQUEST_LOG"
+            fi
+          done
+          exec "$MISE_ACTION_REAL_CURL" "$@"
+          EOF
+          chmod +x "$RUNNER_TEMP/age-network-bin/curl"
+          echo "$RUNNER_TEMP/age-network-bin" >> "$GITHUB_PATH"
+      - name: Install mise with the default release age
+        uses: $/
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/block-github-api.mjs
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-age-default
+      - name: Check fresh selection used one CDN request
+        run: test "$(wc -l < "$MISE_ACTION_REQUEST_LOG")" -eq 1
+      - name: Reuse the installed binary with the default release age
+        uses: $/
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/block-github-api.mjs
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-age-default
+      - name: Check cached selection also used one CDN request
+        run: test "$(wc -l < "$MISE_ACTION_REQUEST_LOG")" -eq 2
+      - name: Check the default 24-hour delay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version=$(mise version --json | jq -r '.version | split(" ")[0]')
+          cutoff=$(date -u -d '24 hours ago' +%s)
+          gh api "repos/jdx/mise/releases/tags/v$version" | jq -e --argjson cutoff "$cutoff" \
+            '.draft == false and .prerelease == false and (.published_at | fromdateiso8601) <= $cutoff'
       - name: Install an age-filtered 2024 mise release
-        uses: ./
+        uses: $/
         with:
           cache: false
           env: false
@@ -157,20 +208,20 @@ jobs:
           minimum_release_age: 2024-09-06
           mise_dir: ${{ runner.temp }}/mise-age-2024
       - name: Install the latest mise release
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
           minimum_release_age: 0s
       - name: Replace it with an age-filtered release
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
           minimum_release_age: 7d
       - name: Reject an invalid calendar date
         id: invalid-calendar-date
-        uses: ./
+        uses: $/
         continue-on-error: true
         with:
           cache: false
@@ -186,7 +237,7 @@ jobs:
         run: |
           cutoff=$(date -u -d '7 days ago' +%s)
           expected=$(gh api 'repos/jdx/mise/releases?per_page=100' --jq \
-            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff)) | max_by(.published_at // .created_at).tag_name" | sed 's/^v//')
+            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff)) | max_by(.tag_name | ltrimstr(\"v\") | split(\".\") | map(tonumber)).tag_name" | sed 's/^v//')
           actual=$(mise version --json | jq -r '.version | split(" ")[0]')
           test "$actual" = "$expected"
 
@@ -198,7 +249,7 @@ jobs:
           persist-credentials: false
       - name: Setup mise
         id: bad
-        uses: ./
+        uses: $/
         with:
           version: 2024.9.6
           sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
@@ -226,7 +277,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise with custom cache key
-        uses: ./
+        uses: $/
         with:
           cache_key: "custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}"
           install_args: "jq@1.7.1"
@@ -245,7 +296,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup mise from mise.jdx.dev
-        uses: ./
+        uses: $/
         with:
           fetch_from_github: true
           cache: false
@@ -289,7 +340,7 @@ jobs:
           echo "$mock_bin" >> "$GITHUB_PATH"
           echo "MISE_ACTION_CURL_ATTEMPTS=$RUNNER_TEMP/curl-attempts" >> "$GITHUB_ENV"
       - name: Setup mise after transient download failures
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
