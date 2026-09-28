@@ -237,7 +237,7 @@ jobs:
         run: |
           cutoff=$(date -u -d '7 days ago' +%s)
           expected=$(gh api 'repos/jdx/mise/releases?per_page=100' --jq \
-            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff)) | max_by(.published_at // .created_at).tag_name" | sed 's/^v//')
+            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff)) | max_by(.tag_name | ltrimstr(\"v\") | split(\".\") | map(tonumber)).tag_name" | sed 's/^v//')
           actual=$(mise version --json | jq -r '.version | split(" ")[0]')
           test "$actual" = "$expected"
 
