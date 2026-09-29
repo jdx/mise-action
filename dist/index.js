@@ -31,17 +31,17 @@ import require$$5$1 from 'node:perf_hooks';
 import require$$8$1 from 'node:util/types';
 import require$$1$1 from 'node:worker_threads';
 import require$$10, { createHmac } from 'node:crypto';
-import require$$5$2 from 'node:http2';
+import require$$6 from 'node:http2';
 import require$$1$2 from 'node:url';
-import require$$5$3 from 'node:async_hooks';
+import require$$5$2 from 'node:async_hooks';
 import require$$1$3 from 'node:console';
 import require$$1$4 from 'node:dns';
-import require$$5$4, { StringDecoder } from 'string_decoder';
+import require$$5$3, { StringDecoder } from 'string_decoder';
 import * as child from 'child_process';
 import { setTimeout as setTimeout$1 } from 'timers';
 import * as stream from 'stream';
 import { Readable } from 'stream';
-import require$$5$5, { URL as URL$1 } from 'url';
+import require$$5$4, { URL as URL$1 } from 'url';
 import * as buffer from 'buffer';
 import { Buffer as Buffer$1 } from 'buffer';
 import os$1, { EOL as EOL$1 } from 'node:os';
@@ -2586,11 +2586,77 @@ function requireRequest$1 () {
 	    }
 	  }
 
-	  onUpgrade (statusCode, headers, socket) {
+	  /**
+	   * @param {number|null} statusCode
+	   * @param {Buffer[]|null} headers
+	   * @param {import('node:stream').Duplex} socket
+	   * @param {string} [statusText]
+	   */
+	  onUpgrade (statusCode, headers, socket, statusText = '') {
+	    this.onFinally();
+
 	    assert(!this.aborted);
 	    assert(!this.completed);
 
-	    return this[kHandler].onUpgrade(statusCode, headers, socket)
+	    if (statusCode !== null) {
+	      this.#publishUpgradeHeaders(statusCode, headers, statusText);
+	    }
+
+	    const result = this[kHandler].onUpgrade(statusCode, headers, socket);
+
+	    if (!this.aborted) {
+	      this.completed = true;
+	      if (statusCode !== null) {
+	        this.#publishUpgradeTrailers();
+	      }
+	    }
+
+	    return result
+	  }
+
+	  /**
+	   * @param {number} statusCode
+	   * @param {import('node:http2').IncomingHttpHeaders} headers
+	   * @param {(headers: import('node:http2').IncomingHttpHeaders) => Buffer[]} parseHeaders
+	   * @param {string} [statusText]
+	   */
+	  onUpgradeResponse (statusCode, headers, parseHeaders, statusText = '') {
+	    assert(!this.aborted);
+	    assert(this.completed);
+
+	    if (channels.headers.hasSubscribers) {
+	      this.#publishUpgradeHeaders(statusCode, parseHeaders(headers), statusText);
+	    }
+	    this.#publishUpgradeTrailers();
+	  }
+
+	  /**
+	   * @param {Error} error
+	   */
+	  onUpgradeError (error) {
+	    assert(!this.aborted);
+	    assert(this.completed);
+
+	    if (channels.error.hasSubscribers) {
+	      channels.error.publish({ request: this, error });
+	    }
+	  }
+
+	  /**
+	   * @param {number} statusCode
+	   * @param {Buffer[]} headers
+	   * @param {string} statusText
+	   */
+	  #publishUpgradeHeaders (statusCode, headers, statusText) {
+	    if (channels.headers.hasSubscribers) {
+	      channels.headers.publish({ request: this, response: { statusCode, headers, statusText } });
+	    }
+	  }
+
+	  #publishUpgradeTrailers () {
+	    if (channels.trailers.hasSubscribers) {
+	      channels.trailers.publish({ request: this, trailers: [] });
+	    }
 	  }
 
 	  onComplete (trailers) {
@@ -9173,7 +9239,7 @@ function requireClientH1 () {
 	  }
 
 	  onUpgrade (head) {
-	    const { upgrade, client, socket, headers, statusCode } = this;
+	    const { upgrade, client, socket, headers, statusCode, statusText } = this;
 
 	    assert(upgrade);
 	    assert(client[kSocket] === socket);
@@ -9208,9 +9274,10 @@ function requireClientH1 () {
 	    client.emit('disconnect', client[kUrl], [client], new InformationalError('upgrade'));
 
 	    try {
-	      request.onUpgrade(statusCode, headers, socket);
-	    } catch (err) {
-	      util.destroy(socket, err);
+	      request.onUpgrade(statusCode, headers, socket, statusText);
+	    } catch (error) {
+	      util.errorRequest(client, request, error);
+	      util.destroy(socket, error);
 	    }
 
 	    client[kResume]();
@@ -9791,12 +9858,22 @@ function requireClientH1 () {
 	  const socket = client[kSocket];
 	  clearIdleSocketValidation(socket);
 
-	  const abort = (err) => {
-	    if (request.aborted || request.completed) {
+	  /**
+	   * @param {Error} [error]
+	   */
+	  const abort = (error) => {
+	    if (request.aborted) {
 	      return
 	    }
 
-	    util.errorRequest(client, request, err || new RequestAbortedError());
+	    if (request.completed) {
+	      if (request.upgrade || request.method === 'CONNECT') {
+	        util.destroy(socket, new InformationalError('aborted'));
+	      }
+	      return
+	    }
+
+	    util.errorRequest(client, request, error || new RequestAbortedError());
 
 	    util.destroy(body);
 	    util.destroy(socket, new InformationalError('aborted'));
@@ -10254,6 +10331,7 @@ function requireClientH2 () {
 	hasRequiredClientH2 = 1;
 
 	const assert = require$$0$2;
+	const { errorMonitor } = require$$8;
 	const { pipeline } = require$$0$3;
 	const util = requireUtil$8();
 	const {
@@ -10292,7 +10370,7 @@ function requireClientH2 () {
 	/** @type {import('http2')} */
 	let http2;
 	try {
-	  http2 = require$$5$2;
+	  http2 = require$$6;
 	} catch {
 	  // @ts-ignore
 	  http2 = { constants: {} };
@@ -10328,6 +10406,15 @@ function requireClientH2 () {
 	  }
 
 	  return result
+	}
+
+	/**
+	 * @param {import('node:http2').IncomingHttpHeaders} headers
+	 * @returns {Buffer[]}
+	 */
+	function parseH2ResponseHeaders (headers) {
+	  const { [HTTP2_HEADER_STATUS]: _statusCode, ...realHeaders } = headers;
+	  return parseH2Headers(realHeaders)
 	}
 
 	async function connectH2 (client, socket) {
@@ -10550,22 +10637,32 @@ function requireClientH2 () {
 	  headers[HTTP2_HEADER_AUTHORITY] = host || `${hostname}${port ? `:${port}` : ''}`;
 	  headers[HTTP2_HEADER_METHOD] = method;
 
-	  const abort = (err) => {
-	    if (request.aborted || request.completed) {
+	  /**
+	   * @param {Error} [error]
+	   */
+	  const abort = (error) => {
+	    if (request.aborted) {
 	      return
 	    }
 
-	    err = err || new RequestAbortedError();
+	    if (request.completed) {
+	      if (method === 'CONNECT' && stream != null) {
+	        util.destroy(stream, error || new RequestAbortedError());
+	      }
+	      return
+	    }
 
-	    util.errorRequest(client, request, err);
+	    error = error || new RequestAbortedError();
+
+	    util.errorRequest(client, request, error);
 
 	    if (stream != null) {
-	      util.destroy(stream, err);
+	      util.destroy(stream, error);
 	    }
 
 	    // We do not destroy the socket as we can continue using the session
 	    // the stream get's destroyed and the session remains to create new streams
-	    util.destroy(body, err);
+	    util.destroy(body, error);
 	    client[kQueue][client[kRunningIdx]++] = null;
 	    client[kResume]();
 	  };
@@ -10584,25 +10681,57 @@ function requireClientH2 () {
 
 	  if (method === 'CONNECT') {
 	    session.ref();
-	    // We are already connected, streams are pending, first request
-	    // will create a new stream. We trigger a request to create the stream and wait until
-	    // `ready` event is triggered
 	    // We disabled endStream to allow the user to write to the stream
 	    stream = session.request(headers, { endStream: false, signal });
+	    let upgradeResponseFinished = false;
 
-	    if (stream.id && !stream.pending) {
-	      request.onUpgrade(null, null, stream);
-	      ++session[kOpenStreams];
-	      client[kQueue][client[kRunningIdx]++] = null;
-	    } else {
-	      stream.once('ready', () => {
+	    /**
+	     * @param {import('node:http2').IncomingHttpHeaders} headers
+	     */
+	    const onResponse = (headers) => {
+	      upgradeResponseFinished = true;
+	      stream.off(errorMonitor, onUpgradeError);
+	      request.onUpgradeResponse(Number(headers[HTTP2_HEADER_STATUS]), headers, parseH2ResponseHeaders);
+	    };
+
+	    /**
+	     * @param {Error} error
+	     */
+	    const onUpgradeError = (error) => {
+	      upgradeResponseFinished = true;
+	      stream.off('response', onResponse);
+	      request.onUpgradeError(error);
+	    };
+
+	    const onReady = () => {
+	      try {
 	        request.onUpgrade(null, null, stream);
-	        ++session[kOpenStreams];
-	        client[kQueue][client[kRunningIdx]++] = null;
-	      });
-	    }
+	      } catch (error) {
+	        stream.off('response', onResponse);
+	        abort(error);
+	        return
+	      }
+
+	      if (request.aborted) {
+	        return
+	      }
+
+	      stream.off('error', abort);
+	      stream.once(errorMonitor, onUpgradeError);
+	      client[kQueue][client[kRunningIdx]++] = null;
+	    };
+
+	    stream.once('response', onResponse);
+	    stream.once('error', abort);
+	    ++session[kOpenStreams];
+	    onReady();
 
 	    stream.once('close', () => {
+	      if (!upgradeResponseFinished && request.completed) {
+	        stream.off('response', onResponse);
+	        stream.off(errorMonitor, onUpgradeError);
+	        request.onUpgradeError(new InformationalError(`HTTP/2: "stream error" received - code ${stream.rstCode}`));
+	      }
 	      session[kOpenStreams] -= 1;
 	      if (session[kOpenStreams] === 0) session.unref();
 	    });
@@ -13377,7 +13506,10 @@ function requireRetryHandler () {
 	    this.retryCount += 1;
 
 	    if (statusCode >= 300) {
-	      if (this.retryOpts.statusCodes.includes(statusCode) === false) {
+	      // Only expose a response if no earlier attempt has reached the caller.
+	      // Otherwise abort this attempt so the error settles the existing body
+	      // instead of replacing it with a new response.
+	      if (!this.headersSent && this.retryOpts.statusCodes.includes(statusCode) === false) {
 	        this.headersSent = true;
 	        this.checkpointResponseEnd(headers, resume);
 	        return this.handler.onHeaders(
@@ -14158,7 +14290,7 @@ function requireApiRequest () {
 	const { InvalidArgumentError, RequestAbortedError } = requireErrors();
 	const util = requireUtil$8();
 	const { getResolveErrorBodyCallback } = requireUtil$6();
-	const { AsyncResource } = require$$5$3;
+	const { AsyncResource } = require$$5$2;
 
 	class RequestHandler extends AsyncResource {
 	  constructor (opts, callback) {
@@ -14446,7 +14578,7 @@ function requireApiStream () {
 	const { InvalidArgumentError, InvalidReturnValueError } = requireErrors();
 	const util = requireUtil$8();
 	const { getResolveErrorBodyCallback } = requireUtil$6();
-	const { AsyncResource } = require$$5$3;
+	const { AsyncResource } = require$$5$2;
 	const { addSignal, removeSignal } = requireAbortSignal();
 
 	class StreamHandler extends AsyncResource {
@@ -14680,7 +14812,7 @@ function requireApiPipeline () {
 	  RequestAbortedError
 	} = requireErrors();
 	const util = requireUtil$8();
-	const { AsyncResource } = require$$5$3;
+	const { AsyncResource } = require$$5$2;
 	const { addSignal, removeSignal } = requireAbortSignal();
 	const assert = require$$0$2;
 
@@ -14929,7 +15061,7 @@ function requireApiUpgrade () {
 	hasRequiredApiUpgrade = 1;
 
 	const { InvalidArgumentError, SocketError } = requireErrors();
-	const { AsyncResource } = require$$5$3;
+	const { AsyncResource } = require$$5$2;
 	const util = requireUtil$8();
 	const { addSignal, removeSignal } = requireAbortSignal();
 	const assert = require$$0$2;
@@ -15045,7 +15177,7 @@ function requireApiConnect () {
 	hasRequiredApiConnect = 1;
 
 	const assert = require$$0$2;
-	const { AsyncResource } = require$$5$3;
+	const { AsyncResource } = require$$5$2;
 	const { InvalidArgumentError, SocketError } = requireErrors();
 	const util = requireUtil$8();
 	const { addSignal, removeSignal } = requireAbortSignal();
@@ -21914,7 +22046,7 @@ function requireUtil$5 () {
 	const { getEncoding } = requireEncoding();
 	const { serializeAMimeType, parseMIMEType } = requireDataUrl();
 	const { types } = require$$0$5;
-	const { StringDecoder } = require$$5$4;
+	const { StringDecoder } = require$$5$3;
 	const { btoa } = require$$0$1;
 
 	/** @type {PropertyDescriptor} */
@@ -39378,7 +39510,7 @@ function requireDist$1 () {
 	const assert_1 = __importDefault(assert$1);
 	const debug_1 = __importDefault(requireSrc());
 	const agent_base_1 = requireDist$2();
-	const url_1 = require$$5$5;
+	const url_1 = require$$5$4;
 	const parse_proxy_response_1 = requireParseProxyResponse();
 	const debug = (0, debug_1.default)('https-proxy-agent');
 	const setServernameFromNonIpHost = (options) => {
@@ -39569,7 +39701,7 @@ function requireDist () {
 	const debug_1 = __importDefault(requireSrc());
 	const events_1 = events__default;
 	const agent_base_1 = requireDist$2();
-	const url_1 = require$$5$5;
+	const url_1 = require$$5$4;
 	const debug = (0, debug_1.default)('http-proxy-agent');
 	/**
 	 * The `HttpProxyAgent` implements an HTTP Agent subclass that connects
@@ -55588,8 +55720,8 @@ class UserDelegationKeyCredential {
 
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-const SDK_VERSION = "12.33.0";
-const SERVICE_VERSION = "2026-06-06";
+const SDK_VERSION = "12.34.0";
+const SERVICE_VERSION = "2026-10-06";
 const BLOCK_BLOB_MAX_UPLOAD_BLOB_BYTES = 256 * 1024 * 1024; // 256MB
 const BLOCK_BLOB_MAX_STAGE_BLOCK_BYTES = 4000 * 1024 * 1024; // 4000MB
 const BLOCK_BLOB_MAX_BLOCKS = 50000;
@@ -59985,6 +60117,66 @@ const ContainerListBlobFlatSegmentExceptionHeaders = {
         },
     },
 };
+const ContainerListBlobFlatSegmentApacheArrowHeaders = {
+    serializedName: "Container_listBlobFlatSegmentApacheArrowHeaders",
+    type: {
+        name: "Composite",
+        className: "ContainerListBlobFlatSegmentApacheArrowHeaders",
+        modelProperties: {
+            contentType: {
+                serializedName: "content-type",
+                xmlName: "content-type",
+                type: {
+                    name: "String",
+                },
+            },
+            clientRequestId: {
+                serializedName: "x-ms-client-request-id",
+                xmlName: "x-ms-client-request-id",
+                type: {
+                    name: "String",
+                },
+            },
+            requestId: {
+                serializedName: "x-ms-request-id",
+                xmlName: "x-ms-request-id",
+                type: {
+                    name: "String",
+                },
+            },
+            version: {
+                serializedName: "x-ms-version",
+                xmlName: "x-ms-version",
+                type: {
+                    name: "String",
+                },
+            },
+            date: {
+                serializedName: "date",
+                xmlName: "date",
+                type: {
+                    name: "DateTimeRfc1123",
+                },
+            },
+        },
+    },
+};
+const ContainerListBlobFlatSegmentApacheArrowExceptionHeaders = {
+    serializedName: "Container_listBlobFlatSegmentApacheArrowExceptionHeaders",
+    type: {
+        name: "Composite",
+        className: "ContainerListBlobFlatSegmentApacheArrowExceptionHeaders",
+        modelProperties: {
+            errorCode: {
+                serializedName: "x-ms-error-code",
+                xmlName: "x-ms-error-code",
+                type: {
+                    name: "String",
+                },
+            },
+        },
+    },
+};
 const ContainerListBlobHierarchySegmentHeaders = {
     serializedName: "Container_listBlobHierarchySegmentHeaders",
     type: {
@@ -60041,6 +60233,66 @@ const ContainerListBlobHierarchySegmentExceptionHeaders = {
     type: {
         name: "Composite",
         className: "ContainerListBlobHierarchySegmentExceptionHeaders",
+        modelProperties: {
+            errorCode: {
+                serializedName: "x-ms-error-code",
+                xmlName: "x-ms-error-code",
+                type: {
+                    name: "String",
+                },
+            },
+        },
+    },
+};
+const ContainerListBlobHierarchySegmentApacheArrowHeaders = {
+    serializedName: "Container_listBlobHierarchySegmentApacheArrowHeaders",
+    type: {
+        name: "Composite",
+        className: "ContainerListBlobHierarchySegmentApacheArrowHeaders",
+        modelProperties: {
+            contentType: {
+                serializedName: "content-type",
+                xmlName: "content-type",
+                type: {
+                    name: "String",
+                },
+            },
+            clientRequestId: {
+                serializedName: "x-ms-client-request-id",
+                xmlName: "x-ms-client-request-id",
+                type: {
+                    name: "String",
+                },
+            },
+            requestId: {
+                serializedName: "x-ms-request-id",
+                xmlName: "x-ms-request-id",
+                type: {
+                    name: "String",
+                },
+            },
+            version: {
+                serializedName: "x-ms-version",
+                xmlName: "x-ms-version",
+                type: {
+                    name: "String",
+                },
+            },
+            date: {
+                serializedName: "date",
+                xmlName: "date",
+                type: {
+                    name: "DateTimeRfc1123",
+                },
+            },
+        },
+    },
+};
+const ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders = {
+    serializedName: "Container_listBlobHierarchySegmentApacheArrowExceptionHeaders",
+    type: {
+        name: "Composite",
+        className: "ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders",
         modelProperties: {
             errorCode: {
                 serializedName: "x-ms-error-code",
@@ -60478,6 +60730,34 @@ const BlobDownloadHeaders = {
                 xmlName: "x-ms-structured-content-length",
                 type: {
                     name: "Number",
+                },
+            },
+            accessTier: {
+                serializedName: "x-ms-access-tier",
+                xmlName: "x-ms-access-tier",
+                type: {
+                    name: "String",
+                },
+            },
+            accessTierInferred: {
+                serializedName: "x-ms-access-tier-inferred",
+                xmlName: "x-ms-access-tier-inferred",
+                type: {
+                    name: "Boolean",
+                },
+            },
+            accessTierChangedOn: {
+                serializedName: "x-ms-access-tier-change-time",
+                xmlName: "x-ms-access-tier-change-time",
+                type: {
+                    name: "DateTimeRfc1123",
+                },
+            },
+            smartAccessTier: {
+                serializedName: "x-ms-smart-access-tier",
+                xmlName: "x-ms-smart-access-tier",
+                type: {
+                    name: "String",
                 },
             },
             errorCode: {
@@ -64095,6 +64375,13 @@ const BlockBlobUploadHeaders = {
                     name: "ByteArray",
                 },
             },
+            xMsContentCrc64: {
+                serializedName: "x-ms-content-crc64",
+                xmlName: "x-ms-content-crc64",
+                type: {
+                    name: "ByteArray",
+                },
+            },
             clientRequestId: {
                 serializedName: "x-ms-client-request-id",
                 xmlName: "x-ms-client-request-id",
@@ -64207,6 +64494,13 @@ const BlockBlobPutBlobFromUrlHeaders = {
             contentMD5: {
                 serializedName: "content-md5",
                 xmlName: "content-md5",
+                type: {
+                    name: "ByteArray",
+                },
+            },
+            xMsContentCrc64: {
+                serializedName: "x-ms-content-crc64",
+                xmlName: "x-ms-content-crc64",
                 type: {
                     name: "ByteArray",
                 },
@@ -64829,8 +65123,12 @@ var Mappers = /*#__PURE__*/Object.freeze({
     ContainerGetPropertiesExceptionHeaders: ContainerGetPropertiesExceptionHeaders,
     ContainerGetPropertiesHeaders: ContainerGetPropertiesHeaders,
     ContainerItem: ContainerItem,
+    ContainerListBlobFlatSegmentApacheArrowExceptionHeaders: ContainerListBlobFlatSegmentApacheArrowExceptionHeaders,
+    ContainerListBlobFlatSegmentApacheArrowHeaders: ContainerListBlobFlatSegmentApacheArrowHeaders,
     ContainerListBlobFlatSegmentExceptionHeaders: ContainerListBlobFlatSegmentExceptionHeaders,
     ContainerListBlobFlatSegmentHeaders: ContainerListBlobFlatSegmentHeaders,
+    ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders: ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders,
+    ContainerListBlobHierarchySegmentApacheArrowHeaders: ContainerListBlobHierarchySegmentApacheArrowHeaders,
     ContainerListBlobHierarchySegmentExceptionHeaders: ContainerListBlobHierarchySegmentExceptionHeaders,
     ContainerListBlobHierarchySegmentHeaders: ContainerListBlobHierarchySegmentHeaders,
     ContainerProperties: ContainerProperties,
@@ -64989,7 +65287,7 @@ const timeoutInSeconds = {
 const version$1 = {
     parameterPath: "version",
     mapper: {
-        defaultValue: "2026-06-06",
+        defaultValue: "2026-10-06",
         isConstant: true,
         serializedName: "x-ms-version",
         type: {
@@ -65529,6 +65827,27 @@ const startFrom = {
     mapper: {
         serializedName: "startFrom",
         xmlName: "startFrom",
+        type: {
+            name: "String",
+        },
+    },
+};
+const accept2 = {
+    parameterPath: "accept",
+    mapper: {
+        defaultValue: "application/vnd.apache.arrow.stream,application/xml",
+        isConstant: true,
+        serializedName: "Accept",
+        type: {
+            name: "String",
+        },
+    },
+};
+const endBefore = {
+    parameterPath: ["options", "endBefore"],
+    mapper: {
+        serializedName: "endBefore",
+        xmlName: "endBefore",
         type: {
             name: "String",
         },
@@ -66289,7 +66608,7 @@ const body1 = {
         },
     },
 };
-const accept2 = {
+const accept3 = {
     parameterPath: "accept",
     mapper: {
         defaultValue: "application/xml",
@@ -67124,6 +67443,14 @@ class ContainerImpl {
         return this.client.sendOperationRequest({ options }, listBlobFlatSegmentOperationSpec);
     }
     /**
+     * The List Blobs operation returns a list of the blobs under the specified container. This operation
+     * is for Apache Arrow use case so response is returned as raw to be deserialized by the client.
+     * @param options The options parameters.
+     */
+    listBlobFlatSegmentApacheArrow(options) {
+        return this.client.sendOperationRequest({ options }, listBlobFlatSegmentApacheArrowOperationSpec);
+    }
+    /**
      * [Update] The List Blobs operation returns a list of the blobs under the specified container
      * @param delimiter When the request includes this parameter, the operation returns a BlobPrefix
      *                  element in the response body that acts as a placeholder for all blobs whose names begin with the
@@ -67133,6 +67460,19 @@ class ContainerImpl {
      */
     listBlobHierarchySegment(delimiter, options) {
         return this.client.sendOperationRequest({ delimiter, options }, listBlobHierarchySegmentOperationSpec);
+    }
+    /**
+     * [Update] The List Blobs operation returns a list of the blobs under the specified container. This
+     * operation is for Apache Arrow use case so response is returned as raw to be deserialized by the
+     * client.
+     * @param delimiter When the request includes this parameter, the operation returns a BlobPrefix
+     *                  element in the response body that acts as a placeholder for all blobs whose names begin with the
+     *                  same substring up to the appearance of the delimiter character. The delimiter may be a single
+     *                  character or a string.
+     * @param options The options parameters.
+     */
+    listBlobHierarchySegmentApacheArrow(delimiter, options) {
+        return this.client.sendOperationRequest({ delimiter, options }, listBlobHierarchySegmentApacheArrowOperationSpec);
     }
     /**
      * Returns the sku name and account kind
@@ -67625,6 +67965,42 @@ const listBlobFlatSegmentOperationSpec = {
     isXML: true,
     serializer: xmlSerializer$4,
 };
+const listBlobFlatSegmentApacheArrowOperationSpec = {
+    path: "/{containerName}",
+    httpMethod: "GET",
+    responses: {
+        200: {
+            bodyMapper: {
+                type: { name: "Stream" },
+                serializedName: "parsedResponse",
+            },
+            headersMapper: ContainerListBlobFlatSegmentApacheArrowHeaders,
+        },
+        default: {
+            bodyMapper: StorageError,
+            headersMapper: ContainerListBlobFlatSegmentApacheArrowExceptionHeaders,
+        },
+    },
+    queryParameters: [
+        timeoutInSeconds,
+        comp2,
+        prefix,
+        marker,
+        maxPageSize,
+        restype2,
+        include1,
+        startFrom,
+        endBefore,
+    ],
+    urlParameters: [url],
+    headerParameters: [
+        version$1,
+        requestId,
+        accept2,
+    ],
+    isXML: true,
+    serializer: xmlSerializer$4,
+};
 const listBlobHierarchySegmentOperationSpec = {
     path: "/{containerName}",
     httpMethod: "GET",
@@ -67654,6 +68030,43 @@ const listBlobHierarchySegmentOperationSpec = {
         version$1,
         requestId,
         accept1,
+    ],
+    isXML: true,
+    serializer: xmlSerializer$4,
+};
+const listBlobHierarchySegmentApacheArrowOperationSpec = {
+    path: "/{containerName}",
+    httpMethod: "GET",
+    responses: {
+        200: {
+            bodyMapper: {
+                type: { name: "Stream" },
+                serializedName: "parsedResponse",
+            },
+            headersMapper: ContainerListBlobHierarchySegmentApacheArrowHeaders,
+        },
+        default: {
+            bodyMapper: StorageError,
+            headersMapper: ContainerListBlobHierarchySegmentApacheArrowExceptionHeaders,
+        },
+    },
+    queryParameters: [
+        timeoutInSeconds,
+        comp2,
+        prefix,
+        marker,
+        maxPageSize,
+        restype2,
+        include1,
+        startFrom,
+        endBefore,
+        delimiter,
+    ],
+    urlParameters: [url],
+    headerParameters: [
+        version$1,
+        requestId,
+        accept2,
     ],
     isXML: true,
     serializer: xmlSerializer$4,
@@ -68908,7 +69321,7 @@ const uploadPagesOperationSpec = {
         transactionalContentMD5,
         transactionalContentCrc64,
         contentType1,
-        accept2,
+        accept3,
         pageWrite,
         ifSequenceNumberLessThanOrEqualTo,
         ifSequenceNumberLessThan,
@@ -69312,7 +69725,7 @@ const appendBlockOperationSpec = {
         transactionalContentMD5,
         transactionalContentCrc64,
         contentType1,
-        accept2,
+        accept3,
         structuredContentLength,
         maxSize,
         appendPosition,
@@ -69542,7 +69955,7 @@ const uploadOperationSpec = {
         transactionalContentMD5,
         transactionalContentCrc64,
         contentType1,
-        accept2,
+        accept3,
         structuredContentLength,
         blobType2,
     ],
@@ -69641,7 +70054,7 @@ const stageBlockOperationSpec = {
         transactionalContentMD5,
         transactionalContentCrc64,
         contentType1,
-        accept2,
+        accept3,
         structuredContentLength,
     ],
     isXML: true,
@@ -69802,7 +70215,7 @@ let StorageClient$1 = class StorageClient extends ExtendedServiceClient {
         const defaults = {
             requestContentType: "application/json; charset=utf-8",
         };
-        const packageDetails = `azsdk-js-azure-storage-blob/12.33.0`;
+        const packageDetails = `azsdk-js-azure-storage-blob/12.34.0`;
         const userAgentPrefix = options.userAgentOptions && options.userAgentOptions.userAgentPrefix
             ? `${options.userAgentOptions.userAgentPrefix} ${packageDetails}`
             : `${packageDetails}`;
@@ -69818,7 +70231,7 @@ let StorageClient$1 = class StorageClient extends ExtendedServiceClient {
         // Parameter assignments
         this.url = url;
         // Assigning values to Constant parameters
-        this.version = options.version || "2026-06-06";
+        this.version = options.version || "2026-10-06";
         this.service = new ServiceImpl(this);
         this.container = new ContainerImpl(this);
         this.blob = new BlobImpl(this);
@@ -73013,6 +73426,43 @@ class BlobDownloadResponse {
      */
     get legalHold() {
         return this.originalResponse.legalHold;
+    }
+    /**
+     * The access tier of the blob. Values include premium page-blob tiers and block-blob tiers
+     * such as Hot, Cool, Cold, Archive, and Smart. See
+     * https://learn.microsoft.com/azure/storage/blobs/storage-blob-storage-tiers.
+     *
+     * @readonly
+     */
+    get accessTier() {
+        return this.originalResponse.accessTier;
+    }
+    /**
+     * For page blobs on a premium storage account only. If the access tier is not explicitly set on
+     * the blob, the tier is inferred based on its content length and this header will be returned
+     * with true value.
+     *
+     * @readonly
+     */
+    get accessTierInferred() {
+        return this.originalResponse.accessTierInferred;
+    }
+    /**
+     * The time the tier was changed on the object. This is only returned if the tier on the block
+     * blob was ever set.
+     *
+     * @readonly
+     */
+    get accessTierChangedOn() {
+        return this.originalResponse.accessTierChangedOn;
+    }
+    /**
+     * The underlying tier of a smart tier blob. Only returned if the blob is in Smart tier.
+     *
+     * @readonly
+     */
+    get smartAccessTier() {
+        return this.originalResponse.smartAccessTier;
     }
     get structuredBodyType() {
         return this.originalResponse.structuredBodyType;
