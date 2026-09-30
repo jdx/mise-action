@@ -92727,9 +92727,13 @@ async function installFromTarFile(archivePath, tarArgs, tempDir, miseBinPath) {
     await exec('mv', [extractedMisePath, miseBinPath]);
 }
 async function getInstalledMiseVersion(miseBinPath) {
-    const versionOutput = await getExecOutput(miseBinPath, ['version', '--json'], { silent: true });
-    const versionJson = JSON.parse(versionOutput.stdout);
-    return cleanVersion(versionJson.version.split(' ')[0]);
+    const versionOutput = await getExecOutput(miseBinPath, ['version'], {
+        silent: true
+    });
+    const version = versionOutput.stdout.trim().split(/\s+/)[0];
+    if (!version)
+        throw new Error('mise did not report a version');
+    return cleanVersion(version);
 }
 function errorMessage(err) {
     return err instanceof Error ? err.message : String(err);

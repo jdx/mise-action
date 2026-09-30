@@ -74,7 +74,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Reuse verified mise
-        uses: $/
+        uses: ./
         with:
           install: false
       - run: mise --version
@@ -281,7 +281,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Cache mise 2025.7.3
-        uses: $/
+        uses: ./
         with:
           cache: false
           install: false
@@ -289,7 +289,7 @@ jobs:
           version: 2025.7.3
           sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
       - name: Replace cached mise with requested 2025.7.2
-        uses: $/
+        uses: ./
         with:
           cache: false
           install: false
@@ -307,21 +307,34 @@ jobs:
         with:
           persist-credentials: false
       - name: Cache a pre-minisign mise release
-        uses: $/
+        uses: ./
         with:
           cache: false
           install: false
           env: false
           mise_dir: ${{ runner.temp }}/mise-pre-minisign
           version: 2024.9.6
-      - name: Reinstall unverifiable cached release
-        uses: $/
+          sha256: c835a3f72e640896ff171963eadc368efd29ef6962af34aa36de62eb45174109
+      - name: Block downloads for checksum-verified cache hit
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/no-download-bin"
+          cat > "$RUNNER_TEMP/no-download-bin/curl" <<'EOF'
+          #!/usr/bin/env bash
+          echo "unexpected download for checksum-verified cache hit" >&2
+          exit 1
+          EOF
+          chmod +x "$RUNNER_TEMP/no-download-bin/curl"
+          echo "$RUNNER_TEMP/no-download-bin" >> "$GITHUB_PATH"
+      - name: Reuse checksum-verified legacy mise without download
+        uses: ./
         with:
           cache: false
           install: false
           env: false
           mise_dir: ${{ runner.temp }}/mise-pre-minisign
           version: 2024.9.6
+          sha256: c835a3f72e640896ff171963eadc368efd29ef6962af34aa36de62eb45174109
       - run: mise --version
 
   custom_cache_key:
