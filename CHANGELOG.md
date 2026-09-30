@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.0.1](https://github.com/jdx/mise-action/compare/v5.0.0..v5.0.1) - 2026-09-30
+
+### 🐛 Bug Fixes
+
+- verify cached mise before execution (#637) by [@jdx](https://github.com/jdx) in [#637](https://github.com/jdx/mise-action/pull/637)
+
+---
 ## [5.0.0](https://github.com/jdx/mise-action/compare/v4.3.0..v5.0.0) - 2026-09-28
 
 ### 🚀 Features
