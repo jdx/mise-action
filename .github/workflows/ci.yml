@@ -48,6 +48,10 @@ jobs:
         id: aube-lint
         run: aubr lint
 
+      - name: TypeScript 7 type check
+        id: typescript-7
+        run: aubr typecheck
+
       # - name: Test
       #   id: npm-ci-test
       #   run: npm run ci-test
