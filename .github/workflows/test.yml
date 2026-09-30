@@ -311,6 +311,7 @@ jobs:
         with:
           cache: false
           install: false
+          env: false
           mise_dir: ${{ runner.temp }}/mise-pre-minisign
           version: 2024.9.6
       - name: Reinstall unverifiable cached release
@@ -318,6 +319,7 @@ jobs:
         with:
           cache: false
           install: false
+          env: false
           mise_dir: ${{ runner.temp }}/mise-pre-minisign
           version: 2024.9.6
       - run: mise --version
