@@ -92085,6 +92085,8 @@ const DOWNLOAD_RETRIES = 5;
 const DOWNLOAD_RETRY_DELAY_MS = 2000;
 class NonRetryableError extends Error {
 }
+class MiseIntegrityMismatchError extends Error {
+}
 async function run() {
     try {
         await setToolVersions();
@@ -92381,12 +92383,27 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         info('`minimum_release_age` is ignored because an explicit mise version was provided');
     }
     let resolvedVersion = cleanVersion(version);
-    if (!resolvedVersion &&
-        (!fs.existsSync(miseBinPath) || useMinimumReleaseAge)) {
+    if (!resolvedVersion) {
         resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
     }
-    let installedVersion;
-    if (!fs.existsSync(path$1.join(miseBinPath))) {
+    const target = await getTarget();
+    const rawAssetName = `mise-v${resolvedVersion}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
+    const installedVersion = resolvedVersion;
+    let needsInstall = !fs.existsSync(miseBinPath);
+    if (!needsInstall) {
+        try {
+            await verifyExistingMiseAsset(miseBinPath, resolvedVersion, rawAssetName);
+            info(`Verified existing mise@${resolvedVersion}`);
+        }
+        catch (err) {
+            if (!(err instanceof MiseIntegrityMismatchError))
+                throw err;
+            warning(`Existing mise failed integrity verification; reinstalling mise@${resolvedVersion}`);
+            await fs.promises.rm(miseBinPath, { force: true });
+            needsInstall = true;
+        }
+    }
+    if (needsInstall) {
         startGroup(version ? `Download mise@${version}` : 'Setup mise');
         await fs.promises.mkdir(miseBinDir, { recursive: true });
         const ext = process.platform === 'win32'
@@ -92396,15 +92413,12 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
                 : (await tarSupportsZstd())
                     ? '.tar.zst'
                     : '.tar.gz';
-        const target = await getTarget();
         const assetName = `mise-v${resolvedVersion}-${target}${ext}`;
-        const rawAssetName = `mise-v${resolvedVersion}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
         // The CDN only exposes the newest binary. An age-filtered release must be
         // downloaded by its exact version from GitHub.
         const fetchFromCdn = !fetchFromGitHub && !version && !useMinimumReleaseAge;
         const githubUrl = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/${assetName}`;
         const cdnUrl = `https://mise.jdx.dev/mise-latest-${target}${process.platform === 'win32' ? '.exe' : ''}`;
-        installedVersion = resolvedVersion;
         const installFromUrl = async (downloadUrl, downloadAssetName, checksumAssetName, extractArchive) => {
             await withDownloadedMiseAsset(downloadUrl, resolvedVersion, downloadAssetName, checksumAssetName, async (downloadPath, tempDir) => {
                 if (!extractArchive) {
@@ -92447,34 +92461,6 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
             }
             warning(`Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`);
             await installFromUrl(githubUrl, assetName, assetName, true);
-        }
-    }
-    else {
-        const requestedVersion = cleanVersion(getInput('version')) ||
-            (useMinimumReleaseAge ? resolvedVersion : '');
-        if (requestedVersion !== '') {
-            installedVersion = await getInstalledMiseVersion(miseBinPath);
-            if (requestedVersion === installedVersion) {
-                info(`mise already installed`);
-            }
-            else {
-                info(`mise already installed (${installedVersion}), but different version requested (${requestedVersion})`);
-                // setEnvVars runs after setupMise, so MISE_GITHUB_TOKEN isn't in
-                // the env yet; pass it through so self-update's GitHub API call is
-                // authenticated and doesn't hit the unauthenticated rate limit.
-                const githubToken = getInput('github_token');
-                const selfUpdateOptions = githubToken
-                    ? {
-                        env: {
-                            ...process.env,
-                            MISE_GITHUB_TOKEN: process.env.MISE_GITHUB_TOKEN || githubToken
-                        }
-                    }
-                    : undefined;
-                await exec(miseBinPath, ['self-update', requestedVersion, '-y'], selfUpdateOptions);
-                info(`mise updated to version ${requestedVersion}`);
-                installedVersion = requestedVersion;
-            }
         }
     }
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
@@ -92610,6 +92596,26 @@ async function verifyDownloadedMiseAsset(filePath, version, assetName) {
         throw new Error(`SHA256 mismatch: expected ${want}, got ${got} for ${assetName}`);
     }
     info(`Verified ${assetName} against signed checksums`);
+}
+async function verifyExistingMiseAsset(filePath, version, assetName) {
+    const got = await sha256File(filePath);
+    const explicitChecksum = getInput('sha256');
+    if (explicitChecksum) {
+        if (got !== explicitChecksum) {
+            throw new MiseIntegrityMismatchError(`SHA256 mismatch: expected ${explicitChecksum}, got ${got} for ${filePath}`);
+        }
+        info(`Verified existing mise against configured SHA256`);
+        return;
+    }
+    const shasums = await verifiedMiseShasums(version);
+    if (!shasums) {
+        throw new Error(`Cannot verify existing mise ${version} without signed checksums; provide sha256 or remove the binary before running the action`);
+    }
+    const want = checksumForAsset(shasums, assetName);
+    if (got !== want) {
+        throw new MiseIntegrityMismatchError(`SHA256 mismatch: expected ${want}, got ${got} for ${assetName}`);
+    }
+    info(`Verified existing ${assetName} against signed checksums`);
 }
 async function verifiedMiseShasums(version) {
     const cached = verifiedShasums.get(version);
