@@ -74,7 +74,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Reuse verified mise
-        uses: ./
+        uses: $/
         with:
           install: false
       - run: mise --version
@@ -281,7 +281,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Cache mise 2025.7.3
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
@@ -289,7 +289,7 @@ jobs:
           version: 2025.7.3
           sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
       - name: Replace cached mise with requested 2025.7.2
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
@@ -307,7 +307,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Cache a pre-minisign mise release
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
@@ -327,7 +327,7 @@ jobs:
           chmod +x "$RUNNER_TEMP/no-download-bin/curl"
           echo "$RUNNER_TEMP/no-download-bin" >> "$GITHUB_PATH"
       - name: Reuse checksum-verified legacy mise without download
-        uses: ./
+        uses: $/
         with:
           cache: false
           install: false
