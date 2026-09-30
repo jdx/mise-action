@@ -92604,18 +92604,37 @@ async function verifyExistingMiseAsset(filePath, version, assetName) {
         if (got !== explicitChecksum) {
             throw new MiseIntegrityMismatchError(`SHA256 mismatch: expected ${explicitChecksum}, got ${got} for ${filePath}`);
         }
+        await verifyExistingMiseVersion(filePath, version);
         info(`Verified existing mise against configured SHA256`);
         return;
     }
     const shasums = await verifiedMiseShasums(version);
     if (!shasums) {
-        throw new Error(`Cannot verify existing mise ${version} without signed checksums; provide sha256 or remove the binary before running the action`);
+        throw new MiseIntegrityMismatchError(`Cannot verify existing mise ${version} without signed checksums`);
     }
-    const want = checksumForAsset(shasums, assetName);
+    let want;
+    try {
+        want = checksumForAsset(shasums, assetName);
+    }
+    catch (err) {
+        throw new MiseIntegrityMismatchError(`Cannot verify existing mise ${version}: ${errorMessage(err)}`);
+    }
     if (got !== want) {
         throw new MiseIntegrityMismatchError(`SHA256 mismatch: expected ${want}, got ${got} for ${assetName}`);
     }
     info(`Verified existing ${assetName} against signed checksums`);
+}
+async function verifyExistingMiseVersion(filePath, expectedVersion) {
+    let actualVersion;
+    try {
+        actualVersion = await getInstalledMiseVersion(filePath);
+    }
+    catch (err) {
+        throw new MiseIntegrityMismatchError(`Could not determine the version of existing mise: ${errorMessage(err)}`);
+    }
+    if (actualVersion !== expectedVersion) {
+        throw new MiseIntegrityMismatchError(`Existing mise version ${actualVersion} does not match requested version ${expectedVersion}`);
+    }
 }
 async function verifiedMiseShasums(version) {
     const cached = verifiedShasums.get(version);
