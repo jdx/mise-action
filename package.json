@@ -20,7 +20,7 @@
   "scripts": {
     "all": "npm run format:write && npm run lint && npm run test && npm run package",
     "test": "node --test scripts/release-index.test.mjs",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit",
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
@@ -60,7 +60,7 @@
     "rimraf": "^6.0.0",
     "rollup": "^4.0.0",
     "rollup-plugin-license": "^3.7.1",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript": "^6.0.0",
     "typescript-eslint": "^8.16.0"
   },
   "aube": {
