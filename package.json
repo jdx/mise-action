@@ -20,6 +20,7 @@
   "scripts": {
     "all": "npm run format:write && npm run lint && npm run test && npm run package",
     "test": "node --test scripts/release-index.test.mjs",
+    "typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit",
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
@@ -48,6 +49,7 @@
     "@rollup/plugin-typescript": "^12.0.0",
     "@types/eslint__js": "^8.42.3",
     "@types/node": "^24",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "eslint": "^10.0.0",
     "globals": "^17.0.0",
     "husky": "^9.1.7",
