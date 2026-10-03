@@ -142,6 +142,8 @@ inputs:
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
+  versions:
+    description: JSON object of the active, installed tool versions, keyed by tool name. Each value is a list of `{version, requested_version, install_path, source}`. Every tool is also available as its own output (e.g. `steps.mise.outputs.node`) when its name is a valid output name.
 runs:
   using: node24
   main: dist/index.js
