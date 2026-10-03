@@ -92006,6 +92006,17 @@ function requireLib () {
 
 var libExports = requireLib();
 
+/**
+ * Decide which key (if any) to save the mise cache under after a restore.
+ *
+ * A miss saves under the primary key. A prefix-matched restore (`restoredKey`
+ * differs from `primaryKey`) also saves, so the exact key gets populated. An
+ * exact hit already exists and needs no save.
+ */
+function cacheKeyToSave(primaryKey, restoredKey) {
+    return restoredKey === primaryKey ? undefined : primaryKey;
+}
+
 /** Select the highest eligible mise calendar version from the published index. */
 function selectMiseRelease(index, cutoff) {
     if (!Number.isFinite(cutoff.getTime())) {
@@ -92379,9 +92390,11 @@ async function restoreMiseCache() {
     setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
         info(`mise cache not found for ${primaryKey}`);
-        return primaryKey;
     }
-    info(`mise cache restored from key: ${cacheKey}`);
+    else {
+        info(`mise cache restored from key: ${cacheKey}`);
+    }
+    return cacheKeyToSave(primaryKey, cacheKey);
 }
 async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '', autoUpdate = false) {
     const miseBinDir = path$1.join(miseDir(), 'bin');
