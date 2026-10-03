@@ -393,6 +393,10 @@ async function restoreMiseCache(): Promise<string | undefined> {
   }
 
   core.info(`mise cache restored from key: ${cacheKey}`)
+
+  // A prefix match restored a different key's cache, so still save under the
+  // primary key. An exact hit already exists and needs no save.
+  if (cacheKey !== primaryKey) return primaryKey
 }
 
 async function setupMise(

@@ -92373,6 +92373,10 @@ async function restoreMiseCache() {
         return primaryKey;
     }
     info(`mise cache restored from key: ${cacheKey}`);
+    // A prefix match restored a different key's cache, so still save under the
+    // primary key. An exact hit already exists and needs no save.
+    if (cacheKey !== primaryKey)
+        return primaryKey;
 }
 async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '') {
     const miseBinDir = path$1.join(miseDir(), 'bin');
