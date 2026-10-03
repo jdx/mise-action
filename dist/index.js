@@ -2,7 +2,7 @@ import * as os from 'os';
 import os__default from 'os';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import fs__default, { promises, writeFileSync, existsSync } from 'fs';
+import fs__default, { promises, existsSync, writeFileSync } from 'fs';
 import * as path$1 from 'path';
 import * as http from 'http';
 import http__default from 'http';
@@ -92462,12 +92462,15 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         versionFile
     ];
     let binCacheKey;
+    const useBinCache = async (v) => {
+        if (!getBooleanInput('cache'))
+            return;
+        binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${v}`;
+        await restoreMiseBinCache(binCacheKey, binCachePaths);
+    };
     if (!resolvedVersion && autoUpdate) {
         resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
-        if (getBooleanInput('cache')) {
-            binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${resolvedVersion}`;
-            await restoreMiseBinCache(binCacheKey, binCachePaths);
-        }
+        await useBinCache(resolvedVersion);
     }
     let needsInstall = !fs.existsSync(miseBinPath);
     if (!needsInstall) {
@@ -92477,10 +92480,15 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         // The cached binary is never executed before it is verified. Its version
         // comes from a record written at install time; a tampered record can only
         // make the check fail, since the checksum must match that version's signed
-        // release. Caches without a record are verified against the latest release.
+        // release. Caches without a record (saved by older releases) are verified
+        // against the latest release. The main cache can't be re-saved after an
+        // exact hit, so the binary goes through the version-keyed binary cache;
+        // otherwise such a cache would reinstall mise on every run once a newer
+        // release exists.
         let existingVersion = resolvedVersion || readRecordedMiseVersion(versionFile);
         if (!existingVersion) {
             existingVersion = resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+            await useBinCache(existingVersion);
         }
         if (!needsInstall) {
             try {
