@@ -423,7 +423,9 @@ jobs:
     needs:
       - build
       - test
+      - path_opt_out
       - specific_version
+      - minimum_release_age
       - checksum_failure
       - cached_version_change
       - pre_minisign_cached
