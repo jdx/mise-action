@@ -92,7 +92,7 @@ persisting mise's PATH changes.
 Some tools and idiomatic version files (such as `.yvmrc`) need a plugin. List them in the `plugins` input, one per line as `name` or `name url`, and the action installs them before running `mise install`:
 
 ```yaml
-- uses: jdx/mise-action@v4
+- uses: jdx/mise-action@v5
   env:
     # Idiomatic version files are opt-in per tool; this is needed for `.yvmrc`
     MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS: yarn
