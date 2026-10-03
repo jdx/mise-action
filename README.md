@@ -87,6 +87,23 @@ to subsequent workflow steps. PATH entries are added individually through
 Set `export_path: false` to export regular environment variables without
 persisting mise's PATH changes.
 
+## Plugins
+
+Some tools and idiomatic version files (such as `.yvmrc`) need a plugin. List them in the `plugins` input, one per line as `name` or `name url`, and the action installs them before running `mise install`:
+
+```yaml
+- uses: jdx/mise-action@v4
+  env:
+    # Idiomatic version files are opt-in per tool; this is needed for `.yvmrc`
+    MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS: yarn
+  with:
+    plugins: |
+      yarn
+      php https://github.com/verzly/mise-php#latest
+```
+
+Plugins already present (for example restored from the cache) are left alone. If your repo has a `mise.toml`, you can declare plugins there under `[plugins]` instead and `mise install` fetches them without this input.
+
 ## Cache Configuration
 
 You can customize the cache key used by the action:

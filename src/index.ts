@@ -9,6 +9,7 @@ import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
+import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 
 // Configuration file patterns for cache key generation
@@ -102,6 +103,7 @@ async function run(): Promise<void> {
       await miseReshim()
     }
     await testMise()
+    await miseInstallPlugins()
     if (core.getBooleanInput('install')) {
       if (core.getBooleanInput('bootstrap')) {
         await miseBootstrap()
@@ -1190,6 +1192,17 @@ const miseBootstrap = async (): Promise<number> => {
   return mise([command])
 }
 const miseLs = async (): Promise<number> => mise([`ls`])
+
+/**
+ * Install the plugins from the `plugins` input before tools are installed, so
+ * tools and idiomatic version files that need them resolve. Installing a
+ * plugin that is already present (e.g. from the cache) only warns.
+ */
+async function miseInstallPlugins(): Promise<void> {
+  for (const { name, url } of parsePlugins(core.getInput('plugins'))) {
+    await mise(['plugins', 'install', '-y', name, ...(url ? [url] : [])])
+  }
+}
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {

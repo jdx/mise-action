@@ -37,6 +37,10 @@ inputs:
     required: false
     default: "true"
     description: if false, will not run `mise install` or `mise bootstrap`
+  plugins:
+    required: false
+    default: ""
+    description: 'Plugins to install before tools, one per line as `name` or `name url`, e.g. `yarn` or `php https://github.com/verzly/mise-php#latest`. Useful for idiomatic version files (such as .yvmrc) that need a plugin.'
   install_args:
     required: false
     description: Arguments to pass to `mise install` such as "bun" to only install bun. When a repo mise lock file is present, the action automatically adds `--locked` unless you already provided it.

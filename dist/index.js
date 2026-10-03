@@ -92017,6 +92017,29 @@ function cacheKeyToSave(primaryKey, restoredKey) {
     return restoredKey === primaryKey ? undefined : primaryKey;
 }
 
+/**
+ * Parse the `plugins` input: one plugin per line, either `name` or
+ * `name url`. Blank lines and `#` comments are ignored.
+ */
+function parsePlugins(input) {
+    const plugins = [];
+    for (const raw of input.split(/\r?\n/)) {
+        const line = raw.replace(/(^|\s)#.*/, '').trim();
+        if (!line)
+            continue;
+        const parts = line.split(/\s+/);
+        if (parts.length > 2) {
+            throw new Error(`Invalid plugins entry "${line}": expected "name" or "name url"`);
+        }
+        const [name, url] = parts;
+        if (name.startsWith('-') || (url !== undefined && url.startsWith('-'))) {
+            throw new Error(`Invalid plugins entry "${line}"`);
+        }
+        plugins.push(url === undefined ? { name } : { name, url });
+    }
+    return plugins;
+}
+
 /** Select the highest eligible mise calendar version from the published index. */
 function selectMiseRelease(index, cutoff) {
     if (!Number.isFinite(cutoff.getTime())) {
@@ -92137,6 +92160,7 @@ async function run() {
             await miseReshim();
         }
         await testMise();
+        await miseInstallPlugins();
         if (getBooleanInput('install')) {
             if (getBooleanInput('bootstrap')) {
                 await miseBootstrap();
@@ -92994,6 +93018,16 @@ const miseBootstrap = async () => {
     return mise([command]);
 };
 const miseLs = async () => mise([`ls`]);
+/**
+ * Install the plugins from the `plugins` input before tools are installed, so
+ * tools and idiomatic version files that need them resolve. Installing a
+ * plugin that is already present (e.g. from the cache) only warns.
+ */
+async function miseInstallPlugins() {
+    for (const { name, url } of parsePlugins(getInput('plugins'))) {
+        await mise(['plugins', 'install', '-y', name, ...(url ? [url] : [])]);
+    }
+}
 const miseReshim = async () => mise([`reshim`, `-f`]);
 const mise = async (args) => await group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = getCwd();
