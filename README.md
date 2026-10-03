@@ -135,6 +135,7 @@ Available template variables:
 - `{{mise_env}}` - The MISE_ENV environment variable value
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
 - `{{bootstrap_hash}}` - SHA256 hash of bootstrap mode, skip list, and args
+- `{{plugins_hash}}` - SHA256 hash of the `plugins` input (empty when unset)
 - `{{default}}` - The processed default cache key (useful for extending)
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.

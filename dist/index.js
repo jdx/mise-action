@@ -92106,7 +92106,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `**/.tool-versions`
 ];
 // Default cache key template
-const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
+const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/];
@@ -93190,6 +93190,17 @@ async function processCacheKeyTemplate(template) {
             installArgsHash = crypto.createHash('sha256').update(tools).digest('hex');
         }
     }
+    // Plugins are cached with the rest of mise's data and an installed plugin is
+    // left alone, so a changed plugin URL or ref has to change the key.
+    let pluginsHash = '';
+    const plugins = parsePlugins(getInput('plugins'));
+    if (plugins.length > 0) {
+        const normalized = plugins
+            .map(({ name, url }) => `${name} ${url ?? ''}`)
+            .sort()
+            .join('\n');
+        pluginsHash = crypto.createHash('sha256').update(normalized).digest('hex');
+    }
     let bootstrapHash = '';
     if (bootstrap) {
         bootstrapHash = crypto
@@ -93205,7 +93216,8 @@ async function processCacheKeyTemplate(template) {
         file_hash: fileHash,
         mise_env: miseEnv,
         install_args_hash: installArgsHash,
-        bootstrap_hash: bootstrapHash
+        bootstrap_hash: bootstrapHash,
+        plugins_hash: pluginsHash
     };
     // Calculate the default cache key by processing the default template
     const defaultTemplate = libExports.compile(DEFAULT_CACHE_KEY_TEMPLATE);
