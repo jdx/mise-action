@@ -92087,6 +92087,44 @@ function selectMiseRelease(index, cutoff) {
     return selected;
 }
 
+// Outputs that already mean something else, and so can't be a tool's name.
+const RESERVED_OUTPUTS = new Set(['cache-hit', 'versions']);
+// Only names a workflow can reference as `steps.<id>.outputs.<name>`.
+const OUTPUT_NAME = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+/** Turn `mise ls --json --current` output into action outputs. */
+function toolVersionOutputs(ls) {
+    const result = { versions: {}, outputs: {} };
+    if (!ls || typeof ls !== 'object' || Array.isArray(ls))
+        return result;
+    for (const [tool, entries] of Object.entries(ls)) {
+        if (!Array.isArray(entries))
+            continue;
+        const active = [];
+        for (const entry of entries) {
+            if (!entry ||
+                typeof entry !== 'object' ||
+                entry.active === false ||
+                entry.installed === false ||
+                typeof entry.version !== 'string') {
+                continue;
+            }
+            active.push({
+                version: entry.version,
+                requested_version: entry.requested_version ?? undefined,
+                install_path: entry.install_path ?? undefined,
+                source: entry.source ?? undefined
+            });
+        }
+        if (active.length === 0)
+            continue;
+        result.versions[tool] = active;
+        if (OUTPUT_NAME.test(tool) && !RESERVED_OUTPUTS.has(tool)) {
+            result.outputs[tool] = active[0].version;
+        }
+    }
+    return result;
+}
+
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -92182,6 +92220,7 @@ async function run() {
                 await saveCache(cacheKey);
         }
         await miseLs();
+        await setToolVersionOutputs();
         const loadEnv = getBooleanInput('env');
         if (loadEnv) {
             await exportMiseEnv();
@@ -93036,6 +93075,23 @@ const miseLs = async () => mise([`ls`]);
 async function miseInstallPlugins() {
     for (const { name, url } of parsePlugins(getInput('plugins'))) {
         await mise(['plugins', 'install', '-y', name, ...(url ? [url] : [])]);
+    }
+}
+/**
+ * Expose the active tool versions as outputs: `versions` (JSON) and one output
+ * per tool. A failure here only warns; it must not fail the job.
+ */
+async function setToolVersionOutputs() {
+    try {
+        const { stdout } = await getExecOutput('mise', ['ls', '--json', '--current'], { cwd: getCwd(), silent: true });
+        const { versions, outputs } = toolVersionOutputs(JSON.parse(stdout));
+        setOutput('versions', JSON.stringify(versions));
+        for (const [tool, version] of Object.entries(outputs)) {
+            setOutput(tool, version);
+        }
+    }
+    catch (err) {
+        warning(`Unable to set tool version outputs: ${errorMessage(err)}`);
     }
 }
 const miseReshim = async () => mise([`reshim`, `-f`]);
