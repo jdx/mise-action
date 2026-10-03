@@ -92603,7 +92603,25 @@ async function saveMiseBinCache(key, paths) {
 }
 async function withExtractedZip(archivePath, tempDir, fn) {
     const extractDir = path$1.join(tempDir, 'extract');
-    await exec('unzip', [archivePath, '-d', extractDir]);
+    // Windows PowerShell ships with every Windows runner, unlike `unzip`, which
+    // is missing on many self-hosted ones. Paths go through the environment to
+    // avoid quoting issues.
+    await exec('powershell', [
+        '-NoProfile',
+        '-NonInteractive',
+        // Process-scoped; a Restricted default policy (fresh Windows client
+        // installs) can otherwise block loading the Archive module.
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        'Expand-Archive -LiteralPath $env:MISE_ZIP_ARCHIVE -DestinationPath $env:MISE_ZIP_DEST -Force'
+    ], {
+        env: {
+            ...process.env,
+            MISE_ZIP_ARCHIVE: archivePath,
+            MISE_ZIP_DEST: extractDir
+        }
+    });
     await fn(extractDir);
 }
 async function installWindowsMiseShim(extractedMiseBinDir, miseShimPath) {
