@@ -232,7 +232,6 @@ jobs:
           cache: false
           install: false
           minimum_release_age: 2024-02-31
-          auto_update: true
       - name: Check invalid calendar date rejection
         if: steps.invalid-calendar-date.outcome != 'failure'
         run: exit 1

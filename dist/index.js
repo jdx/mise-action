@@ -92383,6 +92383,11 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     if (version && minimumReleaseAge.trim()) {
         info('`minimum_release_age` is ignored because an explicit mise version was provided');
     }
+    if (useMinimumReleaseAge) {
+        // Validate even when a cached binary means no release is resolved.
+        minimumReleaseAgeCutoff(minimumReleaseAge);
+    }
+    const versionFile = path$1.join(miseBinDir, 'mise-version');
     let resolvedVersion = cleanVersion(version);
     const target = await getTarget();
     const assetNameFor = (v) => `mise-v${v}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
@@ -92394,7 +92399,11 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
         if (getBooleanInput('cache')) {
             binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${resolvedVersion}`;
-            await restoreMiseBinCache(binCacheKey, [miseBinPath, miseShimPath]);
+            await restoreMiseBinCache(binCacheKey, [
+                miseBinPath,
+                miseShimPath,
+                versionFile
+            ]);
         }
     }
     let needsInstall = !fs.existsSync(miseBinPath);
@@ -92402,16 +92411,13 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         // With `version` unset, a cached mise is kept until the cache is busted
         // rather than chasing every release, so verify it against its own
         // version's signed checksums instead of the latest release's.
-        let existingVersion = resolvedVersion;
+        // The cached binary is never executed before it is verified. Its version
+        // comes from a record written at install time; a tampered record can only
+        // make the check fail, since the checksum must match that version's signed
+        // release. Caches without a record are verified against the latest release.
+        let existingVersion = resolvedVersion || readRecordedMiseVersion(versionFile);
         if (!existingVersion) {
-            try {
-                existingVersion = await getInstalledMiseVersion(miseBinPath);
-            }
-            catch (err) {
-                warning(`Could not determine the version of existing mise (${errorMessage(err)}); reinstalling`);
-                await fs.promises.rm(miseBinPath, { force: true });
-                needsInstall = true;
-            }
+            existingVersion = resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
         }
         if (!needsInstall) {
             try {
@@ -92494,8 +92500,8 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         }
     }
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
-    if (needsInstall && binCacheKey) {
-        await saveMiseBinCache(binCacheKey, [miseBinPath, miseShimPath].filter(p => fs.existsSync(p)));
+    if (needsInstall) {
+        await fs.promises.writeFile(versionFile, installedVersion);
     }
     // compare with provided hash
     const want = getInput('sha256');
@@ -92507,7 +92513,19 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
             throw new Error(`SHA256 mismatch: expected ${want}, got ${got} for ${miseBinPath}`);
         }
     }
+    if (needsInstall && binCacheKey && getBooleanInput('cache_save')) {
+        await saveMiseBinCache(binCacheKey, [miseBinPath, miseShimPath, versionFile].filter(p => fs.existsSync(p)));
+    }
     addPath(miseBinDir);
+}
+function readRecordedMiseVersion(versionFile) {
+    try {
+        const recorded = cleanVersion(fs.readFileSync(versionFile, 'utf8').trim());
+        return /^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(recorded) ? recorded : undefined;
+    }
+    catch {
+        return undefined;
+    }
 }
 async function restoreMiseBinCache(key, paths) {
     try {
