@@ -96,7 +96,7 @@ persisting mise's PATH changes.
 This avoids a separate `mise ls --json | jq` step, for example to key another cache on the resolved version:
 
 ```yaml
-- uses: jdx/mise-action@v4
+- uses: jdx/mise-action@v5
   id: mise
 - uses: actions/cache@v5
   with:
