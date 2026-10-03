@@ -32,3 +32,15 @@ test('rejects malformed entries and option-like values', () => {
   assert.throws(() => parsePlugins('--force'), /Invalid plugins entry/)
   assert.throws(() => parsePlugins('name --force'), /Invalid plugins entry/)
 })
+
+test('ignores exact duplicates and rejects conflicting sources for one name', () => {
+  assert.deepEqual(parsePlugins('yarn\nyarn\n'), [{ name: 'yarn' }])
+  assert.throws(
+    () => parsePlugins('php https://example.com/a.git\nphp https://example.com/b.git'),
+    /Conflicting plugins entries for "php"/
+  )
+  assert.throws(
+    () => parsePlugins('php\nphp https://example.com/a.git'),
+    /Conflicting plugins entries for "php"/
+  )
+})

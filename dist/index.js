@@ -92035,6 +92035,16 @@ function parsePlugins(input) {
         if (name.startsWith('-') || (url !== undefined && url.startsWith('-'))) {
             throw new Error(`Invalid plugins entry "${line}"`);
         }
+        const existing = plugins.find(plugin => plugin.name === name);
+        if (existing) {
+            // The same entry twice is harmless. Different sources for one name are
+            // ambiguous: only the first would be installed, and the cache key must
+            // not depend on their order.
+            if (existing.url !== url) {
+                throw new Error(`Conflicting plugins entries for "${name}": a plugin can only have one source`);
+            }
+            continue;
+        }
         plugins.push(url === undefined ? { name } : { name, url });
     }
     return plugins;
