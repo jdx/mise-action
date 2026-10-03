@@ -48,6 +48,15 @@ jobs:
       - run: node ./my_app.js
 ```
 
+## Cached mise and `auto_update`
+
+With `version` unset, a mise binary restored from the cache is kept (after
+verifying it against the signed checksums for its own version) until the cache
+key changes, so mise may lag the latest release. To always reinstall when a
+newer release is available, set `auto_update: true`. The updated binary is cached
+separately by version, so mise is downloaded once per release rather than on every
+run. Pinning `version` remains the way to upgrade deliberately.
+
 ## Minimum Release Age
 
 By default, the action installs the newest stable mise release that is at least
@@ -65,7 +74,7 @@ non-draft mise release published before the cutoff. An explicit `version`
 takes precedence over `minimum_release_age` and can install a release immediately.
 Set `minimum_release_age: 0s` to select the latest stable release without a delay.
 Release selection reads the public CDN release index and does not consume GitHub
-API quota, including when reusing a cached mise binary. If the index is unavailable
+API quota. If the index is unavailable
 or invalid, the action fails rather than bypassing the age policy.
 This input controls the mise binary; it does not set the release-age policy for
 tools installed by mise.
