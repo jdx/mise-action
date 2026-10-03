@@ -192,8 +192,8 @@ jobs:
           cache: false
           install: false
           mise_dir: ${{ runner.temp }}/mise-age-default
-      - name: Check cached selection also used one CDN request
-        run: test "$(wc -l < "$MISE_ACTION_REQUEST_LOG")" -eq 2
+      - name: Check reusing the cached binary made no further CDN request
+        run: test "$(wc -l < "$MISE_ACTION_REQUEST_LOG")" -eq 1
       - name: Check the default 24-hour delay
         env:
           GH_TOKEN: ${{ github.token }}
@@ -223,6 +223,7 @@ jobs:
           cache: false
           install: false
           minimum_release_age: 7d
+          auto_update: true
       - name: Reject an invalid calendar date
         id: invalid-calendar-date
         uses: $/
