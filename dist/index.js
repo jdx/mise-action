@@ -2,7 +2,7 @@ import * as os from 'os';
 import os__default from 'os';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import fs__default, { promises, existsSync, writeFileSync } from 'fs';
+import fs__default, { promises, writeFileSync, existsSync } from 'fs';
 import * as path$1 from 'path';
 import * as http from 'http';
 import http__default from 'http';
@@ -92118,8 +92118,9 @@ async function run() {
         setupWings();
         const version = getInput('version');
         const minimumReleaseAge = getInput('minimum_release_age');
+        const autoUpdate = getBooleanInput('auto_update');
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
-        await setupMise(version, fetchFromGitHub, minimumReleaseAge);
+        await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate);
         await setEnvVars();
         if (getBooleanInput('reshim')) {
             await miseReshim();
@@ -92374,7 +92375,7 @@ async function restoreMiseCache() {
     }
     info(`mise cache restored from key: ${cacheKey}`);
 }
-async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '') {
+async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '', autoUpdate = false) {
     const miseBinDir = path$1.join(miseDir(), 'bin');
     const miseBinPath = path$1.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     const miseShimPath = path$1.join(miseBinDir, 'mise-shim.exe');
@@ -92382,27 +92383,65 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     if (version && minimumReleaseAge.trim()) {
         info('`minimum_release_age` is ignored because an explicit mise version was provided');
     }
-    let resolvedVersion = cleanVersion(version);
-    if (!resolvedVersion) {
-        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+    if (useMinimumReleaseAge) {
+        // Validate even when a cached binary means no release is resolved.
+        minimumReleaseAgeCutoff(minimumReleaseAge);
     }
+    const versionFile = path$1.join(miseBinDir, 'mise-version');
+    let resolvedVersion = cleanVersion(version);
     const target = await getTarget();
-    const rawAssetName = `mise-v${resolvedVersion}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
-    const installedVersion = resolvedVersion;
+    const assetNameFor = (v) => `mise-v${v}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
+    // `auto_update` opts back in to comparing against the latest release. The
+    // main cache is only saved on a miss, so the updated binary is cached on its
+    // own, keyed by version, to avoid downloading it again on every run.
+    // GitHub includes the path list in the cache version, so restore and save
+    // must use the identical list.
+    const binCachePaths = [
+        miseBinPath,
+        ...(process.platform === 'win32' ? [miseShimPath] : []),
+        versionFile
+    ];
+    let binCacheKey;
+    if (!resolvedVersion && autoUpdate) {
+        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+        if (getBooleanInput('cache')) {
+            binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${resolvedVersion}`;
+            await restoreMiseBinCache(binCacheKey, binCachePaths);
+        }
+    }
     let needsInstall = !fs.existsSync(miseBinPath);
     if (!needsInstall) {
-        try {
-            await verifyExistingMiseAsset(miseBinPath, resolvedVersion, rawAssetName);
-            info(`Verified existing mise@${resolvedVersion}`);
+        // With `version` unset, a cached mise is kept until the cache is busted
+        // rather than chasing every release, so verify it against its own
+        // version's signed checksums instead of the latest release's.
+        // The cached binary is never executed before it is verified. Its version
+        // comes from a record written at install time; a tampered record can only
+        // make the check fail, since the checksum must match that version's signed
+        // release. Caches without a record are verified against the latest release.
+        let existingVersion = resolvedVersion || readRecordedMiseVersion(versionFile);
+        if (!existingVersion) {
+            existingVersion = resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
         }
-        catch (err) {
-            if (!(err instanceof MiseIntegrityMismatchError))
-                throw err;
-            warning(`Existing mise failed integrity verification; reinstalling mise@${resolvedVersion}`);
-            await fs.promises.rm(miseBinPath, { force: true });
-            needsInstall = true;
+        if (!needsInstall) {
+            try {
+                await verifyExistingMiseAsset(miseBinPath, existingVersion, assetNameFor(existingVersion));
+                info(`Verified existing mise@${existingVersion}`);
+                resolvedVersion = existingVersion;
+            }
+            catch (err) {
+                if (!(err instanceof MiseIntegrityMismatchError))
+                    throw err;
+                warning(`Existing mise failed integrity verification (${errorMessage(err)}); reinstalling`);
+                await fs.promises.rm(miseBinPath, { force: true });
+                needsInstall = true;
+            }
         }
     }
+    if (needsInstall && !resolvedVersion) {
+        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+    }
+    const rawAssetName = assetNameFor(resolvedVersion);
+    const installedVersion = resolvedVersion;
     if (needsInstall) {
         startGroup(version ? `Download mise@${version}` : 'Setup mise');
         await fs.promises.mkdir(miseBinDir, { recursive: true });
@@ -92464,6 +92503,9 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         }
     }
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
+    if (needsInstall) {
+        await fs.promises.writeFile(versionFile, installedVersion);
+    }
     // compare with provided hash
     const want = getInput('sha256');
     if (want) {
@@ -92474,7 +92516,38 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
             throw new Error(`SHA256 mismatch: expected ${want}, got ${got} for ${miseBinPath}`);
         }
     }
+    if (needsInstall && binCacheKey && getBooleanInput('cache_save')) {
+        await saveMiseBinCache(binCacheKey, binCachePaths);
+    }
     addPath(miseBinDir);
+}
+function readRecordedMiseVersion(versionFile) {
+    try {
+        const recorded = cleanVersion(fs.readFileSync(versionFile, 'utf8').trim());
+        return /^[0-9A-Za-z][0-9A-Za-z._+-]*$/.test(recorded) ? recorded : undefined;
+    }
+    catch {
+        return undefined;
+    }
+}
+async function restoreMiseBinCache(key, paths) {
+    try {
+        if (await restoreCache(paths, key)) {
+            info(`mise binary restored from key: ${key}`);
+        }
+    }
+    catch (err) {
+        warning(`Failed to restore mise binary cache: ${errorMessage(err)}`);
+    }
+}
+async function saveMiseBinCache(key, paths) {
+    try {
+        await saveCache$1(paths, key);
+        info(`mise binary cached with key: ${key}`);
+    }
+    catch (err) {
+        warning(`Failed to save mise binary cache: ${errorMessage(err)}`);
+    }
 }
 async function withExtractedZip(archivePath, tempDir, fn) {
     const extractDir = path$1.join(tempDir, 'extract');
