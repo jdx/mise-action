@@ -98,6 +98,22 @@ You can customize the cache key used by the action:
     cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
 ```
 
+### Using Another Cache Action
+
+The built-in cache uses GitHub's cache. To store the cache elsewhere (for example with [runs-on/cache](https://github.com/runs-on/cache) and S3), turn the built-in cache off and cache the mise data directory yourself with any action that has the `actions/cache` interface:
+
+```yaml
+- uses: runs-on/cache@v4
+  with:
+    path: ~/.local/share/mise
+    key: mise-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/mise.toml', '**/mise.lock', '**/.tool-versions') }}
+- uses: jdx/mise-action@v4
+  with:
+    cache: false
+```
+
+The path to cache is mise's data directory, `~/.local/share/mise` by default (`%LOCALAPPDATA%\mise` on Windows). It follows `MISE_DATA_DIR`, then `XDG_DATA_HOME`, and the action's `mise_dir` input if set, so use the same directory in `path`. Build the key from your config files as above, and add anything else that should invalidate it (`install_args`, `MISE_ENV`, the runner image).
+
 ### Template Variables in Cache Keys
 
 When using `cache_key`, you can use template variables to reference internal values:
@@ -144,6 +160,29 @@ This gives you full control over cache invalidation based on the specific aspect
 
 Rust has a known cache interaction because mise installs Rust through `rustup`.
 See [jdx/mise-action#215](https://github.com/jdx/mise-action/issues/215).
+
+## Matrix Builds
+
+To run the same job against several versions of a tool, override that tool with a `MISE_<TOOL>_VERSION` environment variable. The override applies on top of your repo's `mise.toml`, so every other tool is kept and the action installs only what the job needs:
+
+```yaml
+strategy:
+  matrix:
+    ruby-version: ["3.3", "3.4"]
+steps:
+  - uses: actions/checkout@v6
+  - uses: jdx/mise-action@v4
+    env:
+      MISE_RUBY_VERSION: ${{ matrix.ruby-version }}
+    with:
+      cache_key: "{{default}}-ruby${{ matrix.ruby-version }}"
+```
+
+Add the matrix value to `cache_key` as shown so each version gets its own cache (see [Template Variables in Cache Keys](#template-variables-in-cache-keys)).
+
+You can also use `mise x ruby@${{ matrix.ruby-version }} -- <command>` for a single command, which keeps the other tools from `mise.toml`.
+
+The `mise_toml` input is not a good fit for matrices: it writes a `mise.toml` in the job's current directory that replaces the tools from your repo's own config, and a `.mise.toml` in that directory takes precedence over it, so the matrix value is silently ignored. The action warns when it sees this.
 
 ## GitHub API Rate Limits
 
