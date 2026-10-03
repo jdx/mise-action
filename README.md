@@ -87,6 +87,25 @@ to subsequent workflow steps. PATH entries are added individually through
 Set `export_path: false` to export regular environment variables without
 persisting mise's PATH changes.
 
+## Outputs
+
+- `cache-hit`: `true` if the mise cache was restored.
+- `versions`: JSON of the active, installed tools. Each tool maps to a list of `{version, requested_version, install_path, source}`.
+- One output per tool with its resolved version (for example `steps.mise.outputs.bun`), for tools whose name is a valid output name. Tools like `npm:@scope/pkg` are only in `versions`.
+
+This avoids a separate `mise ls --json | jq` step, for example to key another cache on the resolved version:
+
+```yaml
+- uses: jdx/mise-action@v5
+  id: mise
+- uses: actions/cache@v5
+  with:
+    path: ~/.bun/install/cache
+    key: bun-${{ runner.os }}-${{ steps.mise.outputs.bun }}-${{ hashFiles('**/bun.lock') }}
+```
+
+If a tool has several active versions, the per-tool output is the first one; use `fromJSON(steps.mise.outputs.versions).node[1].version` for the others.
+
 ## Cache Configuration
 
 You can customize the cache key used by the action:
