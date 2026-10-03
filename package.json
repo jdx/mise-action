@@ -37,7 +37,6 @@
     "@actions/exec": "^3.0.0",
     "@actions/glob": "^0.7.0",
     "@actions/io": "^3.0.0",
-    "@types/handlebars": "^4.0.40",
     "handlebars": "^4.7.8"
   },
   "devDependencies": {

@@ -23,9 +23,6 @@ importers:
       '@actions/io':
         specifier: ^3.0.0
         version: 3.0.2
-      '@types/handlebars':
-        specifier: ^4.0.40
-        version: 4.1.0
       handlebars:
         specifier: ^4.7.8
         version: 4.7.9
@@ -875,10 +872,6 @@ packages:
 
   '@types/estree@1.0.9':
     resolution: {integrity: sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==}
-
-  '@types/handlebars@4.1.0':
-    resolution: {integrity: sha512-gq9YweFKNNB1uFK71eRqsd4niVkXrxHugqWFQkeLRJvGjnxsLr16bYtcsG4tOFwmYi0Bax+wCkbf1reUfdl4kA==}
-    deprecated: This is a stub types definition. handlebars provides its own type definitions, so you do not need this installed.
 
   '@types/istanbul-lib-coverage@2.0.6':
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -3332,10 +3325,6 @@ snapshots:
   '@types/esrecurse@4.3.1': {}
 
   '@types/estree@1.0.9': {}
-
-  '@types/handlebars@4.1.0':
-    dependencies:
-      handlebars: 4.7.9
 
   '@types/istanbul-lib-coverage@2.0.6': {}
 
