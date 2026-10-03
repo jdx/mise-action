@@ -92383,26 +92383,44 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         info('`minimum_release_age` is ignored because an explicit mise version was provided');
     }
     let resolvedVersion = cleanVersion(version);
-    if (!resolvedVersion) {
-        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
-    }
     const target = await getTarget();
-    const rawAssetName = `mise-v${resolvedVersion}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
-    const installedVersion = resolvedVersion;
+    const assetNameFor = (v) => `mise-v${v}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
     let needsInstall = !fs.existsSync(miseBinPath);
     if (!needsInstall) {
-        try {
-            await verifyExistingMiseAsset(miseBinPath, resolvedVersion, rawAssetName);
-            info(`Verified existing mise@${resolvedVersion}`);
+        // With `version` unset, a cached mise is kept until the cache is busted
+        // rather than chasing every release, so verify it against its own
+        // version's signed checksums instead of the latest release's.
+        let existingVersion = resolvedVersion;
+        if (!existingVersion) {
+            try {
+                existingVersion = await getInstalledMiseVersion(miseBinPath);
+            }
+            catch (err) {
+                warning(`Could not determine the version of existing mise (${errorMessage(err)}); reinstalling`);
+                await fs.promises.rm(miseBinPath, { force: true });
+                needsInstall = true;
+            }
         }
-        catch (err) {
-            if (!(err instanceof MiseIntegrityMismatchError))
-                throw err;
-            warning(`Existing mise failed integrity verification; reinstalling mise@${resolvedVersion}`);
-            await fs.promises.rm(miseBinPath, { force: true });
-            needsInstall = true;
+        if (!needsInstall) {
+            try {
+                await verifyExistingMiseAsset(miseBinPath, existingVersion, assetNameFor(existingVersion));
+                info(`Verified existing mise@${existingVersion}`);
+                resolvedVersion = existingVersion;
+            }
+            catch (err) {
+                if (!(err instanceof MiseIntegrityMismatchError))
+                    throw err;
+                warning(`Existing mise failed integrity verification (${errorMessage(err)}); reinstalling`);
+                await fs.promises.rm(miseBinPath, { force: true });
+                needsInstall = true;
+            }
         }
     }
+    if (needsInstall && !resolvedVersion) {
+        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+    }
+    const rawAssetName = assetNameFor(resolvedVersion);
+    const installedVersion = resolvedVersion;
     if (needsInstall) {
         startGroup(version ? `Download mise@${version}` : 'Setup mise');
         await fs.promises.mkdir(miseBinDir, { recursive: true });

@@ -413,32 +413,54 @@ async function setupMise(
     )
   }
   let resolvedVersion = cleanVersion(version)
-  if (!resolvedVersion) {
+  const target = await getTarget()
+  const assetNameFor = (v: string): string =>
+    `mise-v${v}-${target}${process.platform === 'win32' ? '.exe' : ''}`
+  let needsInstall = !fs.existsSync(miseBinPath)
+  if (!needsInstall) {
+    // With `version` unset, a cached mise is kept until the cache is busted
+    // rather than chasing every release, so verify it against its own
+    // version's signed checksums instead of the latest release's.
+    let existingVersion = resolvedVersion
+    if (!existingVersion) {
+      try {
+        existingVersion = await getInstalledMiseVersion(miseBinPath)
+      } catch (err) {
+        core.warning(
+          `Could not determine the version of existing mise (${errorMessage(err)}); reinstalling`
+        )
+        await fs.promises.rm(miseBinPath, { force: true })
+        needsInstall = true
+      }
+    }
+    if (!needsInstall) {
+      try {
+        await verifyExistingMiseAsset(
+          miseBinPath,
+          existingVersion,
+          assetNameFor(existingVersion)
+        )
+        core.info(`Verified existing mise@${existingVersion}`)
+        resolvedVersion = existingVersion
+      } catch (err) {
+        if (!(err instanceof MiseIntegrityMismatchError)) throw err
+        core.warning(
+          `Existing mise failed integrity verification (${errorMessage(err)}); reinstalling`
+        )
+        await fs.promises.rm(miseBinPath, { force: true })
+        needsInstall = true
+      }
+    }
+  }
+  if (needsInstall && !resolvedVersion) {
     resolvedVersion = cleanVersion(
       await latestMiseVersion(
         useMinimumReleaseAge ? minimumReleaseAge : undefined
       )
     )
   }
-  const target = await getTarget()
-  const rawAssetName = `mise-v${resolvedVersion}-${target}${
-    process.platform === 'win32' ? '.exe' : ''
-  }`
+  const rawAssetName = assetNameFor(resolvedVersion)
   const installedVersion = resolvedVersion
-  let needsInstall = !fs.existsSync(miseBinPath)
-  if (!needsInstall) {
-    try {
-      await verifyExistingMiseAsset(miseBinPath, resolvedVersion, rawAssetName)
-      core.info(`Verified existing mise@${resolvedVersion}`)
-    } catch (err) {
-      if (!(err instanceof MiseIntegrityMismatchError)) throw err
-      core.warning(
-        `Existing mise failed integrity verification; reinstalling mise@${resolvedVersion}`
-      )
-      await fs.promises.rm(miseBinPath, { force: true })
-      needsInstall = true
-    }
-  }
   if (needsInstall) {
     core.startGroup(version ? `Download mise@${version}` : 'Setup mise')
     await fs.promises.mkdir(miseBinDir, { recursive: true })
