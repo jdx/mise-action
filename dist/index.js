@@ -92570,6 +92570,10 @@ async function withExtractedZip(archivePath, tempDir, fn) {
     await exec('powershell', [
         '-NoProfile',
         '-NonInteractive',
+        // Process-scoped; a Restricted default policy (fresh Windows client
+        // installs) can otherwise block loading the Archive module.
+        '-ExecutionPolicy',
+        'Bypass',
         '-Command',
         'Expand-Archive -LiteralPath $env:MISE_ZIP_ARCHIVE -DestinationPath $env:MISE_ZIP_DEST -Force'
     ], {
