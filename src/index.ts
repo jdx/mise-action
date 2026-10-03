@@ -10,6 +10,7 @@ import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
 import { selectMiseRelease } from './release-index.js'
+import { toolVersionOutputs } from './tool-versions.js'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -112,6 +113,7 @@ async function run(): Promise<void> {
         await saveCache(cacheKey)
     }
     await miseLs()
+    await setToolVersionOutputs()
     const loadEnv = core.getBooleanInput('env')
     if (loadEnv) {
       await exportMiseEnv()
@@ -1190,6 +1192,27 @@ const miseBootstrap = async (): Promise<number> => {
   return mise([command])
 }
 const miseLs = async (): Promise<number> => mise([`ls`])
+
+/**
+ * Expose the active tool versions as outputs: `versions` (JSON) and one output
+ * per tool. A failure here only warns; it must not fail the job.
+ */
+async function setToolVersionOutputs(): Promise<void> {
+  try {
+    const { stdout } = await exec.getExecOutput(
+      'mise',
+      ['ls', '--json', '--current'],
+      { cwd: getCwd(), silent: true }
+    )
+    const { versions, outputs } = toolVersionOutputs(JSON.parse(stdout))
+    core.setOutput('versions', JSON.stringify(versions))
+    for (const [tool, version] of Object.entries(outputs)) {
+      core.setOutput(tool, version)
+    }
+  } catch (err) {
+    core.warning(`Unable to set tool version outputs: ${errorMessage(err)}`)
+  }
+}
 const miseReshim = async (): Promise<number> => mise([`reshim`, `-f`])
 const mise = async (args: string[]): Promise<number> =>
   await core.group(`Running mise ${args.join(' ')}`, async () => {
