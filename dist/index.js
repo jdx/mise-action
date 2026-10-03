@@ -92394,16 +92394,19 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     // `auto_update` opts back in to comparing against the latest release. The
     // main cache is only saved on a miss, so the updated binary is cached on its
     // own, keyed by version, to avoid downloading it again on every run.
+    // GitHub includes the path list in the cache version, so restore and save
+    // must use the identical list.
+    const binCachePaths = [
+        miseBinPath,
+        ...(process.platform === 'win32' ? [miseShimPath] : []),
+        versionFile
+    ];
     let binCacheKey;
     if (!resolvedVersion && autoUpdate) {
         resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
         if (getBooleanInput('cache')) {
             binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${resolvedVersion}`;
-            await restoreMiseBinCache(binCacheKey, [
-                miseBinPath,
-                miseShimPath,
-                versionFile
-            ]);
+            await restoreMiseBinCache(binCacheKey, binCachePaths);
         }
     }
     let needsInstall = !fs.existsSync(miseBinPath);
@@ -92514,7 +92517,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         }
     }
     if (needsInstall && binCacheKey && getBooleanInput('cache_save')) {
-        await saveMiseBinCache(binCacheKey, [miseBinPath, miseShimPath, versionFile].filter(p => fs.existsSync(p)));
+        await saveMiseBinCache(binCacheKey, binCachePaths);
     }
     addPath(miseBinDir);
 }
