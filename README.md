@@ -180,7 +180,24 @@ This gives you full control over cache invalidation based on the specific aspect
 ### Rust Cache
 
 Rust has a known cache interaction because mise installs Rust through `rustup`.
-See [jdx/mise-action#215](https://github.com/jdx/mise-action/issues/215).
+
+mise records that Rust is installed in its own data directory, but `rustup` keeps the toolchain, components (`rustfmt`, `clippy`, ...), and targets in `~/.rustup` and `~/.cargo`. The action only caches the mise data directory, so a cache restore can bring back mise's "installed" marker without the components, and later steps fail with errors like a missing `rustfmt`. GitHub-hosted runners also ship their own `rustup`, which mise may reuse instead of installing its own.
+
+Two ways to deal with it:
+
+1. Keep rustup's state inside the mise data directory so it is cached together with it. This is complete, but the cache can get large (around 2.5 GB with several components and targets):
+
+   ```yaml
+   env:
+     MISE_RUSTUP_HOME: /home/runner/.local/share/mise/rustup # macOS: /Users/runner/...
+     MISE_CARGO_HOME: /home/runner/.local/share/mise/cargo
+   ```
+
+   These are the Linux paths (macOS runners use `/Users/runner/...`). On Windows the action caches `%LOCALAPPDATA%\mise` by default, so on GitHub-hosted Windows runners use `C:\Users\runneradmin\AppData\Local\mise\rustup` and `C:\Users\runneradmin\AppData\Local\mise\cargo` (on other runners, the same paths under that runner's `%LOCALAPPDATA%`). If you customize `mise_dir`, `MISE_DATA_DIR`, or `XDG_DATA_HOME`, keep these paths under the same directory.
+
+2. Don't cache the toolchain through the action. Install Rust with `rustup` (or a dedicated action) and a Rust cache such as [Swatinem/rust-cache](https://github.com/Swatinem/rust-cache), and let mise manage everything else. For this to work, mise must no longer manage Rust: remove `rust` from `mise.toml` / `.tool-versions` (or keep it only in a config the CI job doesn't use, for example behind `MISE_ENV`), because the action runs `mise install` by default and would otherwise install Rust through mise and cache its install record again.
+
+See [jdx/mise-action#215](https://github.com/jdx/mise-action/issues/215) for the discussion.
 
 ## GitHub API Rate Limits
 
