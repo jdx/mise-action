@@ -2,7 +2,7 @@ import * as os from 'os';
 import os__default from 'os';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
-import fs__default, { promises, existsSync, writeFileSync } from 'fs';
+import fs__default, { promises, writeFileSync, existsSync } from 'fs';
 import * as path$1 from 'path';
 import * as http from 'http';
 import http__default from 'http';
@@ -92386,15 +92386,22 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     let resolvedVersion = cleanVersion(version);
     const target = await getTarget();
     const assetNameFor = (v) => `mise-v${v}-${target}${process.platform === 'win32' ? '.exe' : ''}`;
+    // `auto_update` opts back in to comparing against the latest release. The
+    // main cache is only saved on a miss, so the updated binary is cached on its
+    // own, keyed by version, to avoid downloading it again on every run.
+    let binCacheKey;
+    if (!resolvedVersion && autoUpdate) {
+        resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+        if (getBooleanInput('cache')) {
+            binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${resolvedVersion}`;
+            await restoreMiseBinCache(binCacheKey, [miseBinPath, miseShimPath]);
+        }
+    }
     let needsInstall = !fs.existsSync(miseBinPath);
     if (!needsInstall) {
         // With `version` unset, a cached mise is kept until the cache is busted
         // rather than chasing every release, so verify it against its own
         // version's signed checksums instead of the latest release's.
-        // `auto_update` opts back in to comparing against the latest release.
-        if (!resolvedVersion && autoUpdate) {
-            resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
-        }
         let existingVersion = resolvedVersion;
         if (!existingVersion) {
             try {
@@ -92487,6 +92494,9 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         }
     }
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
+    if (needsInstall && binCacheKey) {
+        await saveMiseBinCache(binCacheKey, [miseBinPath, miseShimPath].filter(p => fs.existsSync(p)));
+    }
     // compare with provided hash
     const want = getInput('sha256');
     if (want) {
@@ -92498,6 +92508,25 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         }
     }
     addPath(miseBinDir);
+}
+async function restoreMiseBinCache(key, paths) {
+    try {
+        if (await restoreCache(paths, key)) {
+            info(`mise binary restored from key: ${key}`);
+        }
+    }
+    catch (err) {
+        warning(`Failed to restore mise binary cache: ${errorMessage(err)}`);
+    }
+}
+async function saveMiseBinCache(key, paths) {
+    try {
+        await saveCache$1(paths, key);
+        info(`mise binary cached with key: ${key}`);
+    }
+    catch (err) {
+        warning(`Failed to save mise binary cache: ${errorMessage(err)}`);
+    }
 }
 async function withExtractedZip(archivePath, tempDir, fn) {
     const extractDir = path$1.join(tempDir, 'extract');

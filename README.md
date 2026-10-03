@@ -53,9 +53,9 @@ jobs:
 With `version` unset, a mise binary restored from the cache is kept (after
 verifying it against the signed checksums for its own version) until the cache
 key changes, so mise may lag the latest release. To always reinstall when a
-newer release is available, set `auto_update: true`. Note the cache is only saved
-on a miss, so this re-downloads mise on each run until the cache key changes;
-pinning `version` is the cache-friendly way to upgrade deliberately.
+newer release is available, set `auto_update: true`. The updated binary is cached
+separately by version, so mise is downloaded once per release rather than on every
+run. Pinning `version` remains the way to upgrade deliberately.
 
 ## Minimum Release Age
 

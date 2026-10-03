@@ -418,19 +418,26 @@ async function setupMise(
   const target = await getTarget()
   const assetNameFor = (v: string): string =>
     `mise-v${v}-${target}${process.platform === 'win32' ? '.exe' : ''}`
+  // `auto_update` opts back in to comparing against the latest release. The
+  // main cache is only saved on a miss, so the updated binary is cached on its
+  // own, keyed by version, to avoid downloading it again on every run.
+  let binCacheKey: string | undefined
+  if (!resolvedVersion && autoUpdate) {
+    resolvedVersion = cleanVersion(
+      await latestMiseVersion(
+        useMinimumReleaseAge ? minimumReleaseAge : undefined
+      )
+    )
+    if (core.getBooleanInput('cache')) {
+      binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${resolvedVersion}`
+      await restoreMiseBinCache(binCacheKey, [miseBinPath, miseShimPath])
+    }
+  }
   let needsInstall = !fs.existsSync(miseBinPath)
   if (!needsInstall) {
     // With `version` unset, a cached mise is kept until the cache is busted
     // rather than chasing every release, so verify it against its own
     // version's signed checksums instead of the latest release's.
-    // `auto_update` opts back in to comparing against the latest release.
-    if (!resolvedVersion && autoUpdate) {
-      resolvedVersion = cleanVersion(
-        await latestMiseVersion(
-          useMinimumReleaseAge ? minimumReleaseAge : undefined
-        )
-      )
-    }
     let existingVersion = resolvedVersion
     if (!existingVersion) {
       try {
@@ -570,6 +577,12 @@ async function setupMise(
     }
   }
   await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion)
+  if (needsInstall && binCacheKey) {
+    await saveMiseBinCache(
+      binCacheKey,
+      [miseBinPath, miseShimPath].filter(p => fs.existsSync(p))
+    )
+  }
   // compare with provided hash
   const want = core.getInput('sha256')
   if (want) {
@@ -584,6 +597,28 @@ async function setupMise(
   }
 
   core.addPath(miseBinDir)
+}
+
+async function restoreMiseBinCache(
+  key: string,
+  paths: string[]
+): Promise<void> {
+  try {
+    if (await cache.restoreCache(paths, key)) {
+      core.info(`mise binary restored from key: ${key}`)
+    }
+  } catch (err) {
+    core.warning(`Failed to restore mise binary cache: ${errorMessage(err)}`)
+  }
+}
+
+async function saveMiseBinCache(key: string, paths: string[]): Promise<void> {
+  try {
+    await cache.saveCache(paths, key)
+    core.info(`mise binary cached with key: ${key}`)
+  } catch (err) {
+    core.warning(`Failed to save mise binary cache: ${errorMessage(err)}`)
+  }
 }
 
 async function withExtractedZip(
