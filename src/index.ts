@@ -8,6 +8,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
+import { cacheKeyToSave } from './cache-save.js'
 import { selectMiseRelease } from './release-index.js'
 
 // Configuration file patterns for cache key generation
@@ -390,14 +391,11 @@ async function restoreMiseCache(): Promise<string | undefined> {
 
   if (!cacheKey) {
     core.info(`mise cache not found for ${primaryKey}`)
-    return primaryKey
+  } else {
+    core.info(`mise cache restored from key: ${cacheKey}`)
   }
 
-  core.info(`mise cache restored from key: ${cacheKey}`)
-
-  // A prefix match restored a different key's cache, so still save under the
-  // primary key. An exact hit already exists and needs no save.
-  if (cacheKey !== primaryKey) return primaryKey
+  return cacheKeyToSave(primaryKey, cacheKey)
 }
 
 async function setupMise(
