@@ -93,8 +93,9 @@ async function run(): Promise<void> {
 
     const version = core.getInput('version')
     const minimumReleaseAge = core.getInput('minimum_release_age')
+    const autoUpdate = core.getBooleanInput('auto_update')
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
-    await setupMise(version, fetchFromGitHub, minimumReleaseAge)
+    await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate)
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
@@ -398,7 +399,8 @@ async function restoreMiseCache(): Promise<string | undefined> {
 async function setupMise(
   version: string,
   fetchFromGitHub = false,
-  minimumReleaseAge = ''
+  minimumReleaseAge = '',
+  autoUpdate = false
 ): Promise<void> {
   const miseBinDir = path.join(miseDir(), 'bin')
   const miseBinPath = path.join(
@@ -421,6 +423,14 @@ async function setupMise(
     // With `version` unset, a cached mise is kept until the cache is busted
     // rather than chasing every release, so verify it against its own
     // version's signed checksums instead of the latest release's.
+    // `auto_update` opts back in to comparing against the latest release.
+    if (!resolvedVersion && autoUpdate) {
+      resolvedVersion = cleanVersion(
+        await latestMiseVersion(
+          useMinimumReleaseAge ? minimumReleaseAge : undefined
+        )
+      )
+    }
     let existingVersion = resolvedVersion
     if (!existingVersion) {
       try {

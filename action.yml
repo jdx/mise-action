@@ -8,6 +8,10 @@ inputs:
   version:
     required: false
     description: The version of mise to use. If not specified, uses the newest release satisfying minimum_release_age.
+  auto_update:
+    required: false
+    default: "false"
+    description: When `version` is unset, reinstall a cached mise if a newer release is available. By default a cached mise is kept until the cache key changes.
   minimum_release_age:
     required: false
     default: "24h"

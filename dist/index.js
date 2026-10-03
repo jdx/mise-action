@@ -92118,8 +92118,9 @@ async function run() {
         setupWings();
         const version = getInput('version');
         const minimumReleaseAge = getInput('minimum_release_age');
+        const autoUpdate = getBooleanInput('auto_update');
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
-        await setupMise(version, fetchFromGitHub, minimumReleaseAge);
+        await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate);
         await setEnvVars();
         if (getBooleanInput('reshim')) {
             await miseReshim();
@@ -92374,7 +92375,7 @@ async function restoreMiseCache() {
     }
     info(`mise cache restored from key: ${cacheKey}`);
 }
-async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '') {
+async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '', autoUpdate = false) {
     const miseBinDir = path$1.join(miseDir(), 'bin');
     const miseBinPath = path$1.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     const miseShimPath = path$1.join(miseBinDir, 'mise-shim.exe');
@@ -92390,6 +92391,10 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         // With `version` unset, a cached mise is kept until the cache is busted
         // rather than chasing every release, so verify it against its own
         // version's signed checksums instead of the latest release's.
+        // `auto_update` opts back in to comparing against the latest release.
+        if (!resolvedVersion && autoUpdate) {
+            resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
+        }
         let existingVersion = resolvedVersion;
         if (!existingVersion) {
             try {
