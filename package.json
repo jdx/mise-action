@@ -19,7 +19,7 @@
   },
   "scripts": {
     "all": "npm run format:write && npm run lint && npm run test && npm run package",
-    "test": "node --test scripts/release-index.test.mjs",
+    "test": "node --test scripts/*.test.mjs",
     "typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit",
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
@@ -37,7 +37,6 @@
     "@actions/exec": "^3.0.0",
     "@actions/glob": "^0.7.0",
     "@actions/io": "^3.0.0",
-    "@types/handlebars": "^4.0.40",
     "handlebars": "^4.7.8"
   },
   "devDependencies": {
