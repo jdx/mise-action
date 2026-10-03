@@ -106,13 +106,13 @@ The built-in cache uses GitHub's cache. To store the cache elsewhere (for exampl
 - uses: runs-on/cache@v4
   with:
     path: ~/.local/share/mise
-    key: mise-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/mise.toml', '**/mise.lock', '**/.tool-versions') }}
+    key: mise-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/mise.toml', '**/.mise.toml', '**/mise.*.toml', '**/.mise.*.toml', '**/mise.lock', '**/.mise.lock', '**/mise.*.lock', '**/.tool-versions') }}
 - uses: jdx/mise-action@v4
   with:
     cache: false
 ```
 
-The path to cache is mise's data directory, `~/.local/share/mise` by default (`%LOCALAPPDATA%\mise` on Windows). It follows `MISE_DATA_DIR`, then `XDG_DATA_HOME`, and the action's `mise_dir` input if set, so use the same directory in `path`. Build the key from your config files as above, and add anything else that should invalidate it (`install_args`, `MISE_ENV`, the runner image).
+The path to cache is mise's data directory, `~/.local/share/mise` by default (`%LOCALAPPDATA%\mise` on Windows). It follows `MISE_DATA_DIR`, then `XDG_DATA_HOME`, and the action's `mise_dir` input if set, so use the same directory in `path`. Build the key from your config files as above (list every config name your repo uses, including environment-specific `mise.<env>.toml` files, since the key must change whenever the tools do), and add anything else that should invalidate it (`install_args`, `MISE_ENV`, the runner image).
 
 ### Template Variables in Cache Keys
 
@@ -169,16 +169,17 @@ To run the same job against several versions of a tool, override that tool with 
 strategy:
   matrix:
     ruby-version: ["3.3", "3.4"]
+env:
+  MISE_RUBY_VERSION: ${{ matrix.ruby-version }}
 steps:
   - uses: actions/checkout@v6
   - uses: jdx/mise-action@v4
-    env:
-      MISE_RUBY_VERSION: ${{ matrix.ruby-version }}
     with:
       cache_key: "{{default}}-ruby${{ matrix.ruby-version }}"
+  - run: mise exec -- ruby --version
 ```
 
-Add the matrix value to `cache_key` as shown so each version gets its own cache (see [Template Variables in Cache Keys](#template-variables-in-cache-keys)).
+Set the variable at the job level, as above, so later steps that run `mise exec`, `mise run` or a shim also use the matrix version. Setting it only on the action step doesn't carry over: the action exports what `mise env` reports, not its own `env`. Add the matrix value to `cache_key` so each version gets its own cache (see [Template Variables in Cache Keys](#template-variables-in-cache-keys)).
 
 You can also use `mise x ruby@${{ matrix.ruby-version }} -- <command>` for a single command, which keeps the other tools from `mise.toml`.
 
