@@ -61,6 +61,10 @@ inputs:
     required: false
     default: "true"
     description: if false, action will not write to cache
+  cache_save_post:
+    required: false
+    default: "false"
+    description: if true, save the cache in the post step instead of right after install, so tools installed by later steps (e.g. monorepo sub-projects or task tools) are included. Only applies on a cache miss. The post step runs even if a later step fails, as the immediate save would have.
   cache_key_prefix:
     required: false
     default: "mise-v1"
@@ -147,3 +151,5 @@ outputs:
 runs:
   using: node24
   main: dist/index.js
+  post: dist/index.js
+  post-if: always()

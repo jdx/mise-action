@@ -109,8 +109,15 @@ async function run(): Promise<void> {
       } else {
         await miseInstall()
       }
-      if (cacheKey && core.getBooleanInput('cache_save'))
-        await saveCache(cacheKey)
+      if (cacheKey && core.getBooleanInput('cache_save')) {
+        if (core.getBooleanInput('cache_save_post')) {
+          // Defer to the post step so tools installed by later steps (e.g.
+          // monorepo sub-project or task-level tools) are included.
+          core.saveState('SAVE_CACHE_KEY', cacheKey)
+        } else {
+          await saveCache(cacheKey)
+        }
+      }
     }
     await miseLs()
     await setToolVersionOutputs()
@@ -1271,7 +1278,24 @@ const writeFile = async (p: fs.PathLike, body: string): Promise<void> =>
     await fs.promises.writeFile(p, body, { encoding: 'utf8' })
   })
 
-run()
+/** Post step: save the cache deferred by `cache_save_post`. */
+async function post(): Promise<void> {
+  const cacheKey = core.getState('SAVE_CACHE_KEY')
+  if (!cacheKey) return
+  try {
+    await saveCache(cacheKey)
+  } catch (err) {
+    // The job's work is done; a failed cache save should not fail it.
+    core.warning(`Failed to save mise cache: ${errorMessage(err)}`)
+  }
+}
+
+if (core.getState('IS_POST')) {
+  void post()
+} else {
+  core.saveState('IS_POST', 'true')
+  void run()
+}
 
 function getCwd(): string {
   return (

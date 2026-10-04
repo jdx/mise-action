@@ -24,6 +24,7 @@ jobs:
           bootstrap_skip: "tools,task" # [default: ""] comma-separated parts to skip when bootstrapping
           bootstrap_args: "--yes" # [default: ""] additional arguments to `mise bootstrap`
           cache: true # [default: true] cache mise using GitHub's cache
+          cache_save_post: false # [default: false] save the cache in the post step, after later steps install more tools
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
           # automatically write this .tool-versions file
