@@ -92456,6 +92456,7 @@ function checkMiseSupportsRedacted() {
     }
     return false;
 }
+/** Set mise defaults, action authentication, and the optional shims path. */
 async function setEnvVars() {
     startGroup('Setting env vars');
     const set = (k, v) => {

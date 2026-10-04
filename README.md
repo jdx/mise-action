@@ -39,7 +39,6 @@ jobs:
           env: true # [default: true] export mise environment variables
           export_path: true # [default: true] add mise PATH entries to subsequent steps
           github_token: ${{ secrets.GITHUB_TOKEN }} # [default: ${{ github.token }}] GitHub token for API authentication
-          persist_github_token: false # [default: false] export a token for later steps; accepts true or a token value
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest
@@ -254,13 +253,21 @@ When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise ne
 
 **Note:** The action automatically uses `${{ github.token }}` as the default, so in most cases you don't need to explicitly provide it. However, if you encounter rate limit errors, make sure the token is being passed correctly.
 
-The token is available as `MISE_GITHUB_TOKEN` only during this action by default.
+### GitHub token persistence (unreleased)
+
+`persist_github_token` is not available in the published `@v4`, `@v5`, or
+`@v5.1.0` versions. Those versions still persist the action token automatically
+and ignore this input. The examples below pin the unreleased implementation
+commit that supports it. Use a release containing this change once available.
+
+With this implementation, the token is available as `MISE_GITHUB_TOKEN` only
+during this action by default (`persist_github_token: false`).
 An existing `env.MISE_GITHUB_TOKEN` takes precedence over `github_token`.
 To authenticate later shims, `mise exec`, or lazy installs, set
 `persist_github_token: true` to export the action's token for subsequent steps:
 
 ```yaml
-- uses: jdx/mise-action@v5
+- uses: jdx/mise-action@2f1a5eb16aec0e6793d6a7e6ec2901969cf93f03 # unreleased persistence support
   with:
     persist_github_token: true
 ```
@@ -270,7 +277,7 @@ still authenticates its own tool installs with `github_token` (or an existing
 `MISE_GITHUB_TOKEN`); later steps receive the separate token:
 
 ```yaml
-- uses: jdx/mise-action@v5
+- uses: jdx/mise-action@2f1a5eb16aec0e6793d6a7e6ec2901969cf93f03 # unreleased persistence support
   with:
     persist_github_token: ${{ secrets.READ_ONLY_TOKEN }}
 ```
