@@ -92459,6 +92459,7 @@ function checkMiseSupportsRedacted() {
 /** Set mise defaults, action authentication, and the optional shims path. */
 async function setEnvVars() {
     startGroup('Setting env vars');
+    /** Export a default only when the caller has not already set it. */
     const set = (k, v) => {
         if (!process.env[k]) {
             info(`Setting ${k}=${v}`);

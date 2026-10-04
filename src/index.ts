@@ -351,6 +351,7 @@ function checkMiseSupportsRedacted(): boolean {
 /** Set mise defaults, action authentication, and the optional shims path. */
 async function setEnvVars(): Promise<void> {
   core.startGroup('Setting env vars')
+  /** Export a default only when the caller has not already set it. */
   const set = (k: string, v: string): void => {
     if (!process.env[k]) {
       core.info(`Setting ${k}=${v}`)
