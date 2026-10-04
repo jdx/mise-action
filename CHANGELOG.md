@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.1.1](https://github.com/jdx/mise-action/compare/v5.1.0..v5.1.1) - 2026-10-04
+
+### 🐛 Bug Fixes
+
+- make GitHub token persistence opt-in (#658) by [@jdx](https://github.com/jdx) in [#658](https://github.com/jdx/mise-action/pull/658)
+
+---
 ## [5.1.0](https://github.com/jdx/mise-action/compare/v5.0.1..v5.1.0) - 2026-10-04
 
 ### 🚀 Features
