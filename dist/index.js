@@ -92182,8 +92182,16 @@ async function run() {
             else {
                 await miseInstall();
             }
-            if (cacheKey && getBooleanInput('cache_save'))
-                await saveCache(cacheKey);
+            if (cacheKey && getBooleanInput('cache_save')) {
+                if (getBooleanInput('cache_save_post')) {
+                    // Defer to the post step so tools installed by later steps (e.g.
+                    // monorepo sub-project or task-level tools) are included.
+                    saveState('SAVE_CACHE_KEY', cacheKey);
+                }
+                else {
+                    await saveCache(cacheKey);
+                }
+            }
         }
         await miseLs();
         await setToolVersionOutputs();
@@ -93102,7 +93110,26 @@ const writeFile = async (p, body) => await group(`Writing ${p}`, async () => {
     info(`Body:\n${body}`);
     await fs.promises.writeFile(p, body, { encoding: 'utf8' });
 });
-run();
+/** Post step: save the cache deferred by `cache_save_post`. */
+async function post() {
+    const cacheKey = getState('SAVE_CACHE_KEY');
+    if (!cacheKey)
+        return;
+    try {
+        await saveCache(cacheKey);
+    }
+    catch (err) {
+        // The job's work is done; a failed cache save should not fail it.
+        warning(`Failed to save mise cache: ${errorMessage(err)}`);
+    }
+}
+if (getState('IS_POST')) {
+    void post();
+}
+else {
+    saveState('IS_POST', 'true');
+    void run();
+}
 function getCwd() {
     return (getInput('working_directory') ||
         getInput('install_dir') ||
