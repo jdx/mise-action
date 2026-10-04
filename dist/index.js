@@ -93027,6 +93027,11 @@ async function setToolVersions() {
 async function setMiseToml() {
     const toml = getInput('mise_toml');
     if (toml) {
+        // mise loads `.mise.toml` ahead of `mise.toml` in the same directory, so
+        // a repo `.mise.toml` would silently win over this input.
+        if (fs.existsSync('.mise.toml')) {
+            warning('`.mise.toml` exists in the current directory and takes precedence over the `mise_toml` input, which is written to `mise.toml`. Rename it to `mise.toml` or remove it for `mise_toml` to take effect.');
+        }
         await writeFile('mise.toml', toml);
     }
 }
