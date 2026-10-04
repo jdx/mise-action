@@ -74,10 +74,19 @@ jobs:
             ]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check GitHub token is not persisted by default
+        shell: bash
+        run: test -z "${MISE_GITHUB_TOKEN:-}"
       - name: Reuse verified mise
         uses: $/
         with:
           install: false
+          persist_github_token: true
+      - name: Check GitHub token persistence opt-in
+        shell: bash
+        env:
+          EXPECTED_TOKEN: ${{ github.token }}
+        run: test "$MISE_GITHUB_TOKEN" = "$EXPECTED_TOKEN"
       - run: mise --version
       - run: mise x jq -- jq --version
       - run: which jq
@@ -93,6 +102,14 @@ jobs:
           }
       - run: . scripts/test.sh
         shell: bash
+      - name: Persist a separate GitHub token
+        uses: $/
+        with:
+          install: false
+          persist_github_token: mise-action-persist-test-token
+      - name: Check separate GitHub token persistence
+        shell: bash
+        run: test "$MISE_GITHUB_TOKEN" = "mise-action-persist-test-token"
 
   path_opt_out:
     runs-on: ubuntu-latest
