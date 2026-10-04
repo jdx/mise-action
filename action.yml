@@ -103,8 +103,15 @@ inputs:
     required: false
     description: |
       GitHub token for API authentication to avoid rate limits when installing GitHub-hosted tools.
-      Defaults to the automatic GitHub token.
+      Defaults to the automatic GitHub token. Used only during this action unless persist_github_token is set.
     default: ${{ github.token }}
+  persist_github_token:
+    required: false
+    default: "false"
+    description: |
+      Persist MISE_GITHUB_TOKEN for subsequent steps. false (default) keeps github_token local to this action.
+      true exports the token used by this action (env.MISE_GITHUB_TOKEN takes precedence over github_token).
+      A token value exports that credential instead, while this action continues to use github_token or env.MISE_GITHUB_TOKEN.
   fetch_from_github:
     required: false
     default: "true"

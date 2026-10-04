@@ -9,6 +9,7 @@ import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
+import { setupGitHubToken } from './github-token.js'
 import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
@@ -365,15 +366,7 @@ async function setEnvVars(): Promise<void> {
   const logLevel = core.getInput('log_level')
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
-  const githubToken = core.getInput('github_token')
-  if (githubToken) {
-    // Don't use GITHUB_TOKEN, use MISE_GITHUB_TOKEN instead to avoid downstream issues.
-    set('MISE_GITHUB_TOKEN', githubToken)
-  } else {
-    core.warning(
-      'No MISE_GITHUB_TOKEN provided. You may hit GitHub API rate limits when installing tools from GitHub.'
-    )
-  }
+  setupGitHubToken()
 
   set('MISE_TRUSTED_CONFIG_PATHS', process.cwd())
   set('MISE_YES', '1')

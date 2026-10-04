@@ -39,6 +39,7 @@ jobs:
           env: true # [default: true] export mise environment variables
           export_path: true # [default: true] add mise PATH entries to subsequent steps
           github_token: ${{ secrets.GITHUB_TOKEN }} # [default: ${{ github.token }}] GitHub token for API authentication
+          persist_github_token: false # [default: false] export a token for later steps; accepts true or a token value
       - run: shellcheck scripts/*.sh
   test:
     runs-on: ubuntu-latest
@@ -252,6 +253,32 @@ When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise ne
 ```
 
 **Note:** The action automatically uses `${{ github.token }}` as the default, so in most cases you don't need to explicitly provide it. However, if you encounter rate limit errors, make sure the token is being passed correctly.
+
+The token is available as `MISE_GITHUB_TOKEN` only during this action by default.
+An existing `env.MISE_GITHUB_TOKEN` takes precedence over `github_token`.
+To authenticate later shims, `mise exec`, or lazy installs, set
+`persist_github_token: true` to export the action's token for subsequent steps:
+
+```yaml
+- uses: jdx/mise-action@v5
+  with:
+    persist_github_token: true
+```
+
+You can also persist a separate credential, such as a read-only token. The action
+still authenticates its own tool installs with `github_token` (or an existing
+`MISE_GITHUB_TOKEN`); later steps receive the separate token:
+
+```yaml
+- uses: jdx/mise-action@v5
+  with:
+    persist_github_token: ${{ secrets.READ_ONLY_TOKEN }}
+```
+
+Setting `persist_github_token: false` does not clear a token already set at the job
+level or exported by an earlier step. This changes the previous behavior, which
+persisted `github_token` automatically; workflows relying on it in later steps
+should opt in explicitly.
 
 ## Lock Files
 

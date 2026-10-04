@@ -92017,6 +92017,42 @@ function cacheKeyToSave(primaryKey, restoredKey) {
     return restoredKey === primaryKey ? undefined : primaryKey;
 }
 
+/** Authenticate this action; persist a token only when explicitly requested. */
+function setupGitHubToken() {
+    const githubToken = getInput('github_token');
+    const actionToken = process.env.MISE_GITHUB_TOKEN || githubToken;
+    const persist = getInput('persist_github_token');
+    const persistedToken = /^true$/i.test(persist)
+        ? actionToken
+        : !persist || /^false$/i.test(persist)
+            ? ''
+            : persist;
+    if (actionToken) {
+        setSecret(actionToken);
+        // Children inherit this, but later workflow steps do not.
+        process.env.MISE_GITHUB_TOKEN = actionToken;
+    }
+    else {
+        warning('No MISE_GITHUB_TOKEN provided. You may hit GitHub API rate limits when installing tools from GitHub.');
+    }
+    if (persistedToken) {
+        setSecret(persistedToken);
+        info('Persisting MISE_GITHUB_TOKEN for subsequent steps');
+        const previousToken = process.env.MISE_GITHUB_TOKEN;
+        try {
+            exportVariable('MISE_GITHUB_TOKEN', persistedToken);
+        }
+        finally {
+            // exportVariable also changes this process. Keep using the action's
+            // credential when a different token was supplied for later steps.
+            if (previousToken === undefined)
+                delete process.env.MISE_GITHUB_TOKEN;
+            else
+                process.env.MISE_GITHUB_TOKEN = previousToken;
+        }
+    }
+}
+
 /**
  * Parse the `plugins` input: one plugin per line, either `name` or
  * `name url`. Blank lines and `#` comments are ignored.
@@ -92435,14 +92471,7 @@ async function setEnvVars() {
     const logLevel = getInput('log_level');
     if (logLevel)
         set('MISE_LOG_LEVEL', logLevel);
-    const githubToken = getInput('github_token');
-    if (githubToken) {
-        // Don't use GITHUB_TOKEN, use MISE_GITHUB_TOKEN instead to avoid downstream issues.
-        set('MISE_GITHUB_TOKEN', githubToken);
-    }
-    else {
-        warning('No MISE_GITHUB_TOKEN provided. You may hit GitHub API rate limits when installing tools from GitHub.');
-    }
+    setupGitHubToken();
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
     set('MISE_YES', '1');
     if (getBooleanInput('add_shims_to_path')) {
