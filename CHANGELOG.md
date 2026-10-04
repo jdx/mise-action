@@ -1,6 +1,34 @@
 # Changelog
 
 ---
+## [5.1.0](https://github.com/jdx/mise-action/compare/v5.0.1..v5.1.0) - 2026-10-04
+
+### 🚀 Features
+
+- output active tool versions (#655) by [@jdx](https://github.com/jdx) in [#655](https://github.com/jdx/mise-action/pull/655)
+- add opt-in cache_save_post input (#649) by [@jdx](https://github.com/jdx) in [#649](https://github.com/jdx/mise-action/pull/649)
+- add plugins input (#656) by [@jdx](https://github.com/jdx) in [#656](https://github.com/jdx/mise-action/pull/656)
+
+### 🐛 Bug Fixes
+
+- **(cache)** keep a cached mise instead of re-downloading when version is unset (#642) by [@jdx](https://github.com/jdx) in [#642](https://github.com/jdx/mise-action/pull/642)
+- save cache after inexact cache restore (#646) by [@jdx](https://github.com/jdx) in [#646](https://github.com/jdx/mise-action/pull/646)
+- extract mise zip with PowerShell instead of unzip on Windows (#650) by [@jdx](https://github.com/jdx) in [#650](https://github.com/jdx/mise-action/pull/650)
+- cache mise binary for caches saved without a version record (#648) by [@jdx](https://github.com/jdx) in [#648](https://github.com/jdx/mise-action/pull/648)
+
+### 📚 Documentation
+
+- explain the Rust cache caveat and workarounds (#651) by [@jdx](https://github.com/jdx) in [#651](https://github.com/jdx/mise-action/pull/651)
+- add matrix and external cache guides; warn on shadowed mise_toml (#654) by [@jdx](https://github.com/jdx) in [#654](https://github.com/jdx/mise-action/pull/654)
+
+### ⚙️ Miscellaneous Tasks
+
+- add TypeScript 7 alongside TypeScript 6 (#639) by [@jdx](https://github.com/jdx) in [#639](https://github.com/jdx/mise-action/pull/639)
+- make the final job depend on every test job (#643) by [@jdx](https://github.com/jdx) in [#643](https://github.com/jdx/mise-action/pull/643)
+- roll every check up into the final job (#645) by [@jdx](https://github.com/jdx) in [#645](https://github.com/jdx/mise-action/pull/645)
+- remove unneeded @types/handlebars dependency (#647) by [@jdx](https://github.com/jdx) in [#647](https://github.com/jdx/mise-action/pull/647)
+
+---
 ## [5.0.1](https://github.com/jdx/mise-action/compare/v5.0.0..v5.0.1) - 2026-09-30
 
 ### 🐛 Bug Fixes
