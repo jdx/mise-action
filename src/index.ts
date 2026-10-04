@@ -9,6 +9,7 @@ import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
+import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 
@@ -43,7 +44,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
+  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
@@ -103,6 +104,7 @@ async function run(): Promise<void> {
       await miseReshim()
     }
     await testMise()
+    await miseInstallPlugins()
     if (core.getBooleanInput('install')) {
       if (core.getBooleanInput('bootstrap')) {
         await miseBootstrap()
@@ -1237,6 +1239,17 @@ const miseBootstrap = async (): Promise<number> => {
 const miseLs = async (): Promise<number> => mise([`ls`])
 
 /**
+ * Install the plugins from the `plugins` input before tools are installed, so
+ * tools and idiomatic version files that need them resolve. Installing a
+ * plugin that is already present (e.g. from the cache) only warns.
+ */
+async function miseInstallPlugins(): Promise<void> {
+  for (const { name, url } of parsePlugins(core.getInput('plugins'))) {
+    await mise(['plugins', 'install', '-y', name, ...(url ? [url] : [])])
+  }
+}
+
+/**
  * Expose the active tool versions as outputs: `versions` (JSON) and one output
  * per tool. A failure here only warns; it must not fail the job.
  */
@@ -1472,6 +1485,18 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     }
   }
 
+  // Plugins are cached with the rest of mise's data and an installed plugin is
+  // left alone, so a changed plugin URL or ref has to change the key.
+  let pluginsHash = ''
+  const plugins = parsePlugins(core.getInput('plugins'))
+  if (plugins.length > 0) {
+    const normalized = plugins
+      .map(({ name, url }) => `${name} ${url ?? ''}`)
+      .sort()
+      .join('\n')
+    pluginsHash = crypto.createHash('sha256').update(normalized).digest('hex')
+  }
+
   let bootstrapHash = ''
   if (bootstrap) {
     bootstrapHash = crypto
@@ -1488,7 +1513,8 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     file_hash: fileHash,
     mise_env: miseEnv,
     install_args_hash: installArgsHash,
-    bootstrap_hash: bootstrapHash
+    bootstrap_hash: bootstrapHash,
+    plugins_hash: pluginsHash
   }
 
   // Calculate the default cache key by processing the default template

@@ -107,6 +107,23 @@ This avoids a separate `mise ls --json | jq` step, for example to key another ca
 
 If a tool has several active versions, the per-tool output is the first one; use `fromJSON(steps.mise.outputs.versions).node[1].version` for the others.
 
+## Plugins
+
+Some tools and idiomatic version files (such as `.yvmrc`) need a plugin. List them in the `plugins` input, one per line as `name` or `name url`, and the action installs them before running `mise install`:
+
+```yaml
+- uses: jdx/mise-action@v5
+  env:
+    # Idiomatic version files are opt-in per tool; this is needed for `.yvmrc`
+    MISE_IDIOMATIC_VERSION_FILE_ENABLE_TOOLS: yarn
+  with:
+    plugins: |
+      yarn
+      php https://github.com/verzly/mise-php#latest
+```
+
+Plugins already present (for example restored from the cache) are left alone. If your repo has a `mise.toml`, you can declare plugins there under `[plugins]` instead and `mise install` fetches them without this input.
+
 ## Cache Configuration
 
 You can customize the cache key used by the action:
@@ -154,6 +171,7 @@ Available template variables:
 - `{{mise_env}}` - The MISE_ENV environment variable value
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
 - `{{bootstrap_hash}}` - SHA256 hash of bootstrap mode, skip list, and args
+- `{{plugins_hash}}` - SHA256 hash of the `plugins` input (empty when unset)
 - `{{default}}` - The processed default cache key (useful for extending)
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.
