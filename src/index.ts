@@ -427,6 +427,8 @@ async function setupMise(
     minimumReleaseAgeCutoff(minimumReleaseAge)
   }
   const versionFile = path.join(miseBinDir, 'mise-version')
+  // Read before a binary-cache restore can overwrite the record.
+  const originalRecordedVersion = readRecordedMiseVersion(versionFile)
   let resolvedVersion = cleanVersion(version)
   const target = await getTarget()
   const assetNameFor = (v: string): string =>
@@ -478,6 +480,7 @@ async function setupMise(
       )
       await useBinCache(existingVersion)
     }
+    let existingInUse = false
     if (!needsInstall) {
       try {
         await verifyExistingMiseAsset(
@@ -492,8 +495,40 @@ async function setupMise(
         core.warning(
           `Existing mise failed integrity verification (${errorMessage(err)}); reinstalling`
         )
-        await fs.promises.rm(miseBinPath, { force: true })
-        needsInstall = true
+        try {
+          await fs.promises.rm(miseBinPath, { force: true })
+        } catch (rmErr) {
+          // Windows cannot delete a running executable, e.g. when a
+          // long-running process still uses the action-managed mise.
+          if (!isFileInUseError(rmErr)) throw rmErr
+          const recorded = version ? '' : originalRecordedVersion
+          if (recorded && recorded !== existingVersion) {
+            try {
+              await verifyExistingMiseAsset(
+                miseBinPath,
+                recorded,
+                assetNameFor(recorded)
+              )
+              core.warning(
+                `Could not update mise because ${miseBinPath} is in use (${errorMessage(rmErr)}); continuing with the verified existing mise@${recorded}`
+              )
+              resolvedVersion = recorded
+              await fs.promises.writeFile(versionFile, recorded)
+              existingInUse = true
+            } catch (verifyErr) {
+              if (!(verifyErr instanceof MiseIntegrityMismatchError)) {
+                throw verifyErr
+              }
+            }
+          }
+          if (!existingInUse) {
+            throw new Error(
+              `Could not replace ${miseBinPath} because it is in use (${errorMessage(rmErr)}). Stop the process using it and rerun, or set \`version\` to the installed mise version.`,
+              { cause: rmErr }
+            )
+          }
+        }
+        needsInstall = !existingInUse
       }
     }
   }
@@ -626,6 +661,14 @@ async function setupMise(
   }
 
   core.addPath(miseBinDir)
+}
+
+function isFileInUseError(err: unknown): boolean {
+  // Only Windows refuses to delete a running executable; on Unix these codes
+  // mean a real permission problem that should propagate.
+  if (process.platform !== 'win32') return false
+  const code = (err as NodeJS.ErrnoException | undefined)?.code
+  return code === 'EPERM' || code === 'EBUSY' || code === 'EACCES'
 }
 
 function readRecordedMiseVersion(versionFile: string): string | undefined {
