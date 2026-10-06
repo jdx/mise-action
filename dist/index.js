@@ -92681,6 +92681,10 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     addPath(miseBinDir);
 }
 function isFileInUseError(err) {
+    // Only Windows refuses to delete a running executable; on Unix these codes
+    // mean a real permission problem that should propagate.
+    if (process.platform !== 'win32')
+        return false;
     const code = err?.code;
     return code === 'EPERM' || code === 'EBUSY' || code === 'EACCES';
 }

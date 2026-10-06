@@ -661,6 +661,9 @@ async function setupMise(
 }
 
 function isFileInUseError(err: unknown): boolean {
+  // Only Windows refuses to delete a running executable; on Unix these codes
+  // mean a real permission problem that should propagate.
+  if (process.platform !== 'win32') return false
   const code = (err as NodeJS.ErrnoException | undefined)?.code
   return code === 'EPERM' || code === 'EBUSY' || code === 'EACCES'
 }
