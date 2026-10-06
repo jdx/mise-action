@@ -427,6 +427,8 @@ async function setupMise(
     minimumReleaseAgeCutoff(minimumReleaseAge)
   }
   const versionFile = path.join(miseBinDir, 'mise-version')
+  // Read before a binary-cache restore can overwrite the record.
+  const originalRecordedVersion = readRecordedMiseVersion(versionFile)
   let resolvedVersion = cleanVersion(version)
   const target = await getTarget()
   const assetNameFor = (v: string): string =>
@@ -499,7 +501,7 @@ async function setupMise(
           // Windows cannot delete a running executable, e.g. when a
           // long-running process still uses the action-managed mise.
           if (!isFileInUseError(rmErr)) throw rmErr
-          const recorded = version ? '' : readRecordedMiseVersion(versionFile)
+          const recorded = version ? '' : originalRecordedVersion
           if (recorded && recorded !== existingVersion) {
             try {
               await verifyExistingMiseAsset(
@@ -511,6 +513,7 @@ async function setupMise(
                 `Could not update mise because ${miseBinPath} is in use (${errorMessage(rmErr)}); continuing with the verified existing mise@${recorded}`
               )
               resolvedVersion = recorded
+              await fs.promises.writeFile(versionFile, recorded)
               existingInUse = true
             } catch (verifyErr) {
               if (!(verifyErr instanceof MiseIntegrityMismatchError)) {
