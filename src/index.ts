@@ -369,9 +369,11 @@ async function setEnvVars(): Promise<void> {
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
   // The input outranks MISE_DATA_DIR in miseDir(), so mise must use it too or
-  // tools would install outside the directory that is cached.
+  // tools would install outside the directory that is cached. Export even when
+  // a step-level MISE_DATA_DIR already matches, since that value does not
+  // reach later steps.
   const dataDir = core.getInput('mise_dir')
-  if (dataDir && process.env.MISE_DATA_DIR !== dataDir) {
+  if (dataDir) {
     core.info(`Setting MISE_DATA_DIR=${dataDir}`)
     core.exportVariable('MISE_DATA_DIR', dataDir)
   }

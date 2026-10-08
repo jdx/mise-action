@@ -396,6 +396,24 @@ jobs:
           test "$MISE_DATA_DIR" = "$RUNNER_TEMP/mise-data-dir"
           test "$(mise doctor --json | jq -r '.dirs.data')" = "$RUNNER_TEMP/mise-data-dir"
 
+  mise_dir_matching_data_dir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup mise with a step-level MISE_DATA_DIR equal to mise_dir
+        uses: $/
+        env:
+          MISE_DATA_DIR: ${{ runner.temp }}/mise-data-dir
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-data-dir
+      - name: Check later steps still use mise_dir
+        shell: bash
+        run: test "$MISE_DATA_DIR" = "$RUNNER_TEMP/mise-data-dir"
+
   fetch_from_github:
     runs-on: ubuntu-latest
     steps:
@@ -636,6 +654,7 @@ jobs:
       - pre_minisign_cached
       - custom_cache_key
       - mise_dir_sets_data_dir
+      - mise_dir_matching_data_dir
       - download_retry
       - fetch_from_github
     runs-on: ubuntu-latest
