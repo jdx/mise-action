@@ -328,3 +328,31 @@ jobs:
         echo "$HOME/.local/share/mise/bin" >> $GITHUB_PATH
         echo "$HOME/.local/share/mise/shims" >> $GITHUB_PATH
 ```
+
+## Install a subset of configured tools
+
+When a job needs only some of the tools in your `mise.toml`, set mise's
+[`MISE_ENABLE_TOOLS`](https://mise.jdx.dev/configuration/settings.html#enable_tools)
+setting at the job level:
+
+```yaml
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      MISE_ENABLE_TOOLS: rust
+    steps:
+      - uses: actions/checkout@v6
+      - uses: jdx/mise-action@v5
+        with:
+          cache_key_prefix: mise-v0-${{ env.MISE_ENABLE_TOOLS }}
+      - run: mise run validate
+```
+
+This is a mise setting, not a mise-action input. Setting it at the job level
+limits the tools mise enables both when the action installs tools and in later
+commands such as `mise run`. By contrast, `install_args` only limits the tools
+installed by the action's `mise install` invocation; a later `mise run` may
+install other configured tools. Include the setting in a custom cache key when
+different jobs use different allowlists, as the default key does not include
+`MISE_ENABLE_TOOLS`.
