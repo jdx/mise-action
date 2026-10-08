@@ -1,0 +1,28 @@
+amends "package://github.com/jdx/hk/releases/download/v2.5.0/hk@2.5.0#/Config.pkl"
+
+local linters = new Mapping<String, Step> {
+    // lints GitHub Actions workflows (jdx/jactionlint, a maintained actionlint fork)
+    ["jactionlint"] {
+        glob = List(".github/workflows/*.yml", ".github/workflows/*.yaml")
+        batch = true
+        check = new CommandSpec {
+            command = "jactionlint {{ files }}"
+            effect = "read"
+        }
+    }
+}
+
+hooks {
+    ["pre-commit"] {
+        fix = true
+        stash = "git"
+        steps = linters
+    }
+    ["fix"] {
+        fix = true
+        steps = linters
+    }
+    ["check"] {
+        steps = linters
+    }
+}
