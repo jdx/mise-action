@@ -5,7 +5,7 @@
     "module": "NodeNext",
     "rootDir": "./src",
     "moduleResolution": "NodeNext",
-    "baseUrl": "./",
+    "types": ["node"],
     "sourceMap": true,
     "outDir": "./dist",
     "noImplicitAny": true,
@@ -13,7 +13,9 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "newLine": "lf"
+    "newLine": "lf",
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true
   },
   "exclude": ["./dist", "./node_modules", "./__tests__", "./coverage"]
 }

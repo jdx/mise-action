@@ -1,6 +1,514 @@
 # Changelog
 
 ---
+## [5.1.1](https://github.com/jdx/mise-action/compare/v5.1.0..v5.1.1) - 2026-10-04
+
+### 🐛 Bug Fixes
+
+- make GitHub token persistence opt-in (#658) by [@jdx](https://github.com/jdx) in [#658](https://github.com/jdx/mise-action/pull/658)
+
+---
+## [5.1.0](https://github.com/jdx/mise-action/compare/v5.0.1..v5.1.0) - 2026-10-04
+
+### 🚀 Features
+
+- output active tool versions (#655) by [@jdx](https://github.com/jdx) in [#655](https://github.com/jdx/mise-action/pull/655)
+- add opt-in cache_save_post input (#649) by [@jdx](https://github.com/jdx) in [#649](https://github.com/jdx/mise-action/pull/649)
+- add plugins input (#656) by [@jdx](https://github.com/jdx) in [#656](https://github.com/jdx/mise-action/pull/656)
+
+### 🐛 Bug Fixes
+
+- **(cache)** keep a cached mise instead of re-downloading when version is unset (#642) by [@jdx](https://github.com/jdx) in [#642](https://github.com/jdx/mise-action/pull/642)
+- save cache after inexact cache restore (#646) by [@jdx](https://github.com/jdx) in [#646](https://github.com/jdx/mise-action/pull/646)
+- extract mise zip with PowerShell instead of unzip on Windows (#650) by [@jdx](https://github.com/jdx) in [#650](https://github.com/jdx/mise-action/pull/650)
+- cache mise binary for caches saved without a version record (#648) by [@jdx](https://github.com/jdx) in [#648](https://github.com/jdx/mise-action/pull/648)
+
+### 📚 Documentation
+
+- explain the Rust cache caveat and workarounds (#651) by [@jdx](https://github.com/jdx) in [#651](https://github.com/jdx/mise-action/pull/651)
+- add matrix and external cache guides; warn on shadowed mise_toml (#654) by [@jdx](https://github.com/jdx) in [#654](https://github.com/jdx/mise-action/pull/654)
+
+### ⚙️ Miscellaneous Tasks
+
+- add TypeScript 7 alongside TypeScript 6 (#639) by [@jdx](https://github.com/jdx) in [#639](https://github.com/jdx/mise-action/pull/639)
+- make the final job depend on every test job (#643) by [@jdx](https://github.com/jdx) in [#643](https://github.com/jdx/mise-action/pull/643)
+- roll every check up into the final job (#645) by [@jdx](https://github.com/jdx) in [#645](https://github.com/jdx/mise-action/pull/645)
+- remove unneeded @types/handlebars dependency (#647) by [@jdx](https://github.com/jdx) in [#647](https://github.com/jdx/mise-action/pull/647)
+
+---
+## [5.0.1](https://github.com/jdx/mise-action/compare/v5.0.0..v5.0.1) - 2026-09-30
+
+### 🐛 Bug Fixes
+
+- verify cached mise before execution (#637) by [@jdx](https://github.com/jdx) in [#637](https://github.com/jdx/mise-action/pull/637)
+
+---
+## [5.0.0](https://github.com/jdx/mise-action/compare/v4.3.0..v5.0.0) - 2026-09-28
+
+### 🚀 Features
+
+- **breaking** default minimum release age to 24 hours (#632) by [@jdx](https://github.com/jdx) in [279d505](https://github.com/jdx/mise-action/commit/279d5058bda2d067bb8ae4ee4662aced8e496382)
+
+### 🐛 Bug Fixes
+
+- fix: authenticate mise self-update to avoid GitHub API rate limits (#619) by [@hegde5](https://github.com/hegde5) in [#619](https://github.com/jdx/mise-action/pull/619)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(entire)** store checkpoints in a private repository by [@jdx](https://github.com/jdx) in [15b2b0f](https://github.com/jdx/mise-action/commit/15b2b0f0ffa0e8844885e126bde40b70921eb370)
+- **(entire)** commit codex session hooks by [@jdx](https://github.com/jdx) in [b0eb15f](https://github.com/jdx/mise-action/commit/b0eb15f90170a6222c19c94844cc4eda232738cb)
+- **(entire)** commit claude session hooks by [@jdx](https://github.com/jdx) in [6ac0f83](https://github.com/jdx/mise-action/commit/6ac0f83023a6be3397e0b7e6882530dd095bcea5)
+- **(entire)** restore lower-cost trail findings by [@jdx](https://github.com/jdx) in [aa79241](https://github.com/jdx/mise-action/commit/aa792413b7229c1e010f817293d81eeb4a14581a)
+- remove entire and codex agent hooks by [@jdx](https://github.com/jdx) in [07f40cf](https://github.com/jdx/mise-action/commit/07f40cfcc0594453c27b9bdf0960aad84425b024)
+- add entire trail runners (#624) by [@jdx](https://github.com/jdx) in [#624](https://github.com/jdx/mise-action/pull/624)
+- remove Entire trail runners (#630) by [@jdx](https://github.com/jdx) in [#630](https://github.com/jdx/mise-action/pull/630)
+- float jdx tools and aube on latest without a release-age delay (#631) by [@jdx](https://github.com/jdx) in [#631](https://github.com/jdx/mise-action/pull/631)
+
+### New Contributors
+
+* @hegde5 made their first contribution in [#619](https://github.com/jdx/mise-action/pull/619)
+
+---
+## [4.3.0](https://github.com/jdx/mise-action/compare/v4.2.5..v4.3.0) - 2026-08-25
+
+### 🚀 Features
+
+- add minimum release age for mise (#604) by [@jdx](https://github.com/jdx) in [#604](https://github.com/jdx/mise-action/pull/604)
+
+---
+## [4.2.5](https://github.com/jdx/mise-action/compare/v4.2.4..v4.2.5) - 2026-08-13
+
+### 🐛 Bug Fixes
+
+- retry mise downloads after transient failures (#597) by [@jdx](https://github.com/jdx) in [#597](https://github.com/jdx/mise-action/pull/597)
+
+---
+## [4.2.4](https://github.com/jdx/mise-action/compare/v4.2.3..v4.2.4) - 2026-08-01
+
+### 🐛 Bug Fixes
+
+- locking support detection with force-colored output (#580) by [@scop](https://github.com/scop) in [#580](https://github.com/jdx/mise-action/pull/580)
+
+---
+## [4.2.3](https://github.com/jdx/mise-action/compare/v4.2.2..v4.2.3) - 2026-07-24
+
+### 🐛 Bug Fixes
+
+- export mise path entries to subsequent steps (#575) by [@jdx](https://github.com/jdx) in [#575](https://github.com/jdx/mise-action/pull/575)
+
+---
+## [4.2.2](https://github.com/jdx/mise-action/compare/v4.2.1..v4.2.2) - 2026-07-24
+
+### 🐛 Bug Fixes
+
+- **(release-plz)** exit when git-cliff produces no version bump (#566) by [@jdx](https://github.com/jdx) in [#566](https://github.com/jdx/mise-action/pull/566)
+- ensure `tar` supports Zstd (#569) by [@JackMyers001](https://github.com/JackMyers001) in [#569](https://github.com/jdx/mise-action/pull/569)
+
+### 📚 Documentation
+
+- update default value of `cache_key_prefix` (#570) by [@muzimuzhi](https://github.com/muzimuzhi) in [#570](https://github.com/jdx/mise-action/pull/570)
+
+### New Contributors
+
+* @muzimuzhi made their first contribution in [#570](https://github.com/jdx/mise-action/pull/570)
+* @JackMyers001 made their first contribution in [#569](https://github.com/jdx/mise-action/pull/569)
+
+---
+## [4.2.1](https://github.com/jdx/mise-action/compare/v4.2.0..v4.2.1) - 2026-07-16
+
+### 🐛 Bug Fixes
+
+- verify mise downloads with signed checksums (#548) by [@jdx](https://github.com/jdx) in [#548](https://github.com/jdx/mise-action/pull/548)
+- exclude PATH from environment export (#556) by [@jdx](https://github.com/jdx) in [#556](https://github.com/jdx/mise-action/pull/556)
+
+### 🔍 Other Changes
+
+- Enable Entire for Codex (#529) by [@jdx](https://github.com/jdx) in [#529](https://github.com/jdx/mise-action/pull/529)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** automate weekly releases (#557) by [@jdx](https://github.com/jdx) in [#557](https://github.com/jdx/mise-action/pull/557)
+- **(release)** skip ai reviews for release prs (#549) by [@jdx](https://github.com/jdx) in [#549](https://github.com/jdx/mise-action/pull/549)
+
+---
+## [4.2.0](https://github.com/jdx/mise-action/compare/v4.1.0..v4.2.0) - 2026-06-17
+
+### 🚀 Features
+
+- support bootstrap mode (#522) by [@jdx](https://github.com/jdx) in [#522](https://github.com/jdx/mise-action/pull/522)
+
+### 🐛 Bug Fixes
+
+- fall back to wget when curl is unavailable (#521) by [@risu729](https://github.com/risu729) in [#521](https://github.com/jdx/mise-action/pull/521)
+
+### 📚 Documentation
+
+- link rust cache issue (#496) by [@risu729](https://github.com/risu729) in [#496](https://github.com/jdx/mise-action/pull/496)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** fix zizmor version comments (#506) by [@jdx](https://github.com/jdx) in [#506](https://github.com/jdx/mise-action/pull/506)
+- **(ci)** use pr-closer action (#505) by [@jdx](https://github.com/jdx) in [#505](https://github.com/jdx/mise-action/pull/505)
+
+---
+## [4.1.0](https://github.com/jdx/mise-action/compare/v4.0.1..v4.1.0) - 2026-06-04
+
+### 🚀 Features
+
+- add wings_enabled input (mise-wings cache integration) (#454) by [@jdx](https://github.com/jdx) in [#454](https://github.com/jdx/mise-action/pull/454)
+- lock install when mise.lock is present (#495) by [@zeitlinger](https://github.com/zeitlinger) in [#495](https://github.com/jdx/mise-action/pull/495)
+
+### 🐛 Bug Fixes
+
+- **(ci)** add gh auth setup-git to release-plz.sh (#473) by [@jdx](https://github.com/jdx) in [#473](https://github.com/jdx/mise-action/pull/473)
+- **(ci)** pin codeql-action with exact version comment (#481) by [@jdx](https://github.com/jdx) in [#481](https://github.com/jdx/mise-action/pull/481)
+- **(ci)** resolve zizmor findings (#503) by [@jdx](https://github.com/jdx) in [#503](https://github.com/jdx/mise-action/pull/503)
+- include runner image in cache key to prevent cross-provider collisions (#456) by [@jdx](https://github.com/jdx) in [#456](https://github.com/jdx/mise-action/pull/456)
+- install mise-shim.exe on Windows (#476) by [@risu729](https://github.com/risu729) in [#476](https://github.com/jdx/mise-action/pull/476)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** use !cancelled() instead of always() for final job (#460) by [@jdx](https://github.com/jdx) in [#460](https://github.com/jdx/mise-action/pull/460)
+- **(ci)** remove autofix.ci workflow (#470) by [@jdx](https://github.com/jdx) in [#470](https://github.com/jdx/mise-action/pull/470)
+- **(ci)** add zizmor workflow for github actions security analysis (#471) by [@jdx](https://github.com/jdx) in [#471](https://github.com/jdx/mise-action/pull/471)
+- **(ci)** close failing or conflicted PRs sooner (#480) by [@jdx](https://github.com/jdx) in [#480](https://github.com/jdx/mise-action/pull/480)
+- add communique to enhance release notes (#411) by [@jdx](https://github.com/jdx) in [#411](https://github.com/jdx/mise-action/pull/411)
+- migrate from ncc (CJS) to rollup (ESM) (#436) by [@jdx](https://github.com/jdx) in [#436](https://github.com/jdx/mise-action/pull/436)
+- add final job to aggregate build-test results (#438) by [@jdx](https://github.com/jdx) in [#438](https://github.com/jdx/mise-action/pull/438)
+- migrate package manager from npm/pnpm/bun to aube (#455) by [@jdx](https://github.com/jdx) in [#455](https://github.com/jdx/mise-action/pull/455)
+- remove pull_request_target workflow (#469) by [@jdx](https://github.com/jdx) in [#469](https://github.com/jdx/mise-action/pull/469)
+- update aube tool version (#501) by [@jdx](https://github.com/jdx) in [#501](https://github.com/jdx/mise-action/pull/501)
+
+---
+## [4.0.1](https://github.com/jdx/mise-action/compare/v4.0.0..v4.0.1) - 2026-03-22
+
+### 🐛 Bug Fixes
+
+- run npm install in pre-commit hook before build (#410) by [@jdx](https://github.com/jdx) in [#410](https://github.com/jdx/mise-action/pull/410)
+
+### 🚜 Refactor
+
+- extract getCwd() helper to deduplicate working directory resolution (#403) by [@altendky](https://github.com/altendky) in [#403](https://github.com/jdx/mise-action/pull/403)
+
+### 📚 Documentation
+
+- bump versions listed im README.md (#407) by [@deining](https://github.com/deining) in [#407](https://github.com/jdx/mise-action/pull/407)
+- bump more versions listed in README.md (#408) by [@deining](https://github.com/deining) in [#408](https://github.com/jdx/mise-action/pull/408)
+
+### ⚙️ Miscellaneous Tasks
+
+- add workflow to auto-close stale PRs (#409) by [@jdx](https://github.com/jdx) in [#409](https://github.com/jdx/mise-action/pull/409)
+
+### New Contributors
+
+* @deining made their first contribution in [#408](https://github.com/jdx/mise-action/pull/408)
+
+---
+## [4.0.0](https://github.com/jdx/mise-action/compare/v3.6.3..v4.0.0) - 2026-03-13
+
+### 🚀 Features
+
+- **breaking** Update Node.js version from 20 to 24 (#395) by [@tumerorkun](https://github.com/tumerorkun) in [#395](https://github.com/jdx/mise-action/pull/395)
+
+### New Contributors
+
+* @tumerorkun made their first contribution in [#395](https://github.com/jdx/mise-action/pull/395)
+
+---
+## [3.6.3](https://github.com/jdx/mise-action/compare/v3.6.2..v3.6.3) - 2026-03-06
+
+### 🐛 Bug Fixes
+
+- pass cwd to all exec calls in exportMiseEnv() (#390) by [@andrewthauer](https://github.com/andrewthauer) in [#390](https://github.com/jdx/mise-action/pull/390)
+
+### New Contributors
+
+* @andrewthauer made their first contribution in [#390](https://github.com/jdx/mise-action/pull/390)
+
+---
+## [3.6.2](https://github.com/jdx/mise-action/compare/v3.6.1..v3.6.2) - 2026-03-02
+
+### 🐛 Bug Fixes
+
+- move file_hash to end of cache key template to prevent prefix matching (#384) by [@altendky](https://github.com/altendky) in [#384](https://github.com/jdx/mise-action/pull/384)
+
+### New Contributors
+
+* @altendky made their first contribution in [#384](https://github.com/jdx/mise-action/pull/384)
+
+---
+## [3.6.1](https://github.com/jdx/mise-action/compare/v3.6.0..v3.6.1) - 2026-01-20
+
+### 🔍 Other Changes
+
+- Revert "fix(cache): isolate cache keys per working_directory in monorepos" (#364) by [@jdx](https://github.com/jdx) in [#364](https://github.com/jdx/mise-action/pull/364)
+
+---
+## [3.6.0](https://github.com/jdx/mise-action/compare/v3.5.1..v3.6.0) - 2026-01-18
+
+### 🚀 Features
+
+- add option to disable shims in PATH (#340) by [@jdx](https://github.com/jdx) in [#340](https://github.com/jdx/mise-action/pull/340)
+
+### 🐛 Bug Fixes
+
+- **(cache)** isolate cache keys per working_directory in monorepos (#360) by [@chadxz](https://github.com/chadxz) in [#360](https://github.com/jdx/mise-action/pull/360)
+- use mise_dir input when specified (#339) by [@jdx](https://github.com/jdx) in [#339](https://github.com/jdx/mise-action/pull/339)
+- pass environment variables to mise commands (#341) by [@jdx](https://github.com/jdx) in [#341](https://github.com/jdx/mise-action/pull/341)
+- make mise self-update output visible in logs (#355) by [@nikobockerman](https://github.com/nikobockerman) in [#355](https://github.com/jdx/mise-action/pull/355)
+
+### 📚 Documentation
+
+- fix description for `mise_toml` input (#351) by [@quad](https://github.com/quad) in [#351](https://github.com/jdx/mise-action/pull/351)
+
+### New Contributors
+
+* @chadxz made their first contribution in [#360](https://github.com/jdx/mise-action/pull/360)
+* @nikobockerman made their first contribution in [#355](https://github.com/jdx/mise-action/pull/355)
+* @quad made their first contribution in [#351](https://github.com/jdx/mise-action/pull/351)
+
+---
+## [3.5.1](https://github.com/jdx/mise-action/compare/v3.5.0..v3.5.1) - 2025-11-24
+
+### 🔍 Other Changes
+
+- Revert "feat(action): moved save cache to post step" (#329) by [@jdx](https://github.com/jdx) in [#329](https://github.com/jdx/mise-action/pull/329)
+
+---
+## [3.5.0](https://github.com/jdx/mise-action/compare/v3.4.1..v3.5.0) - 2025-11-21
+
+### 🚀 Features
+
+- **(action)** moved save cache to post step (#321) by [@aamkye](https://github.com/aamkye) in [#321](https://github.com/jdx/mise-action/pull/321)
+
+### New Contributors
+
+* @aamkye made their first contribution in [#321](https://github.com/jdx/mise-action/pull/321)
+
+---
+## [3.4.1](https://github.com/jdx/mise-action/compare/v3.4.0..v3.4.1) - 2025-11-13
+
+### 🐛 Bug Fixes
+
+- avoid github token downstream issue (#317) by [@acesyde](https://github.com/acesyde) in [#317](https://github.com/jdx/mise-action/pull/317)
+
+### New Contributors
+
+* @acesyde made their first contribution in [#317](https://github.com/jdx/mise-action/pull/317)
+
+---
+## [3.4.0](https://github.com/jdx/mise-action/compare/v3.3.1..v3.4.0) - 2025-10-31
+
+### 🚀 Features
+
+- use autofix.ci to auto-update dist/ on all PRs by [@jdx](https://github.com/jdx) in [16e9fd5](https://github.com/jdx/mise-action/commit/16e9fd5251189c3d389adb836f243575c134d680)
+- use autofix.ci to auto-update dist/ on all PRs (#308) by [@jdx](https://github.com/jdx) in [#308](https://github.com/jdx/mise-action/pull/308)
+
+### 🐛 Bug Fixes
+
+- add missing `await` to `core.group` calls (#305) by [@smorimoto](https://github.com/smorimoto) in [#305](https://github.com/jdx/mise-action/pull/305)
+- auto-update dist folder in Renovate PRs via GitHub Actions (#306) by [@jdx](https://github.com/jdx) in [#306](https://github.com/jdx/mise-action/pull/306)
+- configure Renovate to ignore github-actions[bot] commits by [@jdx](https://github.com/jdx) in [993e7d0](https://github.com/jdx/mise-action/commit/993e7d0bb6f3422ef833a702b90e2a44909ec651)
+- run auto-update-dist workflow on all PRs by [@jdx](https://github.com/jdx) in [6d0fd75](https://github.com/jdx/mise-action/commit/6d0fd75ed51124702e37bfcf6e977da73f64b4e1)
+
+### 📚 Documentation
+
+- update to v3 in README (#290) by [@pdecat](https://github.com/pdecat) in [#290](https://github.com/jdx/mise-action/pull/290)
+
+### ⚙️ Miscellaneous Tasks
+
+- upgrade all workflows to Node 24 by [@jdx](https://github.com/jdx) in [c7b5f37](https://github.com/jdx/mise-action/commit/c7b5f37cadd1a385188a023510a966efa5eed247)
+- remove unused workflow by [@jdx](https://github.com/jdx) in [aecb23d](https://github.com/jdx/mise-action/commit/aecb23d92f0e50768578578f309255414a23561d)
+
+### New Contributors
+
+* @smorimoto made their first contribution in [#305](https://github.com/jdx/mise-action/pull/305)
+* @pdecat made their first contribution in [#290](https://github.com/jdx/mise-action/pull/290)
+
+---
+## [3.3.1](https://github.com/jdx/mise-action/compare/v3.3.0..v3.3.1) - 2025-10-06
+
+### 🐛 Bug Fixes
+
+- trim "v" prefix on update (#287) by [@zeitlinger](https://github.com/zeitlinger) in [#287](https://github.com/jdx/mise-action/pull/287)
+
+---
+## [3.3.0](https://github.com/jdx/mise-action/compare/v3.2.0..v3.3.0) - 2025-10-03
+
+### 🚀 Features
+
+- use self-update to modify version if mise is already installed (#277) by [@ImpSy](https://github.com/ImpSy) in [#277](https://github.com/jdx/mise-action/pull/277)
+
+### 🐛 Bug Fixes
+
+- **(cache)** replace `,` in `MISE_ENV` with `-` (#278) by [@risu729](https://github.com/risu729) in [#278](https://github.com/jdx/mise-action/pull/278)
+- correct Renovate allowedPostUpgradeCommands configuration by [@jdx](https://github.com/jdx) in [4313941](https://github.com/jdx/mise-action/commit/43139419dcaeb99e24c487d646766d014d0957a2)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(config)** migrate renovate config (#263) by [@renovate[bot]](https://github.com/renovate[bot]) in [#263](https://github.com/jdx/mise-action/pull/263)
+- updated deps by [@jdx](https://github.com/jdx) in [5795893](https://github.com/jdx/mise-action/commit/5795893acedc0f2044498a21005c38f12dd5d8d3)
+
+### New Contributors
+
+* @mise-en-dev made their first contribution in [#284](https://github.com/jdx/mise-action/pull/284)
+* @ImpSy made their first contribution in [#277](https://github.com/jdx/mise-action/pull/277)
+
+---
+## [3.2.0](https://github.com/jdx/mise-action/compare/v3.1.0..v3.2.0) - 2025-08-22
+
+### 🚀 Features
+
+- add environment variable support to cache key templates (#250) by [@pepicrft](https://github.com/pepicrft) in [#250](https://github.com/jdx/mise-action/pull/250)
+
+### 🐛 Bug Fixes
+
+- redact secret values from env (#252) by [@jdx](https://github.com/jdx) in [#252](https://github.com/jdx/mise-action/pull/252)
+
+---
+## [3.1.0](https://github.com/jdx/mise-action/compare/v3.0.2..v3.1.0) - 2025-08-19
+
+### 🚀 Features
+
+- add configurable cache key with template variable support (#246) by [@pepicrft](https://github.com/pepicrft) in [#246](https://github.com/jdx/mise-action/pull/246)
+
+---
+## [3.0.2](https://github.com/jdx/mise-action/compare/v3.0.1..v3.0.2) - 2025-08-18
+
+### ⚙️ Miscellaneous Tasks
+
+- remove duplicate release-plz logic by [@jdx](https://github.com/jdx) in [7081572](https://github.com/jdx/mise-action/commit/70815728fdd7d32bad0deb6b33576cf791f1dafa)
+
+---
+## [3.0.1](https://github.com/jdx/mise-action/compare/v3.0.0..v3.0.1) - 2025-08-18
+
+### 📚 Documentation
+
+- add CLAUDE.md by [@jdx](https://github.com/jdx) in [729161f](https://github.com/jdx/mise-action/commit/729161fe32f196174ff956fbe3ce8743567cb9e1)
+- hide release entries in CHANGELOG by [@jdx](https://github.com/jdx) in [96680f6](https://github.com/jdx/mise-action/commit/96680f666f91bbcb5b4d76ff2ac0f465bb941dd0)
+
+### ⚙️ Miscellaneous Tasks
+
+- fix release-plz by [@jdx](https://github.com/jdx) in [3600b64](https://github.com/jdx/mise-action/commit/3600b6410713f6187847c1eb2bde38315e844484)
+- updated deps (#244) by [@jdx](https://github.com/jdx) in [#244](https://github.com/jdx/mise-action/pull/244)
+
+---
+## [3.0.0](https://github.com/jdx/mise-action/compare/v2.4.4..v3.0.0) - 2025-08-18
+
+### 🚀 Features
+
+- **breaking** export env vars from mise.toml (#241) by [@maelp](https://github.com/maelp) in [#241](https://github.com/jdx/mise-action/pull/241)
+
+### New Contributors
+
+* @maelp made their first contribution in [#241](https://github.com/jdx/mise-action/pull/241)
+
+---
+## [2.4.4](https://github.com/jdx/mise-action/compare/v2.4.3..v2.4.4) - 2025-07-27
+
+### 🐛 Bug Fixes
+
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [07fb524](https://github.com/jdx/mise-action/commit/07fb524adc338a756d6ff7fa7a33f0e27bdc4d2d)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [0de6d11](https://github.com/jdx/mise-action/commit/0de6d11b95678b220019adc7929e4d9752b59355)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [75121b9](https://github.com/jdx/mise-action/commit/75121b9a3f21cd3b497f047d71a77d59099ff6b3)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [583fe7b](https://github.com/jdx/mise-action/commit/583fe7be9d688739c95cc32249344e9796f4eebe)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [7fa2a26](https://github.com/jdx/mise-action/commit/7fa2a26c1e3cf1b20bbf42f2d293912e90e71177)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [cf44a56](https://github.com/jdx/mise-action/commit/cf44a563b9a45de221b77d23cbc5621dc7e6b377)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [a35d5fc](https://github.com/jdx/mise-action/commit/a35d5fc6817dcb018e9e7a6613664fde7f5d4aaf)
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [c37c932](https://github.com/jdx/mise-action/commit/c37c93293d6b742fc901e1406b8f764f6fb19dac)
+
+### ⚙️ Miscellaneous Tasks
+
+- add release workflow by [@jdx](https://github.com/jdx) in [eccbf00](https://github.com/jdx/mise-action/commit/eccbf00da17ac7d1d18017ead61bc54a442f3a38)
+- skip release script if no changes by [@jdx](https://github.com/jdx) in [eba59a9](https://github.com/jdx/mise-action/commit/eba59a9eefc99963516a3ff8be4c372c656f0215)
+
+---
+## [2.4.3](https://github.com/jdx/mise-action/compare/v2.4.2..v2.4.3) - 2025-07-27
+
+### 🐛 Bug Fixes
+
+- v2 release tag automation by [@jdx](https://github.com/jdx) in [5c24f96](https://github.com/jdx/mise-action/commit/5c24f96c0ff8577151a76e76344591427bcf28c5)
+
+---
+## [2.4.2](https://github.com/jdx/mise-action/compare/v2.4.0..v2.4.2) - 2025-07-24
+
+### 🚀 Features
+
+- allow fetching binary from mise.jdx.dev (#227) by [@jdx](https://github.com/jdx) in [#227](https://github.com/jdx/mise-action/pull/227)
+
+### 🔍 Other Changes
+
+- Fix flag passed to `mise reshim` (#208) by [@andrewdriggs](https://github.com/andrewdriggs) in [#208](https://github.com/jdx/mise-action/pull/208)
+
+### ⚙️ Miscellaneous Tasks
+
+- add semantic-pr-lint (#220) by [@jdx](https://github.com/jdx) in [#220](https://github.com/jdx/mise-action/pull/220)
+- added release-plz by [@jdx](https://github.com/jdx) in [bd8ba20](https://github.com/jdx/mise-action/commit/bd8ba20c5611a6ebc508d3c263444c97c5483bd1)
+- get postversion to work by [@jdx](https://github.com/jdx) in [954e13d](https://github.com/jdx/mise-action/commit/954e13db3e9329a8373a5d6cfa3718f7bc607149)
+- set release token by [@jdx](https://github.com/jdx) in [6d3ca74](https://github.com/jdx/mise-action/commit/6d3ca74ece306fcd7f501bd95086deaf8d0c3552)
+- use new release-plz token by [@jdx](https://github.com/jdx) in [1c87378](https://github.com/jdx/mise-action/commit/1c87378f400e5957e22607e2c938eac904a3e233)
+- fix check-dist by [@jdx](https://github.com/jdx) in [4dfd63f](https://github.com/jdx/mise-action/commit/4dfd63f0279a3418b93cbbfc4bc132ace1da2481)
+- add git add and git status commands to release script by [@jdx](https://github.com/jdx) in [0c56699](https://github.com/jdx/mise-action/commit/0c56699aa697e50cf8d17b7c07976b7c1e550c23)
+- update changelog extraction in release script to skip the section break line by [@jdx](https://github.com/jdx) in [714aa25](https://github.com/jdx/mise-action/commit/714aa2569b8097f175d58290710a86eefe2098d0)
+
+### New Contributors
+
+* @github-actions[bot] made their first contribution in [#221](https://github.com/jdx/mise-action/pull/221)
+
+---
+## [2.4.0](https://github.com/jdx/mise-action/compare/v2.3.1..v2.4.0) - 2025-07-12
+
+### 🔍 Other Changes
+
+- support checksum (#218) by [@zeitlinger](https://github.com/zeitlinger) in [#218](https://github.com/jdx/mise-action/pull/218)
+
+### ⚙️ Miscellaneous Tasks
+
+- updated deps (#219) by [@jdx](https://github.com/jdx) in [#219](https://github.com/jdx/mise-action/pull/219)
+
+---
+## [2.3.1](https://github.com/jdx/mise-action/compare/v2.3.0..v2.3.1) - 2025-06-25
+
+### 🔍 Other Changes
+
+- Revert "add all MISE_ env vars to cache key (#197)" by [@jdx](https://github.com/jdx) in [233d283](https://github.com/jdx/mise-action/commit/233d283dd63662f6e6072a0de98feba374d69616)
+
+---
+## [2.3.0](https://github.com/jdx/mise-action/compare/v2.2.3..v2.3.0) - 2025-06-25
+
+### 🚀 Features
+
+- pass github token for mise calls (#205) by [@matemoln](https://github.com/matemoln) in [#205](https://github.com/jdx/mise-action/pull/205)
+
+### 🔍 Other Changes
+
+- Add `reshim` flag to reshim after setup (#202) by [@andrewdriggs](https://github.com/andrewdriggs) in [#202](https://github.com/jdx/mise-action/pull/202)
+- add all MISE_ env vars to cache key (#197) by [@zeitlinger](https://github.com/zeitlinger) in [#197](https://github.com/jdx/mise-action/pull/197)
+
+### ⚙️ Miscellaneous Tasks
+
+- node-24 by [@jdx](https://github.com/jdx) in [ec352a8](https://github.com/jdx/mise-action/commit/ec352a89164842ea9cc8b6f67d1829660d9f1f78)
+- update deps (#203) by [@jdx](https://github.com/jdx) in [#203](https://github.com/jdx/mise-action/pull/203)
+- updated deps by [@jdx](https://github.com/jdx) in [7e5e321](https://github.com/jdx/mise-action/commit/7e5e321e56397b1b54f112ae65ce0c8f1d5dd8ca)
+
+### New Contributors
+
+* @matemoln made their first contribution in [#205](https://github.com/jdx/mise-action/pull/205)
+* @zeitlinger made their first contribution in [#197](https://github.com/jdx/mise-action/pull/197)
+* @andrewdriggs made their first contribution in [#202](https://github.com/jdx/mise-action/pull/202)
+
+---
+## [2.2.3](https://github.com/jdx/mise-action/compare/v2.2.2..v2.2.3) - 2025-05-27
+
+### 🔍 Other Changes
+
+- Add MISE_ENV to cache key if set (#196) by [@prashantv](https://github.com/prashantv) in [#196](https://github.com/jdx/mise-action/pull/196)
+
+### New Contributors
+
+* @prashantv made their first contribution in [#196](https://github.com/jdx/mise-action/pull/196)
+
+---
 ## [2.2.2](https://github.com/jdx/mise-action/compare/v2.2.1..v2.2.2) - 2025-05-12
 
 ### 🔍 Other Changes

@@ -1,4 +1,4 @@
-name: 'build-test'
+name: "build-test"
 on: # rebuild any PRs and main branch changes
   pull_request:
   push:
@@ -6,6 +6,9 @@ on: # rebuild any PRs and main branch changes
       - main
       - 'releases/*'
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref_name }}
@@ -15,11 +18,14 @@ jobs:
   build: # make sure build/ci work properly
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: |
-          npm install
-      - run: |
-          npm run all
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
+        with:
+          cache: false
+      - run: aube install
+      - run: aubr all
   test: # make sure the action works on a clean machine without building
     strategy:
       fail-fast: false
@@ -33,7 +39,7 @@ jobs:
             runs-on: windows-latest
           - name: alpine
             runs-on: ubuntu-latest
-            container: alpine:latest
+            container: alpine:3.22@sha256:310c62b5e7ca5b08167e4384c68db0fd2905dd9c7493756d356e893909057601
             requirements: apk add --no-cache curl bash
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runs-on }}
@@ -42,35 +48,580 @@ jobs:
       - name: Install requirements
         if: ${{ matrix.requirements }}
         run: ${{ matrix.requirements }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Create mise PATH fixtures
+        shell: bash
+        run: |
+          for fixture in first second; do
+            mkdir -p "mise-env-path-$fixture"
+            printf '#!/usr/bin/env bash\necho %s\n' "$fixture" > "mise-env-path-$fixture/mise-path-order"
+            chmod +x "mise-env-path-$fixture/mise-path-order"
+          done
       - name: Setup mise
-        uses: ./
+        uses: $/
         with:
           mise_toml: |
             [tools]
             jq = "1.7.1"
+
+            [env]
+            MY_ENV_VAR = "abc"
+            _.path = [
+              "{{config_root}}/mise-env-path-first",
+              "{{config_root}}/mise-env-path-second",
+            ]
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check GitHub token is not persisted by default
+        shell: bash
+        run: test -z "${MISE_GITHUB_TOKEN:-}"
+      - name: Reuse verified mise
+        uses: $/
+        with:
+          install: false
+          persist_github_token: true
+      - name: Check GitHub token persistence opt-in
+        shell: bash
+        env:
+          EXPECTED_TOKEN: ${{ github.token }}
+        run: test "$MISE_GITHUB_TOKEN" = "$EXPECTED_TOKEN"
       - run: mise --version
       - run: mise x jq -- jq --version
       - run: which jq
       - run: jq --version
+      - name: Check Windows shim binary
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $miseBinDir = Split-Path -Parent (Get-Command mise).Source
+          $miseShim = Join-Path $miseBinDir "mise-shim.exe"
+          if (!(Test-Path -LiteralPath $miseShim)) {
+            throw "mise-shim.exe was not installed next to mise.exe"
+          }
       - run: . scripts/test.sh
         shell: bash
+      - name: Persist a separate GitHub token
+        uses: $/
+        with:
+          install: false
+          persist_github_token: mise-action-persist-test-token
+      - name: Check separate GitHub token persistence
+        shell: bash
+        run: test "$MISE_GITHUB_TOKEN" = "mise-action-persist-test-token"
+
+  path_opt_out:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup mise without PATH export
+        uses: $/
+        with:
+          install: false
+          export_path: false
+          version: 2025.7.3
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
+          mise_toml: |
+            [env]
+            MY_ENV_VAR = "abc"
+            _.path = ["{{config_root}}/mise-env-path"]
+      - name: Check PATH export opt-out
+        shell: bash
+        run: |
+          test "$MY_ENV_VAR" = "abc"
+          if [[ "$PATH" == *"mise-env-path"* ]]; then
+            echo "mise env path unexpectedly exported to PATH: $PATH" >&2
+            exit 1
+          fi
 
   specific_version:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - name: Setup mise
-        uses: ./
+        uses: $/
         with:
           cache_save: ${{ github.ref_name == 'main' }}
           cache_key_prefix: mise-v1
-          version: 2024.9.6
+          version: 2025.7.3
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
           install_args: bun
           mise_toml: |
             [tools]
             bun = "1"
       - run: which bun
       - run: bun -v
+      - name: Update mise
+        uses: $/
+        with:
+          cache_save: ${{ github.ref_name == 'main' }}
+          cache_key_prefix: mise-v1
+          version: v2025.7.3 # should trim the `v`
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
+
+  minimum_release_age:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Record index requests and block GitHub API requests
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/age-network-bin"
+          echo "MISE_ACTION_REAL_CURL=$(command -v curl)" >> "$GITHUB_ENV"
+          echo "MISE_ACTION_REQUEST_LOG=$RUNNER_TEMP/age-network-requests" >> "$GITHUB_ENV"
+          cat > "$RUNNER_TEMP/age-network-bin/curl" <<'EOF'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          for arg in "$@"; do
+            if [[ "$arg" == https://api.github.com/* ]]; then
+              echo "Release selection must not call the GitHub API" >&2
+              exit 1
+            fi
+            if [[ "$arg" == https://mise.jdx.dev/releases.tsv ]]; then
+              echo "$arg" >> "$MISE_ACTION_REQUEST_LOG"
+            fi
+          done
+          exec "$MISE_ACTION_REAL_CURL" "$@"
+          EOF
+          chmod +x "$RUNNER_TEMP/age-network-bin/curl"
+          echo "$RUNNER_TEMP/age-network-bin" >> "$GITHUB_PATH"
+      - name: Install mise with the default release age
+        uses: $/
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/block-github-api.mjs
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-age-default
+      - name: Check fresh selection used one CDN request
+        run: test "$(wc -l < "$MISE_ACTION_REQUEST_LOG")" -eq 1
+      - name: Reuse the installed binary with the default release age
+        uses: $/
+        env:
+          NODE_OPTIONS: --import=${{ github.workspace }}/scripts/block-github-api.mjs
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-age-default
+      - name: Check reusing the cached binary made no further CDN request
+        run: test "$(wc -l < "$MISE_ACTION_REQUEST_LOG")" -eq 1
+      - name: Check the default 24-hour delay
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          version=$(mise version --json | jq -r '.version | split(" ")[0]')
+          cutoff=$(date -u -d '24 hours ago' +%s)
+          gh api "repos/jdx/mise/releases/tags/v$version" | jq -e --argjson cutoff "$cutoff" \
+            '.draft == false and .prerelease == false and (.published_at | fromdateiso8601) <= $cutoff'
+      - name: Install an age-filtered 2024 mise release
+        uses: $/
+        with:
+          cache: false
+          env: false
+          install: false
+          minimum_release_age: 2024-09-06
+          mise_dir: ${{ runner.temp }}/mise-age-2024
+      - name: Install the latest mise release
+        uses: $/
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 0s
+      - name: Replace it with an age-filtered release
+        uses: $/
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 7d
+          auto_update: true
+      - name: Reject an invalid calendar date
+        id: invalid-calendar-date
+        uses: $/
+        continue-on-error: true
+        with:
+          cache: false
+          install: false
+          minimum_release_age: 2024-02-31
+      - name: Check invalid calendar date rejection
+        if: steps.invalid-calendar-date.outcome != 'failure'
+        run: exit 1
+      - name: Check the selected release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          cutoff=$(date -u -d '7 days ago' +%s)
+          expected=$(gh api 'repos/jdx/mise/releases?per_page=100' --jq \
+            "map(select(.draft == false and .prerelease == false and ((.published_at // .created_at) | fromdateiso8601) <= $cutoff)) | max_by(.tag_name | ltrimstr(\"v\") | split(\".\") | map(tonumber)).tag_name" | sed 's/^v//')
+          actual=$(mise version --json | jq -r '.version | split(" ")[0]')
+          test "$actual" = "$expected"
+
+  checksum_failure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup mise
+        id: bad
+        uses: $/
+        with:
+          version: 2024.9.6
+          sha256: 1f0b8c3d2e4f5a6b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t
+        continue-on-error: true
+      - name: Dump steps context
+        if: ${{ always() }}
+        env:
+          STEPS_CONTEXT: ${{ toJson(steps) }}
+        run: echo "$STEPS_CONTEXT"
+      - name: expect failure
+        run: echo "Failed as expected"
+        if: ${{ steps.bad.outcome == 'failure' }}
+      - name: not failed as expected
+        run: |
+          echo "Expected failure but the job was ${STEPS_BAD_OUTCOME}"
+          exit 1
+        if: ${{ steps.bad.outcome != 'failure' }}
+        env:
+          STEPS_BAD_OUTCOME: ${{ steps.bad.outcome }}
+
+  cached_version_change:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache mise 2025.7.3
+        uses: $/
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-version-change
+          version: 2025.7.3
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
+      - name: Replace cached mise with requested 2025.7.2
+        uses: $/
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-version-change
+          version: 2025.7.2
+          sha256: b491a59f99fcce6ac1ce0307a0cac4500386337b0b7b30217084cab2c524272c
+      - name: Check requested mise version was installed
+        shell: bash
+        run: test "$(mise version --json | jq -r '.version | split(" ")[0]')" = 2025.7.2
+
+  pre_minisign_cached:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache a pre-minisign mise release
+        uses: $/
+        with:
+          cache: false
+          install: false
+          env: false
+          mise_dir: ${{ runner.temp }}/mise-pre-minisign
+          version: 2024.9.6
+          sha256: c835a3f72e640896ff171963eadc368efd29ef6962af34aa36de62eb45174109
+      - name: Block downloads for checksum-verified cache hit
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/no-download-bin"
+          cat > "$RUNNER_TEMP/no-download-bin/curl" <<'EOF'
+          #!/usr/bin/env bash
+          echo "unexpected download for checksum-verified cache hit" >&2
+          exit 1
+          EOF
+          chmod +x "$RUNNER_TEMP/no-download-bin/curl"
+          echo "$RUNNER_TEMP/no-download-bin" >> "$GITHUB_PATH"
+      - name: Reuse checksum-verified legacy mise without download
+        uses: $/
+        with:
+          cache: false
+          install: false
+          env: false
+          mise_dir: ${{ runner.temp }}/mise-pre-minisign
+          version: 2024.9.6
+          sha256: c835a3f72e640896ff171963eadc368efd29ef6962af34aa36de62eb45174109
+      - run: mise --version
+
+  custom_cache_key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup mise with custom cache key
+        uses: $/
+        with:
+          cache_key: "custom-{{platform}}-{{install_args_hash}}-${{ github.run_id }}"
+          install_args: "jq@1.7.1"
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+      - run: mise --version
+      - run: mise x jq -- jq --version
+      - run: which jq
+      - run: jq --version
+
+  fetch_from_github:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Setup mise from mise.jdx.dev
+        uses: $/
+        with:
+          fetch_from_github: true
+          cache: false
+          cache_save: false
+          mise_toml: |
+            [tools]
+            jq = "1.7.1"
+      - run: mise --version
+      - run: mise x jq -- jq --version
+      - run: which jq
+      - run: jq --version
+
+  download_retry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Create flaky curl wrapper
+        shell: bash
+        run: |
+          real_curl="$(command -v curl)"
+          mock_bin="$RUNNER_TEMP/mock-bin"
+          mkdir -p "$mock_bin"
+          cat > "$mock_bin/curl" <<EOF
+          #!/usr/bin/env bash
+          set -euo pipefail
+          attempt=0
+          if [[ -f "\$MISE_ACTION_CURL_ATTEMPTS" ]]; then
+            read -r attempt < "\$MISE_ACTION_CURL_ATTEMPTS"
+          fi
+          attempt=\$((attempt + 1))
+          printf '%s\n' "\$attempt" > "\$MISE_ACTION_CURL_ATTEMPTS"
+          if (( attempt <= 2 )); then
+            echo "simulated transient curl failure" >&2
+            exit 60
+          fi
+          exec "$real_curl" "\$@"
+          EOF
+          chmod +x "$mock_bin/curl"
+          echo "$mock_bin" >> "$GITHUB_PATH"
+          echo "MISE_ACTION_CURL_ATTEMPTS=$RUNNER_TEMP/curl-attempts" >> "$GITHUB_ENV"
+      - name: Setup mise after transient download failures
+        uses: $/
+        with:
+          cache: false
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-download-retry
+          version: 2025.7.3
+          sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
+      - name: Check download attempts
+        shell: bash
+        run: test "$(cat "$MISE_ACTION_CURL_ATTEMPTS")" = 3
+
+  test-typescript:
+    name: TypeScript Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # `mise.toml` pins both Node and aube; mise-action installs
+      # whatever's listed there. `aube ci` installs exactly the
+      # dependency graph recorded in `aube-lock.yaml`.
+      # `.npmrc` pins `node-linker=hoisted` so the layout is
+      # npm-flat (rollup's `--configPlugin` resolution
+      # requires this).
+      - uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
+        with:
+          cache: false
+
+      - name: Install Dependencies
+        id: aube-ci
+        run: aube ci
+
+      - name: Check Format
+        id: aube-format-check
+        run: aubr format:check
+
+      - name: Lint
+        id: aube-lint
+        run: aubr lint
+
+      - name: TypeScript 7 type check
+        id: typescript-7
+        run: aubr typecheck
+
+      # - name: Test
+      #   id: npm-ci-test
+      #   run: npm run ci-test
+
+  check-dist:
+    name: Check dist/
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      statuses: write
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
+        with:
+          cache: false
+
+      - name: Install Dependencies
+        id: install
+        run: aube ci
+
+      - name: Build dist/ Directory
+        id: build
+        run: aubr bundle
+
+      - name: Compare Expected and Actual Directories
+        id: diff
+        run: |
+          if [ "$(git diff --ignore-space-at-eol --text dist/ | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted changes after build. See status below:"
+            git diff --ignore-space-at-eol --text dist/
+            exit 1
+          fi
+
+      # If index.js was different than expected, upload the expected version as
+      # a workflow artifact.
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        if: ${{ failure() && steps.diff.conclusion == 'failure' }}
+        with:
+          name: dist
+          path: dist/
+
+  test-redacted-env:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Create test mise config with sensitive values
+        run: |
+          cat > .mise.toml << 'EOF'
+          [env]
+          PUBLIC_VAR = "this-is-public"
+          API_KEY = {value = "secret-api-key-12345", redact = true}
+          SECRET_TOKEN = {value = "supersecret-token-xyz", redact = true}
+          DATABASE_PASSWORD = {value = "db-pass-789", redact = true}
+          EOF
+
+      - name: Setup mise
+        uses: $/
+
+      - name: Verify environment variables are exported
+        run: |
+          echo "Checking if environment variables are set..."
+
+          # Check that public var is set
+          if [ "$PUBLIC_VAR" != "this-is-public" ]; then
+            echo "ERROR: PUBLIC_VAR not set correctly"
+            exit 1
+          fi
+          echo "✓ PUBLIC_VAR is set correctly"
+
+          # Check that sensitive vars are set (but their values should be masked in logs)
+          if [ -z "$API_KEY" ]; then
+            echo "ERROR: API_KEY not set"
+            exit 1
+          fi
+          echo "✓ API_KEY is set"
+
+          if [ -z "$SECRET_TOKEN" ]; then
+            echo "ERROR: SECRET_TOKEN not set"
+            exit 1
+          fi
+          echo "✓ SECRET_TOKEN is set"
+
+          if [ -z "$DATABASE_PASSWORD" ]; then
+            echo "ERROR: DATABASE_PASSWORD not set"
+            exit 1
+          fi
+          echo "✓ DATABASE_PASSWORD is set"
+
+      - name: Test that sensitive values are masked (will show *** if properly masked)
+        run: |
+          echo "Testing value masking..."
+          echo "API_KEY value: $API_KEY"
+          echo "SECRET_TOKEN value: $SECRET_TOKEN"
+          echo "DATABASE_PASSWORD value: $DATABASE_PASSWORD"
+          echo "PUBLIC_VAR value: $PUBLIC_VAR"
+
+          # This should show the actual values in the step output,
+          # but GitHub Actions should mask them if core.setSecret was called
+
+      - name: Verify mise version
+        run: mise --version
+
+  zizmor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          advanced-security: false
+
+  final:
+    needs:
+      - build
+      - test-typescript
+      - check-dist
+      - test-redacted-env
+      - zizmor
+      - test
+      - path_opt_out
+      - specific_version
+      - minimum_release_age
+      - checksum_failure
+      - cached_version_change
+      - pre_minisign_cached
+      - custom_cache_key
+      - download_retry
+      - fetch_from_github
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    # Run on success or upstream failure but skip when the workflow is cancelled
+    # — `always()` would override `cancel-in-progress` and waste a runner.
+    if: ${{ !cancelled() }}
+    steps:
+      - name: Check CI job results
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1

@@ -1,14 +1,6 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "github>jdx/renovate-config"
-  ],
-  "postUpgradeTasks": {
-    "commands": ["npm run all"],
-    "fileFilters": ["dist/**/*"],
-    "executionMode": "branch"
-  },
-  "allowedCommands": [
-    ".*"
-  ]
+  "extends": ["github>jdx/renovate-config"],
+  "gitIgnoredAuthors": ["autofix.ci[bot] <autofix.ci[bot]@users.noreply.github.com>"],
+  "rebaseWhen": "conflicted"
 }

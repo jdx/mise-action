@@ -1,8 +1,9 @@
 {
   "name": "mise-action",
   "description": "mise tool setup action",
-  "version": "2.2.2",
+  "version": "5.1.1",
   "author": "jdx",
+  "type": "module",
   "private": true,
   "repository": {
     "type": "git",
@@ -17,37 +18,52 @@
     ".": "./dist/index.js"
   },
   "scripts": {
-    "all": "npm run format:write && npm run lint && npm run package",
+    "all": "npm run format:write && npm run lint && npm run test && npm run package",
+    "test": "node --test scripts/*.test.mjs",
+    "typecheck": "node ./node_modules/@typescript/native/bin/tsc --noEmit",
     "bundle": "npm run format:write && npm run package",
     "format:check": "prettier --check **/*.ts",
     "format:write": "prettier --write **/*.ts",
-    "lint": "npx eslint . && npm run format:check",
-    "package": "ncc build -s src/index.ts --license licenses.txt",
+    "lint": "eslint . && npm run format:check",
+    "package": "rimraf ./dist && rollup --config rollup.config.mjs",
     "package:watch": "npm run package -- --watch",
     "version": "./scripts/version.sh",
-    "postversion": "./scripts/postversion.sh",
     "prepare": "husky"
   },
   "license": "MIT",
   "dependencies": {
-    "@actions/cache": "^4.0.0",
-    "@actions/core": "^1.11.1",
-    "@actions/exec": "^1.1.1",
-    "@actions/glob": "^0.5.0"
+    "@actions/cache": "^6.0.0",
+    "@actions/core": "^3.0.0",
+    "@actions/exec": "^3.0.0",
+    "@actions/glob": "^0.7.0",
+    "@actions/io": "^3.0.0",
+    "handlebars": "^4.7.8"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.15.0",
+    "@eslint/js": "^10.0.0",
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-typescript": "^12.0.0",
     "@types/eslint__js": "^8.42.3",
-    "@types/node": "^22.10.0",
-    "@vercel/ncc": "^0.38.3",
-    "eslint": "^9.15.0",
-    "globals": "^16.0.0",
+    "@types/node": "^24",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.0.0",
+    "globals": "^17.0.0",
     "husky": "^9.1.7",
-    "jest": "^29.7.0",
-    "js-yaml": "^4.1.0",
+    "jest": "^30",
+    "js-yaml": "^5.0.0",
     "prettier": "^3.4.1",
-    "typescript": "^5.7.2",
+    "rimraf": "^6.0.0",
+    "rollup": "^4.0.0",
+    "rollup-plugin-license": "^3.7.1",
+    "typescript": "^6.0.0",
     "typescript-eslint": "^8.16.0"
+  },
+  "aube": {
+    "allowBuilds": {
+      "unrs-resolver": false
+    }
   }
 }

@@ -7,7 +7,20 @@ branding:
 inputs:
   version:
     required: false
-    description: The version of mise to use. If not specified, will use the latest release.
+    description: The version of mise to use. If not specified, uses the newest release satisfying minimum_release_age.
+  auto_update:
+    required: false
+    default: "false"
+    description: When `version` is unset, reinstall a cached mise if a newer release is available. By default a cached mise is kept until the cache key changes.
+  minimum_release_age:
+    required: false
+    default: "24h"
+    description: |
+      When version is not specified, only install stable mise releases older than this threshold. Defaults to 24h; set 0s to disable the delay.
+      Accepts relative durations such as 24h, 7d, 6mo, or 1y, and absolute ISO dates or timestamps.
+  sha256:
+    required: false
+    description: The SHA256 checksum of the mise binary to verify the download.
   mise_dir:
     required: false
     description: |
@@ -19,14 +32,28 @@ inputs:
     description: If present, this value will be written to the .tool-versions file
   mise_toml:
     required: false
-    description: If present, this value will be written to the .mise.toml file
+    description: If present, this value will be written to the mise.toml file
   install:
     required: false
     default: "true"
-    description: if false, will not run `mise install`
+    description: if false, will not run `mise install` or `mise bootstrap`
+  plugins:
+    required: false
+    default: ""
+    description: 'Plugins to install before tools, one per line as `name` or `name url`, e.g. `yarn` or `php https://github.com/verzly/mise-php#latest`. Useful for idiomatic version files (such as .yvmrc) that need a plugin.'
   install_args:
     required: false
-    description: Arguments to pass to `mise install` such as "bun" to only install bun
+    description: Arguments to pass to `mise install` such as "bun" to only install bun. When a repo mise lock file is present, the action automatically adds `--locked` unless you already provided it.
+  bootstrap:
+    required: false
+    default: "false"
+    description: if true, will run `mise bootstrap` instead of `mise install`
+  bootstrap_skip:
+    required: false
+    description: Comma-separated bootstrap parts to skip, such as "tools,task". Passed as `mise bootstrap --skip`.
+  bootstrap_args:
+    required: false
+    description: Additional arguments to pass to `mise bootstrap`.
   install_dir:
     required: false
     description: deprecated
@@ -38,10 +65,21 @@ inputs:
     required: false
     default: "true"
     description: if false, action will not write to cache
+  cache_save_post:
+    required: false
+    default: "false"
+    description: if true, save the cache in the post step instead of right after install, so tools installed by later steps (e.g. monorepo sub-projects or task tools) are included. Only applies on a cache miss. The post step runs even if a later step fails, as the immediate save would have.
   cache_key_prefix:
     required: false
-    default: "mise-v0"
+    default: "mise-v1"
     description: The prefix key to use for the cache, change this to invalidate the cache
+  cache_key:
+    required: false
+    description: |
+      Override the complete cache key (ignores all other cache key options).
+      Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}},
+      {{mise_env}}, {{install_args_hash}}, {{bootstrap_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables,
+      and conditional logic like {{#if version}}...{{/if}}
   experimental:
     required: false
     default: "false"
@@ -53,9 +91,76 @@ inputs:
   working_directory:
     required: false
     description: The directory that mise runs in
+  reshim:
+    required: false
+    default: "false"
+    description: if true, will run `mise reshim --all` after setting up mise
+  add_shims_to_path:
+    required: false
+    default: "true"
+    description: if false, will not add mise shims directory to PATH
+  github_token:
+    required: false
+    description: |
+      GitHub token for API authentication to avoid rate limits when installing GitHub-hosted tools.
+      Defaults to the automatic GitHub token. Used only during this action unless persist_github_token is set.
+    default: ${{ github.token }}
+  persist_github_token:
+    required: false
+    default: "false"
+    description: |
+      Persist MISE_GITHUB_TOKEN for subsequent steps. false (default) keeps github_token local to this action.
+      true exports the token used by this action (env.MISE_GITHUB_TOKEN takes precedence over github_token).
+      A token value exports that credential instead, while this action continues to use github_token or env.MISE_GITHUB_TOKEN.
+  fetch_from_github:
+    required: false
+    default: "true"
+    description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.
+  env:
+    description: Automatically load mise environment variables for subsequent steps.
+    required: false
+    default: "true"
+  export_path:
+    description: Add PATH entries produced by mise, including [env] _.path, to subsequent steps through GITHUB_PATH.
+    required: false
+    default: "true"
+  wings_enabled:
+    description: |
+      [experimental] Opt in to the mise-wings asset cache
+      (https://mise-wings.en.dev) for this action invocation.
+
+      When `true`, the action exports `MISE_WINGS_ENABLED=1` so
+      the installed mise binary routes tool-install URLs (npm
+      tarballs, GitHub release artifacts) through the per-org
+      wings cache subdomains.
+
+      Authentication is automatic via the runner's GitHub OIDC
+      identity — no `mise wings login` step, no long-lived
+      secret to rotate. The workflow must declare
+      `permissions: id-token: write` so the OIDC token-issuer
+      env vars are populated; without that, mise falls through
+      to direct-origin fetches transparently.
+
+      Default `false` is the conservative posture: a workflow
+      with `id-token: write` (used for SLSA / AWS-OIDC /
+      Sigstore / etc.) should not have its OIDC token sent to
+      a third-party cache without explicit opt-in. Older mise
+      binaries that don't speak wings ignore the env var
+      entirely, so this is forward-compatible.
+
+      Requires an active mise-wings subscription on the Clerk
+      org linked to the GitHub org running the workflow;
+      without one, the proxy 402s and mise leaves the cache
+      off without affecting the workflow's success.
+    required: false
+    default: "false"
 outputs:
   cache-hit:
     description: A boolean value to indicate if a cache was hit.
+  versions:
+    description: JSON object of the active, installed tool versions, keyed by tool name. Each value is a list of `{version, requested_version, install_path, source}`. Every tool is also available as its own output (e.g. `steps.mise.outputs.node`) when its name is a valid output name.
 runs:
-  using: node20
+  using: node24
   main: dist/index.js
+  post: dist/index.js
+  post-if: always()

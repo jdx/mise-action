@@ -100,6 +100,7 @@ commit_parsers = [
     { message = '^chore\(release\): prepare for', skip = true },
     { message = '^chore\(pr\)', skip = true },
     { message = '^chore\(pull\)', skip = true },
+    { message = '^chore: release v\d+\.\d+\.\d+', skip = true },
     { message = '^chore: Release mise-action', skip = true },
     { message = '^chore|^ci', group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
     { body = '.*security', group = "<!-- 8 -->🛡️ Security" },
