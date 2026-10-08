@@ -12,3 +12,7 @@ aube = { version = 'latest', minimum_release_age = '0s' }
 git-cliff = 'latest'
 gh = 'latest'
 communique = { version = 'latest', minimum_release_age = '0s' }
+# hk.pkl amends a pinned hk package; the tools themselves float and are resolved by mise.lock.
+hk = { version = 'latest', minimum_release_age = '0s' }
+pkl = 'latest'
+jactionlint = 'latest'

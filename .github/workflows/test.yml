@@ -638,6 +638,20 @@ jobs:
         with:
           advanced-security: false
 
+  hk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
+        with:
+          cache: false
+      - run: mise x hk -- hk check --all
+
   final:
     needs:
       - build
@@ -645,6 +659,7 @@ jobs:
       - check-dist
       - test-redacted-env
       - zizmor
+      - hk
       - test
       - path_opt_out
       - specific_version
