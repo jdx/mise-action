@@ -343,7 +343,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: jdx/mise-action@v5
         with:
-          cache_key: "{{default}}-{{env.MISE_ENABLE_TOOLS}}"
+          cache_key_prefix: mise-v0-${{ env.MISE_ENABLE_TOOLS }}
       - run: mise run validate
 ```
 
