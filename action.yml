@@ -27,6 +27,7 @@ inputs:
       The directory that mise will be installed to, defaults to $HOME/.local/share/mise
       Or $XDG_DATA_HOME/mise if $XDG_DATA_HOME is set.
       Or $MISE_DATA_DIR if $MISE_DATA_DIR is set.
+      When set, the action also exports it as MISE_DATA_DIR (overriding any existing value) so tools install into the cached directory. mise's state directory is not moved; set MISE_STATE_DIR for that.
   tool_versions:
     required: false
     description: If present, this value will be written to the .tool-versions file
