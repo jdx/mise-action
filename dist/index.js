@@ -92473,6 +92473,15 @@ async function setEnvVars() {
     const logLevel = getInput('log_level');
     if (logLevel)
         set('MISE_LOG_LEVEL', logLevel);
+    // The input outranks MISE_DATA_DIR in miseDir(), so mise must use it too or
+    // tools would install outside the directory that is cached. Export even when
+    // a step-level MISE_DATA_DIR already matches, since that value does not
+    // reach later steps.
+    const dataDir = getInput('mise_dir');
+    if (dataDir) {
+        info(`Setting MISE_DATA_DIR=${dataDir}`);
+        exportVariable('MISE_DATA_DIR', dataDir);
+    }
     setupGitHubToken();
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
     set('MISE_YES', '1');
