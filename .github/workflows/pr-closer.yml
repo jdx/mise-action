@@ -11,6 +11,7 @@ concurrency:
 
 jobs:
   pr-closer:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     permissions:
       issues: write

@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   analyze:
+    timeout-minutes: 10
     name: Analyze
     runs-on: ubuntu-latest
 

@@ -5,10 +5,16 @@ on:
     types: [closed]
     branches: [main]
 
+# Never cancel a release that is already publishing.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 permissions: {}
 
 jobs:
   release:
+    timeout-minutes: 15
     if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
     permissions:
@@ -30,6 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   enhance-release:
+    timeout-minutes: 10
     needs: [release]
     runs-on: ubuntu-latest
     permissions:

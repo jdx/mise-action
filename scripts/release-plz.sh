@@ -58,7 +58,7 @@ if [ -n "$latest_release_version" ] && [ "$cur_pkg_version" = "$latest_release_v
 	git config user.email 123107610+mise-en-dev@users.noreply.github.com
 
 	# Configure git to use gh's credential helper. The checkout step uses
-	# persist-credentials: false (per zizmor's artipacked audit), so the
+	# persist-credentials: false (the artipacked finding), so the
 	# token isn't written to .git/config and raw `git push` would 403.
 	gh auth setup-git
 

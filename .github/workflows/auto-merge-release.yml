@@ -13,6 +13,7 @@ concurrency:
 
 jobs:
   merge:
+    timeout-minutes: 10
     if: github.repository == 'jdx/mise-action'
     runs-on: ubuntu-latest
     permissions:

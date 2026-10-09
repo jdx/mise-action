@@ -5,7 +5,7 @@ VERSION=$(jq -r .version package.json)
 MAJOR_VERSION=$(echo "$VERSION" | cut -d. -f1)
 
 # Configure git to use gh's credential helper. The checkout step uses
-# persist-credentials: false (per zizmor's artipacked audit), so the
+# persist-credentials: false (the artipacked finding), so the
 # token isn't written to .git/config and raw `git push` would 403.
 gh auth setup-git
 
