@@ -654,7 +654,11 @@ jobs:
       - uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
         with:
           cache: false
+      # Online checks run in CI only; locally: JACTIONLINT_ONLINE=1 hk check --all
       - run: mise x hk -- hk check --all
+        env:
+          JACTIONLINT_ONLINE: 1
+          GITHUB_TOKEN: ${{ github.token }}
 
   final:
     needs:

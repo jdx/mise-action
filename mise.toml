@@ -15,4 +15,4 @@ communique = { version = 'latest', minimum_release_age = '0s' }
 # hk.pkl amends a pinned hk package; the tools themselves float and are resolved by mise.lock.
 hk = { version = 'latest', minimum_release_age = '0s' }
 pkl = 'latest'
-jactionlint = '2'
+jactionlint = '2.1.0'
