@@ -5,16 +5,20 @@ on:
     types: [closed]
     branches: [main]
 
-# Never cancel a release that is already publishing.
+# Every closed PR starts this workflow, so only release PRs share a group; any other
+# closed PR gets a group of its own and cannot displace a pending release. Every
+# release must run (each tags its own version), so queue them instead of keeping only
+# the newest pending one, and never cancel one that is publishing.
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ contains(github.event.pull_request.labels.*.name, 'release') && 'release' || github.run_id }}
   cancel-in-progress: false
+  queue: max
 
 permissions: {}
 
 jobs:
   release:
-    timeout-minutes: 15
+    timeout-minutes: 60
     if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
     permissions:
@@ -36,7 +40,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   enhance-release:
-    timeout-minutes: 10
+    timeout-minutes: 30
     needs: [release]
     runs-on: ubuntu-latest
     permissions:
