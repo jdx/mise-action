@@ -16,6 +16,7 @@ concurrency:
 
 jobs:
   build: # make sure build/ci work properly
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -27,6 +28,7 @@ jobs:
       - run: aube install
       - run: aubr all
   test: # make sure the action works on a clean machine without building
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -112,6 +114,7 @@ jobs:
         run: test "$MISE_GITHUB_TOKEN" = "mise-action-persist-test-token"
 
   path_opt_out:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -138,6 +141,7 @@ jobs:
           fi
 
   specific_version:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -165,6 +169,7 @@ jobs:
           sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
 
   minimum_release_age:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -265,6 +270,7 @@ jobs:
           test "$actual" = "$expected"
 
   checksum_failure:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -294,6 +300,7 @@ jobs:
           STEPS_BAD_OUTCOME: ${{ steps.bad.outcome }}
 
   cached_version_change:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -320,6 +327,7 @@ jobs:
         run: test "$(mise version --json | jq -r '.version | split(" ")[0]')" = 2025.7.2
 
   pre_minisign_cached:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -357,6 +365,7 @@ jobs:
       - run: mise --version
 
   custom_cache_key:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -376,6 +385,7 @@ jobs:
       - run: jq --version
 
   mise_dir_sets_data_dir:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -397,6 +407,7 @@ jobs:
           test "$(mise doctor --json | jq -r '.dirs.data')" = "$RUNNER_TEMP/mise-data-dir"
 
   mise_dir_matching_data_dir:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -415,6 +426,7 @@ jobs:
         run: test "$MISE_DATA_DIR" = "$RUNNER_TEMP/mise-data-dir"
 
   fetch_from_github:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -435,6 +447,7 @@ jobs:
       - run: jq --version
 
   download_retry:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -477,6 +490,7 @@ jobs:
         run: test "$(cat "$MISE_ACTION_CURL_ATTEMPTS")" = 3
 
   test-typescript:
+    timeout-minutes: 10
     name: TypeScript Tests
     runs-on: ubuntu-latest
 
@@ -518,6 +532,7 @@ jobs:
       #   run: npm run ci-test
 
   check-dist:
+    timeout-minutes: 10
     name: Check dist/
     runs-on: ubuntu-latest
 
@@ -562,6 +577,7 @@ jobs:
           path: dist/
 
   test-redacted-env:
+    timeout-minutes: 10
     runs-on: ubuntu-latest
 
     steps:
@@ -626,18 +642,6 @@ jobs:
       - name: Verify mise version
         run: mise --version
 
-  zizmor:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
-        with:
-          advanced-security: false
-
   hk:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -650,7 +654,11 @@ jobs:
       - uses: jdx/mise-action@9149ea85001c7435d5a66bb127d6a1b6227cb0a5 # v5.0.0
         with:
           cache: false
+      # Online checks run in CI only; locally: JACTIONLINT_ONLINE=1 hk check --all
       - run: mise x hk -- hk check --all
+        env:
+          JACTIONLINT_ONLINE: 1
+          GITHUB_TOKEN: ${{ github.token }}
 
   final:
     needs:
@@ -658,7 +666,6 @@ jobs:
       - test-typescript
       - check-dist
       - test-redacted-env
-      - zizmor
       - hk
       - test
       - path_opt_out

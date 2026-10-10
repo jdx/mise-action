@@ -1,8 +1,6 @@
 name: release-plz
 
-permissions:
-  pull-requests: write
-  contents: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -14,11 +12,18 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   NPM_CONFIG_FUND: false
 
+# No queue: max on purpose: a run acts on the SHA it checked out, so the default
+# (one pending run, replaced by the newest) avoids acting on stale main SHAs.
 concurrency:
   group: release-plz
+  cancel-in-progress: false
 
 jobs:
   release-plz:
+    timeout-minutes: 60
+    permissions:
+      pull-requests: write
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
