@@ -1,6 +1,27 @@
 # Changelog
 
 ---
+## [5.1.2](https://github.com/jdx/mise-action/compare/v5.1.1..v5.1.2) - 2026-10-10
+
+### 🐛 Bug Fixes
+
+- continue with the existing mise when auto-update cannot replace it (#665) by [@jdx](https://github.com/jdx) in [#665](https://github.com/jdx/mise-action/pull/665)
+- export mise_dir as MISE_DATA_DIR so mise installs tools there (#672) by [@jdx](https://github.com/jdx) in [#672](https://github.com/jdx/mise-action/pull/672)
+
+### 📚 Documentation
+
+- explain MISE_ENABLE_TOOLS in GitHub Actions (#667) by [@zeitlinger](https://github.com/zeitlinger) in [#667](https://github.com/jdx/mise-action/pull/667)
+- update the Rust cache section for mise 2026.9.2 (#670) by [@jdx](https://github.com/jdx) in [#670](https://github.com/jdx/mise-action/pull/670)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(ci)** update pr-closer to v1.3.0 by [@jdx](https://github.com/jdx) in [076ebfb](https://github.com/jdx/mise-action/commit/076ebfb79b60ee1ddabb50019a55a03b1dbd1ec9)
+- **(ci)** lint workflows with jactionlint (#673) by [@jdx](https://github.com/jdx) in [#673](https://github.com/jdx/mise-action/pull/673)
+- **(ci)** switch to jactionlint v2 and drop zizmor (#674) by [@jdx](https://github.com/jdx) in [#674](https://github.com/jdx/mise-action/pull/674)
+- update pr-closer policy by [@jdx](https://github.com/jdx) in [88f13e0](https://github.com/jdx/mise-action/commit/88f13e0475d8b553967dd3816a34b6dcd3344c35)
+- fix the upload-artifact version comment (#671) by [@jdx](https://github.com/jdx) in [#671](https://github.com/jdx/mise-action/pull/671)
+
+---
 ## [5.1.1](https://github.com/jdx/mise-action/compare/v5.1.0..v5.1.1) - 2026-10-04
 
 ### 🐛 Bug Fixes
