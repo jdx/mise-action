@@ -45,6 +45,10 @@ inputs:
   install_args:
     required: false
     description: Arguments to pass to `mise install` such as "bun" to only install bun. When a repo mise lock file is present, the action automatically adds `--locked` unless you already provided it.
+  monorepo:
+    required: false
+    default: "true"
+    description: Automatically pass `--monorepo` to `mise install` when the mise configuration has `monorepo.config_roots`. Set to false to opt out.
   bootstrap:
     required: false
     default: "false"

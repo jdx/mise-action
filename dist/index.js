@@ -92161,6 +92161,19 @@ function toolVersionOutputs(ls) {
     return result;
 }
 
+/** Build the arguments shared by `mise install` invocations. */
+function buildInstallCommand(installArgs, useLocked, useMonorepo) {
+    const args = installArgs.trim();
+    const hasLocked = /(^|\s)--locked(?:\s|$)/.test(args);
+    const hasMonorepo = /(^|\s)--monorepo(?:\s|$)/.test(args);
+    return [
+        'install',
+        ...(useLocked && !hasLocked ? ['--locked'] : []),
+        ...(useMonorepo && !hasMonorepo ? ['--monorepo'] : []),
+        ...(args ? [args] : [])
+    ].join(' ');
+}
+
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -93150,18 +93163,29 @@ const testMise = async () => mise(['--version']);
 let supportsLockedInstall;
 const miseInstall = async () => {
     const installArgs = getInput('install_args').trim();
-    const useLocked = (await shouldUseLockedInstall()) &&
-        !/(^|\s)--locked(?:\s|$)/.test(installArgs);
-    const command = [
-        'install',
-        ...(useLocked ? ['--locked'] : []),
-        ...(installArgs ? [installArgs] : [])
-    ].join(' ');
+    const useLocked = await shouldUseLockedInstall();
+    const useMonorepo = getBooleanInput('monorepo') &&
+        (/(^|\s)--monorepo(?:\s|$)/.test(installArgs) ||
+            (await hasMonorepoConfigRoots()));
+    const command = buildInstallCommand(installArgs, useLocked, useMonorepo);
     if (useLocked) {
         info('Detected a mise lock file, running `mise install --locked`');
     }
     return mise([command]);
 };
+/**
+ * Ask mise itself to read the effective TOML config rather than trying to
+ * parse TOML (including its supported config locations and syntax) here.
+ */
+async function hasMonorepoConfigRoots() {
+    const { stdout, exitCode } = await getExecOutput('mise', ['config', 'get', 'monorepo.config_roots'], {
+        cwd: getCwd(),
+        env: { ...process.env, NO_COLOR: '1' },
+        ignoreReturnCode: true,
+        silent: true
+    });
+    return exitCode === 0 && stdout.trim().length > 0;
+}
 const miseBootstrap = async () => {
     const installArgs = getInput('install_args').trim();
     if (installArgs) {
