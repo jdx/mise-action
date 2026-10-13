@@ -1,29 +1,5 @@
 # Example Workflow
 
-## Protecting Workflow Integrity
-
-The `sha256` input verifies the downloaded mise binary against an expected
-checksum. Set it alongside a pinned mise `version`, using the checksum for that
-version and runner platform; replace the checksum when upgrading. The
-[Prometheus client_java workflow](https://github.com/prometheus/client_java/blob/main/.github/workflows/build.yml#L18)
-shows this pattern:
-
-```yaml
-- uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
-  with:
-    version: v2026.10.2
-    sha256: 8f5f6660336f572830e33cd9b378d3131e529a0d4c4f0c553776be90a1ba302a
-```
-
-That checksum is specific to mise `v2026.10.2` and the workflow's runner
-platform; use the matching checksum for your chosen version and platform.
-
-Also pin actions such as `jdx/mise-action` and `actions/checkout` to full commit
-SHAs, grant only the workflow permissions it needs (use `permissions: {}` as a
-starting point), and set `persist-credentials: false` on checkout when later
-steps do not need the token. These measures limit what a compromised action
-can access or modify.
-
 ```yaml
 name: test
 on:
@@ -73,6 +49,29 @@ jobs:
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
+
+## Protecting Workflow Integrity
+
+The `sha256` input verifies the downloaded mise binary against an expected
+checksum. Set it alongside a pinned mise `version`, using the checksum for that
+version and runner platform; replace the checksum when upgrading. For
+example:
+
+```yaml
+- uses: jdx/mise-action@08ae2a091c038e1e05ec6f5115dc5c69d5a2a6b8 # v5.1.2
+  with:
+    version: v2026.10.2
+    sha256: 8f5f6660336f572830e33cd9b378d3131e529a0d4c4f0c553776be90a1ba302a
+```
+
+That checksum is specific to mise `v2026.10.2` and the workflow's runner
+platform; use the matching checksum for your chosen version and platform.
+
+Also pin actions such as `jdx/mise-action` and `actions/checkout` to full commit
+SHAs, grant only the workflow permissions it needs (use `permissions: {}` as a
+starting point), and set `persist-credentials: false` on checkout when later
+steps do not need the token. These measures limit what a compromised action
+can access or modify.
 
 ## Cached mise and `auto_update`
 
