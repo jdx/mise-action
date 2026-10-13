@@ -9,6 +9,10 @@ test('adds monorepo and locked flags without disturbing install args', () => {
   )
 })
 
+test('verified-downloads mode can force locked installs', () => {
+  assert.equal(buildInstallCommand('node', true, false), 'install --locked node')
+})
+
 test('does not duplicate flags already passed explicitly', () => {
   assert.equal(
     buildInstallCommand(' --locked --monorepo bun ', true, true),

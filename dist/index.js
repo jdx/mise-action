@@ -78647,7 +78647,7 @@ function getCacheServiceVersion() {
 // write-only}, none = neither.
 const KNOWN_CACHE_MODES = ['none', 'read', 'write', 'write-only'];
 // The effective cache-mode exported by the runner, or '' when not set.
-function getCacheMode() {
+function getCacheMode$1() {
     return (process.env['ACTIONS_CACHE_MODE'] || '').trim().toLowerCase();
 }
 // Unset or unrecognized modes are permissive so behavior matches today.
@@ -83036,7 +83036,7 @@ function restoreCache(paths_1, primaryKey_1, restoreKeys_1, options_1) {
         const cacheServiceVersion = getCacheServiceVersion();
         debug(`Cache service version: ${cacheServiceVersion}`);
         checkPaths(paths);
-        const cacheMode = getCacheMode();
+        const cacheMode = getCacheMode$1();
         if (!isCacheReadable(cacheMode)) {
             info(`Cache restore skipped: the effective cache-mode '${cacheMode}' does not permit reads.`);
             debug(`Skipped restore for paths [${paths.join(', ')}] with primary key '${primaryKey}'.`);
@@ -83275,7 +83275,7 @@ function saveCache$1(paths_1, key_1, options_1) {
         debug(`Cache service version: ${cacheServiceVersion}`);
         checkPaths(paths);
         checkKey(key);
-        const cacheMode = getCacheMode();
+        const cacheMode = getCacheMode$1();
         if (!isCacheWritable(cacheMode)) {
             info(`Cache save skipped: the effective cache-mode '${cacheMode}' does not permit writes.`);
             debug(`Skipped save for paths [${paths.join(', ')}] with key '${key}'.`);
@@ -92174,6 +92174,37 @@ function buildInstallCommand(installArgs, useLocked, useMonorepo) {
     ].join(' ');
 }
 
+/** Resolve mise's cache directory using the same environment precedence as mise. */
+function miseCacheDir(env = process.env, platform = process.platform, homeDir = os.homedir()) {
+    if (env.MISE_CACHE_DIR)
+        return env.MISE_CACHE_DIR;
+    if (env.XDG_CACHE_HOME)
+        return path$1.join(env.XDG_CACHE_HOME, 'mise');
+    if (platform === 'darwin')
+        return path$1.join(homeDir, 'Library', 'Caches', 'mise');
+    if (platform === 'win32')
+        return path$1.join(env.TEMP || os.tmpdir(), 'mise');
+    return path$1.join(homeDir, '.cache', 'mise');
+}
+/** Only the download CAS is safe/useful to restore; installed data is mutable. */
+function miseDownloadCacheDir(env = process.env, platform = process.platform, homeDir = os.homedir()) {
+    return path$1.join(miseCacheDir(env, platform, homeDir), 'downloads-cas');
+}
+/** Per-run default data directory prevents trusting installed trees from prior runs. */
+function freshMiseDataDir(env = process.env, tempDir = env.RUNNER_TEMP || os.tmpdir()) {
+    const runId = env.GITHUB_RUN_ID || `local-${process.pid}`;
+    const attempt = env.GITHUB_RUN_ATTEMPT || '1';
+    return path$1.join(tempDir, 'mise-action-data', `${runId}-${attempt}`);
+}
+/** Verified-downloads must not reuse caller-selected installed tool trees. */
+function hasExplicitMiseDataDir(miseDirInput, env = process.env) {
+    return Boolean(miseDirInput || env.MISE_DATA_DIR);
+}
+/** Recognize the false values accepted by mise's boolean environment settings. */
+function isDownloadCacheDisabled(value) {
+    return value !== undefined && /^(?:0|false|no|off)$/i.test(value.trim());
+}
+
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -92222,12 +92253,23 @@ async function run() {
     try {
         await setToolVersions();
         await setMiseToml();
+        const cacheMode = getCacheMode();
+        if (cacheMode === 'verified-downloads') {
+            await validateVerifiedDownloadsInputs();
+        }
         let cacheKey;
-        if (getBooleanInput('cache')) {
-            cacheKey = await restoreMiseCache();
+        if (!getBooleanInput('cache')) {
+            // Skip this action's restore/save only. In verified-downloads mode,
+            // external cache actions may still populate mise's download CAS.
+            setOutput('cache-hit', false);
+        }
+        else if (cacheMode === 'verified-downloads' &&
+            isDownloadCacheDisabled(process.env.MISE_DOWNLOAD_CACHE)) {
+            info('MISE_DOWNLOAD_CACHE is disabled; skipping download cache');
+            setOutput('cache-hit', false);
         }
         else {
-            setOutput('cache-hit', false);
+            cacheKey = await restoreMiseCache(cacheMode);
         }
         // Wings opt-in hook (experimental). When
         // `wings_enabled: true` is set, this exports
@@ -92252,6 +92294,11 @@ async function run() {
         const autoUpdate = getBooleanInput('auto_update');
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
         await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate);
+        if (cacheMode === 'verified-downloads') {
+            if (!(await miseSupportsLockedInstall())) {
+                throw new Error('`cache_mode: verified-downloads` requires a mise version that supports `mise install --locked`; upgrade or select a supported mise version.');
+            }
+        }
         await setEnvVars();
         if (getBooleanInput('reshim')) {
             await miseReshim();
@@ -92486,14 +92533,20 @@ async function setEnvVars() {
     const logLevel = getInput('log_level');
     if (logLevel)
         set('MISE_LOG_LEVEL', logLevel);
-    // The input outranks MISE_DATA_DIR in miseDir(), so mise must use it too or
-    // tools would install outside the directory that is cached. Export even when
-    // a step-level MISE_DATA_DIR already matches, since that value does not
-    // reach later steps.
-    const dataDir = getInput('mise_dir');
-    if (dataDir) {
+    if (getCacheMode() === 'verified-downloads') {
+        // Do not restore installed trees in verified-downloads mode.
+        const dataDir = freshMiseDataDir();
         info(`Setting MISE_DATA_DIR=${dataDir}`);
         exportVariable('MISE_DATA_DIR', dataDir);
+    }
+    else {
+        // Preserve the historical behavior: an explicit mise_dir overrides the
+        // environment and must also be exported to later workflow steps.
+        const dataDir = getInput('mise_dir');
+        if (dataDir) {
+            info(`Setting MISE_DATA_DIR=${dataDir}`);
+            exportVariable('MISE_DATA_DIR', dataDir);
+        }
     }
     setupGitHubToken();
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
@@ -92504,14 +92557,25 @@ async function setEnvVars() {
         addPath(shimsDir);
     }
 }
-async function restoreMiseCache() {
+async function restoreMiseCache(cacheMode = getCacheMode()) {
     startGroup('Restoring mise cache');
-    const cachePath = miseDir();
+    let cachePath;
+    if (cacheMode === 'verified-downloads') {
+        const cacheRoot = miseCacheDir();
+        cachePath = miseDownloadCacheDir();
+        // Mise creates this directory lazily. Creating it here also lets actions/cache
+        // restore an empty cache safely when no downloads have been cached yet.
+        await fs.promises.mkdir(cachePath, { recursive: true });
+        exportVariable('MISE_CACHE_DIR', cacheRoot);
+    }
+    else {
+        cachePath = miseDir();
+    }
     // Use custom cache key if provided, otherwise use default template
     const cacheKeyTemplate = getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
     const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
     saveState('PRIMARY_KEY', primaryKey);
-    saveState('MISE_DIR', cachePath);
+    saveState('MISE_CACHE_PATH', cachePath);
     const cacheKey = await restoreCache([cachePath], primaryKey);
     setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
@@ -93281,6 +93345,8 @@ function getCwd() {
         process.cwd());
 }
 async function shouldUseLockedInstall() {
+    if (getCacheMode() === 'verified-downloads')
+        return true;
     if (getInput('tool_versions') || getInput('mise_toml'))
         return false;
     if (!(await miseSupportsLockedInstall()))
@@ -93298,6 +93364,30 @@ async function miseSupportsLockedInstall() {
     });
     supportsLockedInstall = /(^|\s)--locked(?:[\s,]|$)/m.test(`${stdout}\n${stderr}`);
     return supportsLockedInstall;
+}
+function getCacheMode() {
+    const mode = getInput('cache_mode') || 'installed';
+    if (mode !== 'installed' && mode !== 'verified-downloads') {
+        throw new Error(`Invalid cache_mode '${mode}'. Expected 'installed' or 'verified-downloads'.`);
+    }
+    return mode;
+}
+async function validateVerifiedDownloadsInputs() {
+    if (hasExplicitMiseDataDir(getInput('mise_dir'), process.env)) {
+        throw new Error('`cache_mode: verified-downloads` requires a fresh per-run data directory and cannot be used with `mise_dir` or `MISE_DATA_DIR`.');
+    }
+    if (!getBooleanInput('install')) {
+        throw new Error('`cache_mode: verified-downloads` requires `install: true` so the action can run mise with lockfile enforcement.');
+    }
+    if (getBooleanInput('bootstrap')) {
+        throw new Error('`cache_mode: verified-downloads` does not support `bootstrap: true`; use the locked `mise install` flow instead.');
+    }
+    if (getInput('tool_versions') || getInput('mise_toml')) {
+        throw new Error('`cache_mode: verified-downloads` requires a checked-in mise lockfile; it cannot be used with `tool_versions` or `mise_toml` inputs.');
+    }
+    if (!(await hasMiseLockFile(getCwd()))) {
+        throw new Error('`cache_mode: verified-downloads` requires a mise lockfile in or above the working directory. Run `mise lock` and commit the generated lockfile.');
+    }
 }
 function hasMiseLockFile(startDir) {
     let dir = path$1.resolve(startDir);
@@ -93357,14 +93447,14 @@ function miseDir() {
 }
 async function saveCache(cacheKey) {
     await group(`Saving mise cache`, async () => {
-        const cachePath = miseDir();
+        const cachePath = getState('MISE_CACHE_PATH') || miseDownloadCacheDir();
         if (!fs.existsSync(cachePath)) {
             throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
         }
         const cacheId = await saveCache$1([cachePath], cacheKey);
         if (cacheId === -1)
             return;
-        info(`Cache saved from ${cachePath} with key: ${cacheKey}`);
+        info(`mise cache saved from ${cachePath} with key: ${cacheKey}`);
     });
 }
 async function getTarget() {
@@ -93398,7 +93488,10 @@ async function processCacheKeyTemplate(template) {
     const bootstrap = getBooleanInput('bootstrap');
     const bootstrapSkip = getInput('bootstrap_skip');
     const bootstrapArgs = getInput('bootstrap_args');
-    const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
+    const cacheKeyPrefix = getInput('cache_key_prefix') ||
+        (getCacheMode() === 'verified-downloads'
+            ? 'mise-verified-downloads-v1'
+            : 'mise-v1');
     const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
     const platform = `${await getTarget()}-${getRunnerImageId()}`;
     // Calculate file hash

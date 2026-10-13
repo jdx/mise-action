@@ -24,10 +24,13 @@ inputs:
   mise_dir:
     required: false
     description: |
-      The directory that mise will be installed to, defaults to $HOME/.local/share/mise
-      Or $XDG_DATA_HOME/mise if $XDG_DATA_HOME is set.
-      Or $MISE_DATA_DIR if $MISE_DATA_DIR is set.
-      When set, the action also exports it as MISE_DATA_DIR (overriding any existing value) so tools install into the cached directory. mise's state directory is not moved; set MISE_STATE_DIR for that.
+      The mise data directory (`MISE_DATA_DIR`). When unset, the action uses a
+      per-run directory in verified-downloads mode and mise's normal default
+      otherwise. When set, this input overrides MISE_DATA_DIR and is exported
+      to subsequent steps. The installed mode caches this directory; the
+      verified-downloads mode requires a fresh per-run directory and rejects
+      this input and MISE_DATA_DIR overrides. mise's state directory is not
+      moved; set MISE_STATE_DIR for that.
   tool_versions:
     required: false
     description: If present, this value will be written to the .tool-versions file
@@ -65,7 +68,14 @@ inputs:
   cache:
     required: false
     default: "true"
-    description: if false, action will not read or write to cache
+    description: if false, action will not read or write its GitHub cache. In verified-downloads mode, mise's download CAS remains enabled for use with external cache actions.
+  cache_mode:
+    required: false
+    default: "installed"
+    description: |
+      Cache mode: installed (default) caches mise's data directory, including
+      installed tools; verified-downloads caches only mise's download CAS and
+      requires a mise lockfile and a mise version supporting `--locked`.
   cache_save:
     required: false
     default: "true"
@@ -73,10 +83,10 @@ inputs:
   cache_save_post:
     required: false
     default: "false"
-    description: if true, save the cache in the post step instead of right after install, so tools installed by later steps (e.g. monorepo sub-projects or task tools) are included. Only applies on a cache miss. The post step runs even if a later step fails, as the immediate save would have.
+    description: if true, save the cache in the post step instead of right after install, so cache changes made by later steps are included. Only applies on a cache miss. The post step runs even if a later step fails, as the immediate save would have.
   cache_key_prefix:
     required: false
-    default: "mise-v1"
+    default: ""
     description: The prefix key to use for the cache, change this to invalidate the cache
   cache_key:
     required: false
@@ -161,7 +171,7 @@ inputs:
     default: "false"
 outputs:
   cache-hit:
-    description: A boolean value to indicate if a cache was hit.
+    description: A boolean value to indicate if the selected mise cache was hit.
   versions:
     description: JSON object of the active, installed tool versions, keyed by tool name. Each value is a list of `{version, requested_version, install_path, source}`. Every tool is also available as its own output (e.g. `steps.mise.outputs.node`) when its name is a valid output name.
 runs:

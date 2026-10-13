@@ -14,6 +14,13 @@ import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
+import {
+  freshMiseDataDir,
+  hasExplicitMiseDataDir,
+  isDownloadCacheDisabled,
+  miseCacheDir,
+  miseDownloadCacheDir
+} from './cache-paths.js'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -70,11 +77,24 @@ async function run(): Promise<void> {
     await setToolVersions()
     await setMiseToml()
 
+    const cacheMode = getCacheMode()
+    if (cacheMode === 'verified-downloads') {
+      await validateVerifiedDownloadsInputs()
+    }
+
     let cacheKey: string | undefined
-    if (core.getBooleanInput('cache')) {
-      cacheKey = await restoreMiseCache()
-    } else {
+    if (!core.getBooleanInput('cache')) {
+      // Skip this action's restore/save only. In verified-downloads mode,
+      // external cache actions may still populate mise's download CAS.
       core.setOutput('cache-hit', false)
+    } else if (
+      cacheMode === 'verified-downloads' &&
+      isDownloadCacheDisabled(process.env.MISE_DOWNLOAD_CACHE)
+    ) {
+      core.info('MISE_DOWNLOAD_CACHE is disabled; skipping download cache')
+      core.setOutput('cache-hit', false)
+    } else {
+      cacheKey = await restoreMiseCache(cacheMode)
     }
 
     // Wings opt-in hook (experimental). When
@@ -101,6 +121,13 @@ async function run(): Promise<void> {
     const autoUpdate = core.getBooleanInput('auto_update')
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
     await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate)
+    if (cacheMode === 'verified-downloads') {
+      if (!(await miseSupportsLockedInstall())) {
+        throw new Error(
+          '`cache_mode: verified-downloads` requires a mise version that supports `mise install --locked`; upgrade or select a supported mise version.'
+        )
+      }
+    }
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
@@ -369,14 +396,19 @@ async function setEnvVars(): Promise<void> {
   const logLevel = core.getInput('log_level')
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
-  // The input outranks MISE_DATA_DIR in miseDir(), so mise must use it too or
-  // tools would install outside the directory that is cached. Export even when
-  // a step-level MISE_DATA_DIR already matches, since that value does not
-  // reach later steps.
-  const dataDir = core.getInput('mise_dir')
-  if (dataDir) {
+  if (getCacheMode() === 'verified-downloads') {
+    // Do not restore installed trees in verified-downloads mode.
+    const dataDir = freshMiseDataDir()
     core.info(`Setting MISE_DATA_DIR=${dataDir}`)
     core.exportVariable('MISE_DATA_DIR', dataDir)
+  } else {
+    // Preserve the historical behavior: an explicit mise_dir overrides the
+    // environment and must also be exported to later workflow steps.
+    const dataDir = core.getInput('mise_dir')
+    if (dataDir) {
+      core.info(`Setting MISE_DATA_DIR=${dataDir}`)
+      core.exportVariable('MISE_DATA_DIR', dataDir)
+    }
   }
 
   setupGitHubToken()
@@ -391,9 +423,21 @@ async function setEnvVars(): Promise<void> {
   }
 }
 
-async function restoreMiseCache(): Promise<string | undefined> {
+async function restoreMiseCache(
+  cacheMode = getCacheMode()
+): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
-  const cachePath = miseDir()
+  let cachePath: string
+  if (cacheMode === 'verified-downloads') {
+    const cacheRoot = miseCacheDir()
+    cachePath = miseDownloadCacheDir()
+    // Mise creates this directory lazily. Creating it here also lets actions/cache
+    // restore an empty cache safely when no downloads have been cached yet.
+    await fs.promises.mkdir(cachePath, { recursive: true })
+    core.exportVariable('MISE_CACHE_DIR', cacheRoot)
+  } else {
+    cachePath = miseDir()
+  }
 
   // Use custom cache key if provided, otherwise use default template
   const cacheKeyTemplate =
@@ -401,7 +445,7 @@ async function restoreMiseCache(): Promise<string | undefined> {
   const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate)
 
   core.saveState('PRIMARY_KEY', primaryKey)
-  core.saveState('MISE_DIR', cachePath)
+  core.saveState('MISE_CACHE_PATH', cachePath)
 
   const cacheKey = await cache.restoreCache([cachePath], primaryKey)
   core.setOutput('cache-hit', Boolean(cacheKey))
@@ -1391,6 +1435,7 @@ function getCwd(): string {
 }
 
 async function shouldUseLockedInstall(): Promise<boolean> {
+  if (getCacheMode() === 'verified-downloads') return true
   if (core.getInput('tool_versions') || core.getInput('mise_toml')) return false
   if (!(await miseSupportsLockedInstall())) return false
   return hasMiseLockFile(getCwd())
@@ -1414,6 +1459,44 @@ async function miseSupportsLockedInstall(): Promise<boolean> {
     `${stdout}\n${stderr}`
   )
   return supportsLockedInstall
+}
+
+function getCacheMode(): 'installed' | 'verified-downloads' {
+  const mode = core.getInput('cache_mode') || 'installed'
+  if (mode !== 'installed' && mode !== 'verified-downloads') {
+    throw new Error(
+      `Invalid cache_mode '${mode}'. Expected 'installed' or 'verified-downloads'.`
+    )
+  }
+  return mode
+}
+
+async function validateVerifiedDownloadsInputs(): Promise<void> {
+  if (hasExplicitMiseDataDir(core.getInput('mise_dir'), process.env)) {
+    throw new Error(
+      '`cache_mode: verified-downloads` requires a fresh per-run data directory and cannot be used with `mise_dir` or `MISE_DATA_DIR`.'
+    )
+  }
+  if (!core.getBooleanInput('install')) {
+    throw new Error(
+      '`cache_mode: verified-downloads` requires `install: true` so the action can run mise with lockfile enforcement.'
+    )
+  }
+  if (core.getBooleanInput('bootstrap')) {
+    throw new Error(
+      '`cache_mode: verified-downloads` does not support `bootstrap: true`; use the locked `mise install` flow instead.'
+    )
+  }
+  if (core.getInput('tool_versions') || core.getInput('mise_toml')) {
+    throw new Error(
+      '`cache_mode: verified-downloads` requires a checked-in mise lockfile; it cannot be used with `tool_versions` or `mise_toml` inputs.'
+    )
+  }
+  if (!(await hasMiseLockFile(getCwd()))) {
+    throw new Error(
+      '`cache_mode: verified-downloads` requires a mise lockfile in or above the working directory. Run `mise lock` and commit the generated lockfile.'
+    )
+  }
 }
 
 function hasMiseLockFile(startDir: string): boolean {
@@ -1484,7 +1567,7 @@ function miseDir(): string {
 
 async function saveCache(cacheKey: string): Promise<void> {
   await core.group(`Saving mise cache`, async () => {
-    const cachePath = miseDir()
+    const cachePath = core.getState('MISE_CACHE_PATH') || miseDownloadCacheDir()
 
     if (!fs.existsSync(cachePath)) {
       throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
@@ -1493,7 +1576,7 @@ async function saveCache(cacheKey: string): Promise<void> {
     const cacheId = await cache.saveCache([cachePath], cacheKey)
     if (cacheId === -1) return
 
-    core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
+    core.info(`mise cache saved from ${cachePath} with key: ${cacheKey}`)
   })
 }
 
@@ -1530,7 +1613,11 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   const bootstrap = core.getBooleanInput('bootstrap')
   const bootstrapSkip = core.getInput('bootstrap_skip')
   const bootstrapArgs = core.getInput('bootstrap_args')
-  const cacheKeyPrefix = core.getInput('cache_key_prefix') || 'mise-v1'
+  const cacheKeyPrefix =
+    core.getInput('cache_key_prefix') ||
+    (getCacheMode() === 'verified-downloads'
+      ? 'mise-verified-downloads-v1'
+      : 'mise-v1')
   const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
   const platform = `${await getTarget()}-${getRunnerImageId()}`
 

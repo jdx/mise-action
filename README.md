@@ -25,6 +25,7 @@ jobs:
           bootstrap_skip: "tools,task" # [default: ""] comma-separated parts to skip when bootstrapping
           bootstrap_args: "--yes" # [default: ""] additional arguments to `mise bootstrap`
           cache: true # [default: true] cache mise using GitHub's cache
+          cache_mode: installed # [default: installed] or verified-downloads (lockfile required)
           cache_save_post: false # [default: false] save the cache in the post step, after later steps install more tools
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
@@ -91,7 +92,7 @@ persisting mise's PATH changes.
 
 ## Outputs
 
-- `cache-hit`: `true` if the mise cache was restored.
+- `cache-hit`: `true` if a mise cache was restored.
 - `versions`: JSON of the active, installed tools. Each tool maps to a list of `{version, requested_version, install_path, source}`.
 - One output per tool with its resolved version (for example `steps.mise.outputs.bun`), for tools whose name is a valid output name. Tools like `npm:@scope/pkg` are only in `versions`.
 
@@ -133,24 +134,64 @@ You can customize the cache key used by the action:
 - uses: jdx/mise-action@v4
   with:
     cache_key: "my-custom-cache-key"  # Override the entire cache key
-    cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
+    cache_key_prefix: "mise-v1"              # Or change the prefix (default depends on cache_mode)
 ```
+
+The default `cache_mode: installed` preserves the original behavior: the action
+caches mise's data directory, including installed tools, and restores that
+directory on later runs. For workflows that prefer not to trust cached installed
+trees, use `cache_mode: verified-downloads`:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    cache_mode: verified-downloads
+```
+
+This mode requires a checked-in mise lockfile and a mise version that supports
+`mise install --locked`; it fails instead of silently falling back if either is
+missing. It caches only mise's download CAS (`$MISE_CACHE_DIR/downloads-cas`)
+and uses a fresh data directory by default, so installed tools are reinstalled
+and source-built tools may need recompiling. A lockfile pins checksums for
+artifacts represented with checksums; this is not a claim that every possible
+backend/artifact has a checksum. `cache-hit` indicates a download-cache hit in
+this mode, not restored installed tools. The binary cache remains separately
+checksum/signature verified. `cache: false` skips action restore/save; in
+`verified-downloads` mode mise's download CAS remains enabled, which allows an
+external cache action to manage it. Setting `MISE_DOWNLOAD_CACHE=0` explicitly
+disables mise's CAS and skips action restore/save in that mode too.
 
 ### Using Another Cache Action
 
-The built-in cache uses GitHub's cache. To store the cache elsewhere (for example with [runs-on/cache](https://github.com/runs-on/cache) and S3), turn the built-in cache off and cache the mise data directory yourself with any action that has the `actions/cache` interface:
+The default `installed` mode uses GitHub's cache for mise's data directory. To
+store it elsewhere (for example with
+[runs-on/cache](https://github.com/runs-on/cache) and S3), turn the built-in
+cache off and cache the directory yourself:
 
 ```yaml
 - uses: runs-on/cache@v4
   with:
-    path: ~/.local/share/mise
-    key: mise-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('**/mise.toml', '**/.mise.toml', '**/mise.*.toml', '**/.mise.*.toml', '**/mise.lock', '**/.mise.lock', '**/mise.*.lock', '**/.tool-versions') }}
+    path: ~/.cache/mise/downloads-cas
+    key: mise-verified-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock') }}
 - uses: jdx/mise-action@v4
   with:
     cache: false
+    cache_mode: verified-downloads
 ```
 
-The path to cache is mise's data directory, `~/.local/share/mise` by default (`%LOCALAPPDATA%\mise` on Windows). The action uses the first of these that is set: its `mise_dir` input, then `MISE_DATA_DIR`, then `$XDG_DATA_HOME/mise`, then the default above. When `mise_dir` is set, the action also exports it as `MISE_DATA_DIR` so mise installs tools into the cached directory; mise's state directory is unaffected (set `MISE_STATE_DIR` to move it). If several are set, `path` must be the directory that wins in that order. Build the key from your config files as above (list every config name your repo uses, including environment-specific `mise.<env>.toml` files, since the key must change whenever the tools do), and add anything else that should invalidate it (`install_args`, `MISE_ENV`, the runner image).
+The example path uses the Linux default. If you set `MISE_CACHE_DIR` or
+`XDG_CACHE_HOME`, use the corresponding
+`$MISE_CACHE_DIR/downloads-cas` or `$XDG_CACHE_HOME/mise/downloads-cas` path
+instead. On macOS and Windows, use the platform's mise cache directory. The
+default `installed` mode instead caches the mise data directory, usually
+`~/.local/share/mise` (`%LOCALAPPDATA%\\mise` on Windows). The action uses the
+first of its `mise_dir` input, `MISE_DATA_DIR`, `$XDG_DATA_HOME/mise`, then the
+platform default. When `mise_dir` is set, it is also exported as `MISE_DATA_DIR`.
+For `verified-downloads`, use the `cache_mode` input as shown so the action
+uses the CAS path. `cache: false` disables only this action's GitHub restore
+and save; mise's CAS stays enabled for the external cache action. This mode
+rejects `mise_dir` and `MISE_DATA_DIR` overrides to guarantee a fresh installed
+data directory each run.
 
 ### Template Variables in Cache Keys
 
@@ -199,23 +240,9 @@ This gives you full control over cache invalidation based on the specific aspect
 
 Rust has a known cache interaction because mise installs Rust through `rustup`.
 
-mise records that Rust is installed in its own data directory, but `rustup` keeps the toolchain, components (`rustfmt`, `clippy`, ...), and targets in `~/.rustup` and `~/.cargo`. The action only caches the mise data directory, so a cache restore can bring back mise's "installed" marker without the toolchain or its components. GitHub-hosted runners also ship their own `rustup`, which mise may reuse instead of installing its own.
+mise records that Rust is installed in its own data directory, but `rustup` keeps the toolchain, components (`rustfmt`, `clippy`, ...), and targets in `~/.rustup` and `~/.cargo`. In the default `installed` cache mode, the action caches mise's data directory, not rustup's state. In `verified-downloads` mode, it caches downloads only and reinstalls tools on each run. GitHub-hosted runners also ship their own `rustup`, which mise may reuse instead of installing its own.
 
-With mise 2026.9.2 or newer, `mise install` (the action's default) notices this and repairs it: it checks the rustup toolchain and its components and re-downloads whatever is missing instead of trusting the marker. Later steps no longer fail with errors like a missing `rustfmt`. The remaining cost is that the toolchain is downloaded again on every run, because rustup's state isn't cached. With older mise versions, or when the action doesn't run `mise install` (`install: false`), the restored marker is trusted and those errors can still happen.
-
-Two ways to avoid the re-download:
-
-1. Keep rustup's state inside the mise data directory so it is cached together with it. This is complete, but the cache can get large (around 2.5 GB with several components and targets):
-
-   ```yaml
-   env:
-     MISE_RUSTUP_HOME: /home/runner/.local/share/mise/rustup # macOS: /Users/runner/...
-     MISE_CARGO_HOME: /home/runner/.local/share/mise/cargo
-   ```
-
-   These are the Linux paths (macOS runners use `/Users/runner/...`). On Windows the action caches `%LOCALAPPDATA%\mise` by default, so on GitHub-hosted Windows runners use `C:\Users\runneradmin\AppData\Local\mise\rustup` and `C:\Users\runneradmin\AppData\Local\mise\cargo` (on other runners, the same paths under that runner's `%LOCALAPPDATA%`). If you customize `mise_dir`, `MISE_DATA_DIR`, or `XDG_DATA_HOME`, keep these paths under the same directory.
-
-2. Cache the Rust build outputs separately. A Rust cache such as [Swatinem/rust-cache](https://github.com/Swatinem/rust-cache) caches the cargo registry and `target/`, not the toolchain, so it works alongside mise managing Rust: mise reinstalls the toolchain on each run (see above) and the cache covers the expensive part. If you would rather not download the toolchain at all, install Rust with `rustup` (or a dedicated action) and remove `rust` from `mise.toml` / `.tool-versions` (or keep it only in a config the CI job doesn't use, for example behind `MISE_ENV`), because the action runs `mise install` by default and would otherwise install Rust through mise and cache its install record again.
+With mise 2026.9.2 or newer, `mise install` (the action's default) checks the rustup toolchain and its components and repairs anything missing. In `verified-downloads` mode, the cache can avoid transferring some artifacts, but the Rust toolchain and its state are not restored; source-built tools may also need recompiling. A Rust cache such as [Swatinem/rust-cache](https://github.com/Swatinem/rust-cache) can cache the cargo registry and `target/` separately. If you would rather not install Rust through mise, use `rustup` (or a dedicated action) and remove `rust` from the mise config used by the job.
 
 See [jdx/mise-action#215](https://github.com/jdx/mise-action/issues/215) for the discussion.
 
