@@ -149,10 +149,10 @@ mise's download content-addressable store (CAS), not installed tool trees:
     cache_mode: verified-downloads
 ```
 
-This mode requires a checked-in mise lockfile and mise `2025.11.11` or newer,
-which supports `mise install --locked`. The action uses that locked install
-flow and fails instead of silently falling back if either requirement is
-missing. It caches
+This mode requires a checked-in mise lockfile and mise `2026.10.7` or newer,
+which supports the download CAS with lockfile-verified downloads. The action
+uses `mise install --locked` and fails instead of silently falling back if
+either requirement is missing. It caches
 only mise's download CAS (`$MISE_CACHE_DIR/downloads-cas`) and uses a fresh data
 directory for each action invocation. Consequently, tools are reinstalled on
 each run and source-built tools may need recompiling; this mode can be slower

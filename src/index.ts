@@ -15,8 +15,9 @@ import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
 import {
-  MINIMUM_LOCKED_INSTALL_VERSION,
-  supportsLockedInstall as miseVersionSupportsLockedInstall
+  MINIMUM_VERIFIED_DOWNLOADS_VERSION,
+  supportsLockedInstall as miseVersionSupportsLockedInstall,
+  supportsVerifiedDownloads as miseVersionSupportsVerifiedDownloads
 } from './mise-version.js'
 import {
   freshMiseDataDir,
@@ -125,10 +126,13 @@ async function run(): Promise<void> {
     const autoUpdate = core.getBooleanInput('auto_update')
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
     await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate)
-    supportsLockedInstall = await detectLockedInstallSupport()
-    if (isVerifiedDownloadsMode(cacheMode) && !supportsLockedInstall) {
+    const versionOutput = await getMiseVersionOutput()
+    supportsLockedInstall = miseVersionSupportsLockedInstall(versionOutput)
+    supportsVerifiedDownloads =
+      miseVersionSupportsVerifiedDownloads(versionOutput)
+    if (isVerifiedDownloadsMode(cacheMode) && !supportsVerifiedDownloads) {
       throw new Error(
-        `\`cache_mode: verified-downloads\` requires mise >= ${MINIMUM_LOCKED_INSTALL_VERSION} for \`mise install --locked\`; set the \`version\` input to ${MINIMUM_LOCKED_INSTALL_VERSION} or newer.`
+        `\`cache_mode: verified-downloads\` requires mise >= ${MINIMUM_VERIFIED_DOWNLOADS_VERSION} for lockfile-verified downloads; set the \`version\` input to ${MINIMUM_VERIFIED_DOWNLOADS_VERSION} or newer.`
       )
     }
     await setEnvVars()
@@ -1291,6 +1295,7 @@ async function setMiseToml(): Promise<void> {
 
 const testMise = async (): Promise<number> => mise(['--version'])
 let supportsLockedInstall: boolean | undefined
+let supportsVerifiedDownloads: boolean | undefined
 
 const miseInstall = async (): Promise<number> => {
   const installArgs = core.getInput('install_args').trim()
@@ -1447,7 +1452,7 @@ async function shouldUseLockedInstall(): Promise<boolean> {
   return hasMiseLockFile(getCwd())
 }
 
-async function detectLockedInstallSupport(): Promise<boolean> {
+async function getMiseVersionOutput(): Promise<string> {
   const { stdout, stderr } = await exec.getExecOutput('mise', ['--version'], {
     cwd: getCwd(),
     env: { ...process.env, NO_COLOR: '1' },
@@ -1455,14 +1460,7 @@ async function detectLockedInstallSupport(): Promise<boolean> {
     silent: true
   })
 
-  const versionOutput = `${stdout}\n${stderr}`
-  const supported = miseVersionSupportsLockedInstall(versionOutput)
-  if (!supported) {
-    core.warning(
-      `Could not confirm that mise supports locked installs from version output: ${versionOutput.trim() || '(empty)'}`
-    )
-  }
-  return supported
+  return `${stdout}\n${stderr}`
 }
 
 function getCacheMode(): 'installed' | 'verified-downloads' {

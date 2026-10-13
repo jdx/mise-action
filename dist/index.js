@@ -92174,6 +92174,7 @@ function buildInstallCommand(installArgs, useLocked, useMonorepo) {
     ].join(' ');
 }
 
+const MINIMUM_VERIFIED_DOWNLOADS_VERSION = '2026.10.7';
 const MINIMUM_LOCKED_INSTALL_VERSION = '2025.11.11';
 /** Parse `mise --version`, including the platform suffix on current releases. */
 function parseMiseVersion(output) {
@@ -92182,11 +92183,17 @@ function parseMiseVersion(output) {
 }
 /** Return true only when a recognized mise release is at or above the minimum. */
 function supportsLockedInstall$1(versionOutput) {
+    return isAtLeast(versionOutput, MINIMUM_LOCKED_INSTALL_VERSION);
+}
+function supportsVerifiedDownloads$1(versionOutput) {
+    return isAtLeast(versionOutput, MINIMUM_VERIFIED_DOWNLOADS_VERSION);
+}
+function isAtLeast(versionOutput, minimumVersion) {
     const version = parseMiseVersion(versionOutput);
     if (!version)
         return false;
     const actual = version.split('.').map(Number);
-    const minimum = MINIMUM_LOCKED_INSTALL_VERSION.split('.').map(Number);
+    const minimum = minimumVersion.split('.').map(Number);
     for (let i = 0; i < minimum.length; i++) {
         if (actual[i] !== minimum[i])
             return actual[i] > minimum[i];
@@ -92321,9 +92328,12 @@ async function run() {
         const autoUpdate = getBooleanInput('auto_update');
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
         await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate);
-        supportsLockedInstall = await detectLockedInstallSupport();
-        if (isVerifiedDownloadsMode(cacheMode) && !supportsLockedInstall) {
-            throw new Error(`\`cache_mode: verified-downloads\` requires mise >= ${MINIMUM_LOCKED_INSTALL_VERSION} for \`mise install --locked\`; set the \`version\` input to ${MINIMUM_LOCKED_INSTALL_VERSION} or newer.`);
+        const versionOutput = await getMiseVersionOutput();
+        supportsLockedInstall = supportsLockedInstall$1(versionOutput);
+        supportsVerifiedDownloads =
+            supportsVerifiedDownloads$1(versionOutput);
+        if (isVerifiedDownloadsMode(cacheMode) && !supportsVerifiedDownloads) {
+            throw new Error(`\`cache_mode: verified-downloads\` requires mise >= ${MINIMUM_VERIFIED_DOWNLOADS_VERSION} for lockfile-verified downloads; set the \`version\` input to ${MINIMUM_VERIFIED_DOWNLOADS_VERSION} or newer.`);
         }
         await setEnvVars();
         if (getBooleanInput('reshim')) {
@@ -93254,6 +93264,7 @@ async function setMiseToml() {
 }
 const testMise = async () => mise(['--version']);
 let supportsLockedInstall;
+let supportsVerifiedDownloads;
 const miseInstall = async () => {
     const installArgs = getInput('install_args').trim();
     const useLocked = await shouldUseLockedInstall();
@@ -93382,19 +93393,14 @@ async function shouldUseLockedInstall() {
         return false;
     return hasMiseLockFile(getCwd());
 }
-async function detectLockedInstallSupport() {
+async function getMiseVersionOutput() {
     const { stdout, stderr } = await getExecOutput('mise', ['--version'], {
         cwd: getCwd(),
         env: { ...process.env, NO_COLOR: '1' },
         ignoreReturnCode: true,
         silent: true
     });
-    const versionOutput = `${stdout}\n${stderr}`;
-    const supported = supportsLockedInstall$1(versionOutput);
-    if (!supported) {
-        warning(`Could not confirm that mise supports locked installs from version output: ${versionOutput.trim() || '(empty)'}`);
-    }
-    return supported;
+    return `${stdout}\n${stderr}`;
 }
 function getCacheMode() {
     const mode = getInput('cache_mode') || 'installed';
