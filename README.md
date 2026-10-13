@@ -20,6 +20,7 @@ jobs:
           # minimum_release_age: 7d # default: 24h; use 0s to disable the delay
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
+          monorepo: true # [default: true] add `--monorepo` when monorepo.config_roots is configured
           bootstrap: false # [default: false] run `mise bootstrap` instead of `mise install`
           bootstrap_skip: "tools,task" # [default: ""] comma-separated parts to skip when bootstrapping
           bootstrap_args: "--yes" # [default: ""] additional arguments to `mise bootstrap`
@@ -299,6 +300,14 @@ will be added automatically unless you already included it yourself.
 This auto-detection is intended for repo-managed config files. If you provide
 `mise_toml` or `tool_versions` inputs, the action does not automatically force
 locked mode.
+
+## Monorepo installs
+
+When the mise configuration defines `[monorepo].config_roots`, the action
+automatically adds `--monorepo` to `mise install` so tools configured across
+the monorepo are installed. This is enabled by default and does nothing for
+repositories without that setting. Set `monorepo: false` to opt out. You can
+also pass `--monorepo` explicitly through `install_args`.
 
 ## Bootstrap
 
