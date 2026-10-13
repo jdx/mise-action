@@ -11,3 +11,12 @@ export function cacheKeyToSave(
 ): string | undefined {
   return restoredKey === primaryKey ? undefined : primaryKey
 }
+
+/** Prefer action state, then the restore path retained in this process. */
+export function cachePathToSave(
+  statePath: string | undefined,
+  processPath: string | undefined,
+  fallbackPath: string
+): string {
+  return statePath || processPath || fallbackPath
+}

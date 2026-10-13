@@ -92016,6 +92016,10 @@ var libExports = requireLib();
 function cacheKeyToSave(primaryKey, restoredKey) {
     return restoredKey === primaryKey ? undefined : primaryKey;
 }
+/** Prefer action state, then the restore path retained in this process. */
+function cachePathToSave(statePath, processPath, fallbackPath) {
+    return statePath || processPath || fallbackPath;
+}
 
 /** Authenticate this action; persist a token only when explicitly requested. */
 function setupGitHubToken() {
@@ -92276,6 +92280,7 @@ const MISE_MINISIGN_PUBLIC_KEY = 'RWTC3g8W3z4RZK3V3qv7fa1QY4JEWyBtqIHW+85QlJpZc5
 const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 };
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const verifiedShasums = new Map();
+let restoredMiseCachePath;
 let cachedDownloadTool;
 const DOWNLOAD_RETRIES = 5;
 const DOWNLOAD_RETRY_DELAY_MS = 2000;
@@ -92610,6 +92615,9 @@ async function restoreMiseCache(cacheMode = getCacheMode()) {
     else {
         cachePath = miseDir();
     }
+    // Retain this for saves in the main action process. GITHUB_STATE is only
+    // rehydrated for the post-step process, so getState() is empty here.
+    restoredMiseCachePath = cachePath;
     // Use custom cache key if provided, otherwise use default template
     const cacheKeyTemplate = getInput('cache_key') || DEFAULT_CACHE_KEY_TEMPLATE;
     const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
@@ -93487,7 +93495,7 @@ function miseDir() {
 }
 async function saveCache(cacheKey) {
     await group(`Saving mise cache`, async () => {
-        const cachePath = getState('MISE_CACHE_PATH') || miseDownloadCacheDir();
+        const cachePath = cachePathToSave(getState('MISE_CACHE_PATH'), restoredMiseCachePath, isVerifiedDownloadsMode() ? miseDownloadCacheDir() : miseDir());
         if (!fs.existsSync(cachePath)) {
             throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
         }

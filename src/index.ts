@@ -8,7 +8,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
-import { cacheKeyToSave } from './cache-save.js'
+import { cacheKeyToSave, cachePathToSave } from './cache-save.js'
 import { setupGitHubToken } from './github-token.js'
 import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
@@ -68,6 +68,7 @@ const MISE_MINISIGN_PUBLIC_KEY =
 const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 }
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex')
 const verifiedShasums = new Map<string, string>()
+let restoredMiseCachePath: string | undefined
 
 type DownloadTool = 'curl' | 'wget'
 let cachedDownloadTool: DownloadTool | undefined
@@ -448,6 +449,9 @@ async function restoreMiseCache(
   } else {
     cachePath = miseDir()
   }
+  // Retain this for saves in the main action process. GITHUB_STATE is only
+  // rehydrated for the post-step process, so getState() is empty here.
+  restoredMiseCachePath = cachePath
 
   // Use custom cache key if provided, otherwise use default template
   const cacheKeyTemplate =
@@ -1575,7 +1579,11 @@ function miseDir(): string {
 
 async function saveCache(cacheKey: string): Promise<void> {
   await core.group(`Saving mise cache`, async () => {
-    const cachePath = core.getState('MISE_CACHE_PATH') || miseDownloadCacheDir()
+    const cachePath = cachePathToSave(
+      core.getState('MISE_CACHE_PATH'),
+      restoredMiseCachePath,
+      isVerifiedDownloadsMode() ? miseDownloadCacheDir() : miseDir()
+    )
 
     if (!fs.existsSync(cachePath)) {
       throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
