@@ -33,6 +33,8 @@ jobs:
           token: ${{ secrets.RELEASE_PLZ_GITHUB_TOKEN }}
           persist-credentials: false
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          cache: false
       - run: mise run release-plz
         env:
           DRY_RUN: 0
