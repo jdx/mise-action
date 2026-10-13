@@ -164,8 +164,6 @@ Don't restore a cache in a workflow that publishes artifacts. A cache written by
 
 Setting GitHub's `cache-mode: none` on the workflow or job also works. The action honors it, so it skips both restore and save, as do other steps that use the cache.
 
-[zizmor](https://docs.zizmor.sh/audits/#cache-poisoning)'s `cache-poisoning` audit flags this action in release workflows (tag pushes, `release` events, and jobs that use a publishing action) because `cache` is on by default. `cache: false` or `cache-mode: none` clears the finding. A literal `cache: false` is the most reliable form; zizmor also understands simple conditions such as `cache: ${{ !startsWith(github.ref, 'refs/tags/') }}`.
-
 ### Template Variables in Cache Keys
 
 When using `cache_key`, you can use template variables to reference internal values:
