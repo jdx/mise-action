@@ -67,6 +67,10 @@ example:
 That checksum is specific to mise `v2026.10.2` and the workflow's runner
 platform; use the matching checksum for your chosen version and platform.
 
+Renovate can update the `version` and matching `sha256` inputs together when
+its GitHub Actions manager is enabled and configured to do so; this is not
+enabled by every Renovate configuration.
+
 Also pin actions such as `jdx/mise-action` and `actions/checkout` to full commit
 SHAs, grant only the workflow permissions it needs (use `permissions: {}` as a
 starting point), and set `persist-credentials: false` on checkout when later
