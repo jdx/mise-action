@@ -152,6 +152,20 @@ The built-in cache uses GitHub's cache. To store the cache elsewhere (for exampl
 
 The path to cache is mise's data directory, `~/.local/share/mise` by default (`%LOCALAPPDATA%\mise` on Windows). The action uses the first of these that is set: its `mise_dir` input, then `MISE_DATA_DIR`, then `$XDG_DATA_HOME/mise`, then the default above. When `mise_dir` is set, the action also exports it as `MISE_DATA_DIR` so mise installs tools into the cached directory; mise's state directory is unaffected (set `MISE_STATE_DIR` to move it). If several are set, `path` must be the directory that wins in that order. Build the key from your config files as above (list every config name your repo uses, including environment-specific `mise.<env>.toml` files, since the key must change whenever the tools do), and add anything else that should invalidate it (`install_args`, `MISE_ENV`, the runner image).
 
+### Release workflows
+
+Don't restore a cache in a workflow that publishes artifacts. A cache written by a lower-privilege workflow, such as a pull request build, can put files of an attacker's choosing into the release, and this action's cache holds installed tools. Turn it off in release jobs:
+
+```yaml
+- uses: jdx/mise-action@v5
+  with:
+    cache: false
+```
+
+Setting GitHub's `cache-mode: none` on the workflow or job also works. The action honors it, so it skips both restore and save, as do other steps that use the cache.
+
+[zizmor](https://docs.zizmor.sh/audits/#cache-poisoning)'s `cache-poisoning` audit flags this action in release workflows (tag pushes, `release` events, and jobs that use a publishing action) because `cache` is on by default. `cache: false` or `cache-mode: none` clears the finding. A literal `cache: false` is the most reliable form; zizmor also understands simple conditions such as `cache: ${{ !startsWith(github.ref, 'refs/tags/') }}`.
+
 ### Template Variables in Cache Keys
 
 When using `cache_key`, you can use template variables to reference internal values:
