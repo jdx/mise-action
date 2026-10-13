@@ -43,9 +43,15 @@ test('caches only the download CAS and isolates default installed data by run', 
   )
   assert.equal(
     freshMiseDataDir(
-      { RUNNER_TEMP: '/tmp', GITHUB_RUN_ID: '123', GITHUB_RUN_ATTEMPT: '2' }
+      {
+        RUNNER_TEMP: '/tmp',
+        GITHUB_RUN_ID: '123',
+        GITHUB_RUN_ATTEMPT: '2'
+      },
+      undefined,
+      '456'
     ),
-    '/tmp/mise-action-data/123-2'
+    '/tmp/mise-action-data/123-2-456'
   )
 })
 
@@ -60,5 +66,17 @@ test('recognizes mise download-cache disable values', () => {
 test('detects explicit data directory overrides that could restore installed tools', () => {
   assert.equal(hasExplicitMiseDataDir('/custom/mise', {}), true)
   assert.equal(hasExplicitMiseDataDir('', { MISE_DATA_DIR: '/custom/data' }), true)
+  assert.equal(
+    hasExplicitMiseDataDir('', {
+      MISE_DATA_DIR: '/action-managed',
+      MISE_ACTION_DATA_DIR: '/action-managed'
+    }),
+    false
+  )
+  assert.equal(hasExplicitMiseDataDir('', { MISE_INSTALLS_DIR: '/custom/installs' }), true)
+  assert.equal(
+    hasExplicitMiseDataDir('', { MISE_INSTALL_STORE_DIR: '/custom/store' }),
+    true
+  )
   assert.equal(hasExplicitMiseDataDir('', {}), false)
 })

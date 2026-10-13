@@ -25,7 +25,6 @@ jobs:
           bootstrap_skip: "tools,task" # [default: ""] comma-separated parts to skip when bootstrapping
           bootstrap_args: "--yes" # [default: ""] additional arguments to `mise bootstrap`
           cache: true # [default: true] cache mise using GitHub's cache
-          cache_mode: installed # [default: installed] or verified-downloads (lockfile required)
           cache_save_post: false # [default: false] save the cache in the post step, after later steps install more tools
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
@@ -137,29 +136,37 @@ You can customize the cache key used by the action:
     cache_key_prefix: "mise-v1"              # Or change the prefix (default depends on cache_mode)
 ```
 
+### Verified download cache
+
 The default `cache_mode: installed` preserves the original behavior: the action
 caches mise's data directory, including installed tools, and restores that
-directory on later runs. For workflows that prefer not to trust cached installed
-trees, use `cache_mode: verified-downloads`:
+directory on later runs. `cache_mode: verified-downloads` instead caches only
+mise's download content-addressable store (CAS), not installed tool trees:
 
 ```yaml
-- uses: jdx/mise-action@v4
+- uses: jdx/mise-action@v5
   with:
     cache_mode: verified-downloads
 ```
 
-This mode requires a checked-in mise lockfile and a mise version that supports
-`mise install --locked`; it fails instead of silently falling back if either is
-missing. It caches only mise's download CAS (`$MISE_CACHE_DIR/downloads-cas`)
-and uses a fresh data directory by default, so installed tools are reinstalled
-and source-built tools may need recompiling. A lockfile pins checksums for
-artifacts represented with checksums; this is not a claim that every possible
+This mode requires a checked-in mise lockfile and mise `2025.11.11` or newer,
+which supports `mise install --locked`. The action uses that locked install
+flow and fails instead of silently falling back if either requirement is
+missing. It caches
+only mise's download CAS (`$MISE_CACHE_DIR/downloads-cas`) and uses a fresh data
+directory for each action invocation. Consequently, tools are reinstalled on
+each run and source-built tools may need recompiling; this mode can be slower
+than the default when tools must be built from source. A lockfile pins checksums
+for artifacts represented with checksums; this is not a claim that every possible
 backend/artifact has a checksum. `cache-hit` indicates a download-cache hit in
 this mode, not restored installed tools. The binary cache remains separately
 checksum/signature verified. `cache: false` skips action restore/save; in
 `verified-downloads` mode mise's download CAS remains enabled, which allows an
 external cache action to manage it. Setting `MISE_DOWNLOAD_CACHE=0` explicitly
-disables mise's CAS and skips action restore/save in that mode too.
+disables mise's CAS and skips action restore/save in that mode too. This mode
+cannot be combined with caller-provided `mise_dir`, `MISE_DATA_DIR`,
+`MISE_INSTALLS_DIR`, or `MISE_INSTALL_STORE_DIR`, since those can point to
+existing installed tool trees.
 
 ### Using Another Cache Action
 
@@ -173,7 +180,7 @@ cache off and cache the directory yourself:
   with:
     path: ~/.cache/mise/downloads-cas
     key: mise-verified-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock') }}
-- uses: jdx/mise-action@v4
+- uses: jdx/mise-action@v5
   with:
     cache: false
     cache_mode: verified-downloads

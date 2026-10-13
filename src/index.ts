@@ -15,6 +15,10 @@ import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
 import {
+  MINIMUM_LOCKED_INSTALL_VERSION,
+  supportsLockedInstall as miseVersionSupportsLockedInstall
+} from './mise-version.js'
+import {
   freshMiseDataDir,
   hasExplicitMiseDataDir,
   isDownloadCacheDisabled,
@@ -78,7 +82,7 @@ async function run(): Promise<void> {
     await setMiseToml()
 
     const cacheMode = getCacheMode()
-    if (cacheMode === 'verified-downloads') {
+    if (isVerifiedDownloadsMode(cacheMode)) {
       await validateVerifiedDownloadsInputs()
     }
 
@@ -88,7 +92,7 @@ async function run(): Promise<void> {
       // external cache actions may still populate mise's download CAS.
       core.setOutput('cache-hit', false)
     } else if (
-      cacheMode === 'verified-downloads' &&
+      isVerifiedDownloadsMode(cacheMode) &&
       isDownloadCacheDisabled(process.env.MISE_DOWNLOAD_CACHE)
     ) {
       core.info('MISE_DOWNLOAD_CACHE is disabled; skipping download cache')
@@ -121,12 +125,11 @@ async function run(): Promise<void> {
     const autoUpdate = core.getBooleanInput('auto_update')
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
     await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate)
-    if (cacheMode === 'verified-downloads') {
-      if (!(await miseSupportsLockedInstall())) {
-        throw new Error(
-          '`cache_mode: verified-downloads` requires a mise version that supports `mise install --locked`; upgrade or select a supported mise version.'
-        )
-      }
+    supportsLockedInstall = await detectLockedInstallSupport()
+    if (isVerifiedDownloadsMode(cacheMode) && !supportsLockedInstall) {
+      throw new Error(
+        `\`cache_mode: verified-downloads\` requires mise >= ${MINIMUM_LOCKED_INSTALL_VERSION} for \`mise install --locked\`; set the \`version\` input to ${MINIMUM_LOCKED_INSTALL_VERSION} or newer.`
+      )
     }
     await setEnvVars()
     if (core.getBooleanInput('reshim')) {
@@ -396,11 +399,14 @@ async function setEnvVars(): Promise<void> {
   const logLevel = core.getInput('log_level')
   if (logLevel) set('MISE_LOG_LEVEL', logLevel)
 
-  if (getCacheMode() === 'verified-downloads') {
+  if (isVerifiedDownloadsMode()) {
     // Do not restore installed trees in verified-downloads mode.
     const dataDir = freshMiseDataDir()
     core.info(`Setting MISE_DATA_DIR=${dataDir}`)
     core.exportVariable('MISE_DATA_DIR', dataDir)
+    // GITHUB_ENV values survive subsequent steps; identify this value so a
+    // second invocation can distinguish it from a caller-provided override.
+    core.exportVariable('MISE_ACTION_DATA_DIR', dataDir)
   } else {
     // Preserve the historical behavior: an explicit mise_dir overrides the
     // environment and must also be exported to later workflow steps.
@@ -428,7 +434,7 @@ async function restoreMiseCache(
 ): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   let cachePath: string
-  if (cacheMode === 'verified-downloads') {
+  if (isVerifiedDownloadsMode(cacheMode)) {
     const cacheRoot = miseCacheDir()
     cachePath = miseDownloadCacheDir()
     // Mise creates this directory lazily. Creating it here also lets actions/cache
@@ -1435,30 +1441,28 @@ function getCwd(): string {
 }
 
 async function shouldUseLockedInstall(): Promise<boolean> {
-  if (getCacheMode() === 'verified-downloads') return true
+  if (isVerifiedDownloadsMode()) return true
   if (core.getInput('tool_versions') || core.getInput('mise_toml')) return false
-  if (!(await miseSupportsLockedInstall())) return false
+  if (!supportsLockedInstall) return false
   return hasMiseLockFile(getCwd())
 }
 
-async function miseSupportsLockedInstall(): Promise<boolean> {
-  if (supportsLockedInstall !== undefined) return supportsLockedInstall
+async function detectLockedInstallSupport(): Promise<boolean> {
+  const { stdout, stderr } = await exec.getExecOutput('mise', ['--version'], {
+    cwd: getCwd(),
+    env: { ...process.env, NO_COLOR: '1' },
+    ignoreReturnCode: true,
+    silent: true
+  })
 
-  const { stdout, stderr } = await exec.getExecOutput(
-    'mise',
-    ['install', '--help'],
-    {
-      cwd: getCwd(),
-      env: { ...process.env, NO_COLOR: '1' },
-      ignoreReturnCode: true,
-      silent: true
-    }
-  )
-
-  supportsLockedInstall = /(^|\s)--locked(?:[\s,]|$)/m.test(
-    `${stdout}\n${stderr}`
-  )
-  return supportsLockedInstall
+  const versionOutput = `${stdout}\n${stderr}`
+  const supported = miseVersionSupportsLockedInstall(versionOutput)
+  if (!supported) {
+    core.warning(
+      `Could not confirm that mise supports locked installs from version output: ${versionOutput.trim() || '(empty)'}`
+    )
+  }
+  return supported
 }
 
 function getCacheMode(): 'installed' | 'verified-downloads' {
@@ -1471,10 +1475,16 @@ function getCacheMode(): 'installed' | 'verified-downloads' {
   return mode
 }
 
+function isVerifiedDownloadsMode(
+  cacheMode = getCacheMode()
+): cacheMode is 'verified-downloads' {
+  return cacheMode === 'verified-downloads'
+}
+
 async function validateVerifiedDownloadsInputs(): Promise<void> {
   if (hasExplicitMiseDataDir(core.getInput('mise_dir'), process.env)) {
     throw new Error(
-      '`cache_mode: verified-downloads` requires a fresh per-run data directory and cannot be used with `mise_dir` or `MISE_DATA_DIR`.'
+      '`cache_mode: verified-downloads` requires isolated mise directories and cannot be used with `mise_dir`, caller-provided `MISE_DATA_DIR`, `MISE_INSTALLS_DIR`, or `MISE_INSTALL_STORE_DIR`.'
     )
   }
   if (!core.getBooleanInput('install')) {

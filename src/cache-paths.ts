@@ -27,11 +27,18 @@ export function miseDownloadCacheDir(
 /** Per-run default data directory prevents trusting installed trees from prior runs. */
 export function freshMiseDataDir(
   env: NodeJS.ProcessEnv = process.env,
-  tempDir = env.RUNNER_TEMP || os.tmpdir()
+  tempDir = env.RUNNER_TEMP || os.tmpdir(),
+  invocationId = `${process.pid}`
 ): string {
   const runId = env.GITHUB_RUN_ID || `local-${process.pid}`
   const attempt = env.GITHUB_RUN_ATTEMPT || '1'
-  return path.join(tempDir, 'mise-action-data', `${runId}-${attempt}`)
+  // Action environment exports persist to later steps, so multiple invocations
+  // in one job need distinct install trees even though run ID/attempt match.
+  return path.join(
+    tempDir,
+    'mise-action-data',
+    `${runId}-${attempt}-${invocationId}`
+  )
 }
 
 /** Verified-downloads must not reuse caller-selected installed tool trees. */
@@ -39,7 +46,15 @@ export function hasExplicitMiseDataDir(
   miseDirInput: string,
   env: NodeJS.ProcessEnv = process.env
 ): boolean {
-  return Boolean(miseDirInput || env.MISE_DATA_DIR)
+  const actionManagedDir = env.MISE_ACTION_DATA_DIR
+  const callerDataDir =
+    env.MISE_DATA_DIR && env.MISE_DATA_DIR !== actionManagedDir
+  return Boolean(
+    miseDirInput ||
+    callerDataDir ||
+    env.MISE_INSTALLS_DIR ||
+    env.MISE_INSTALL_STORE_DIR
+  )
 }
 
 /** Recognize the false values accepted by mise's boolean environment settings. */
