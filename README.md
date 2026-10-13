@@ -154,7 +154,7 @@ The path to cache is mise's data directory, `~/.local/share/mise` by default (`%
 
 ### Release workflows
 
-Don't restore a cache in a workflow that publishes artifacts. A cache written by a lower-privilege workflow, such as a pull request build, can put files of an attacker's choosing into the release, and this action's cache holds installed tools. Turn it off in release jobs:
+Don't restore a cache in a workflow that publishes artifacts. A release job can restore caches written on the default branch, so a lower-trust workflow that can write there, such as one triggered by `pull_request_target`, `workflow_run` or `issue_comment` that runs untrusted code, can put files of an attacker's choosing into the release. An ordinary `pull_request` build only writes to its own merge-ref scope, which a release job doesn't restore. This action's cache holds installed tools. Turn it off in release jobs:
 
 ```yaml
 - uses: jdx/mise-action@v5
