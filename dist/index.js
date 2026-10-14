@@ -92123,6 +92123,47 @@ function selectMiseRelease(index, cutoff) {
     return selected;
 }
 
+/**
+ * URLs a file from a mise release can be downloaded from, in the order they
+ * should be tried.
+ *
+ * mise.jdx.dev mirrors each release under `v<version>/` with the same file
+ * names as the GitHub release. Old releases are pruned from it, so the GitHub
+ * release is always the last resort. `fetchFromGitHub` skips the mirror.
+ */
+function miseReleaseUrls(version, fileName, fetchFromGitHub) {
+    const githubUrl = `https://github.com/jdx/mise/releases/download/v${version}/${fileName}`;
+    if (fetchFromGitHub) {
+        return [githubUrl];
+    }
+    return [`https://mise.jdx.dev/v${version}/${fileName}`, githubUrl];
+}
+/**
+ * Download from the first source that works.
+ *
+ * Every source but the last is tried once without retries, so a missing file
+ * (an HTTP 404 for a pruned release) or a network failure moves on to the next
+ * source immediately. The last source is downloaded with retries.
+ *
+ * Only the download goes through the fallback. Callers verify the result
+ * afterwards, so a checksum or signature mismatch fails instead of being
+ * retried from another source.
+ */
+async function downloadFromFirstAvailable(sources, download, onFallback) {
+    if (sources.length === 0) {
+        throw new Error('No download sources');
+    }
+    for (let i = 0; i < sources.length - 1; i++) {
+        try {
+            return await download(sources[i], false);
+        }
+        catch (err) {
+            onFallback(sources[i], sources[i + 1], err);
+        }
+    }
+    return download(sources[sources.length - 1], true);
+}
+
 // Outputs that already mean something else, and so can't be a tool's name.
 const RESERVED_OUTPUTS = new Set(['cache-hit', 'versions']);
 // Only names a workflow can reference as `steps.<id>.outputs.<name>`.
@@ -92226,6 +92267,8 @@ const MISE_MINISIGN_PUBLIC_KEY = 'RWTC3g8W3z4RZK3V3qv7fa1QY4JEWyBtqIHW+85QlJpZc5
 const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 };
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const verifiedShasums = new Map();
+// Set from the `fetch_from_github` input before mise is downloaded.
+let fetchMiseFromGitHub = false;
 let cachedDownloadTool;
 const DOWNLOAD_RETRIES = 5;
 const DOWNLOAD_RETRY_DELAY_MS = 2000;
@@ -92558,6 +92601,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     const miseBinDir = path$1.join(miseDir(), 'bin');
     const miseBinPath = path$1.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     const miseShimPath = path$1.join(miseBinDir, 'mise-shim.exe');
+    fetchMiseFromGitHub = fetchFromGitHub;
     const useMinimumReleaseAge = !version && Boolean(minimumReleaseAge.trim());
     if (version && minimumReleaseAge.trim()) {
         info('`minimum_release_age` is ignored because an explicit mise version was provided');
@@ -92669,13 +92713,14 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
                     ? '.tar.zst'
                     : '.tar.gz';
         const assetName = `mise-v${resolvedVersion}-${target}${ext}`;
-        // The CDN only exposes the newest binary. An age-filtered release must be
-        // downloaded by its exact version from GitHub.
-        const fetchFromCdn = !fetchFromGitHub && !version && !useMinimumReleaseAge;
-        const githubUrl = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/${assetName}`;
-        const cdnUrl = `https://mise.jdx.dev/mise-latest-${target}${process.platform === 'win32' ? '.exe' : ''}`;
-        const installFromUrl = async (downloadUrl, downloadAssetName, checksumAssetName, extractArchive) => {
-            await withDownloadedMiseAsset(downloadUrl, resolvedVersion, downloadAssetName, checksumAssetName, async (downloadPath, tempDir) => {
+        // `mise-latest-<target>` is only the newest raw binary. A pinned or
+        // age-filtered release is downloaded by its exact version, from the
+        // mise.jdx.dev release mirror first and the GitHub release as a fallback.
+        const fetchLatestFromCdn = !fetchFromGitHub && !version && !useMinimumReleaseAge;
+        const releaseUrls = miseReleaseUrls(resolvedVersion, assetName, fetchFromGitHub);
+        const latestCdnUrl = `https://mise.jdx.dev/mise-latest-${target}${process.platform === 'win32' ? '.exe' : ''}`;
+        const installFromUrls = async (downloadUrls, downloadAssetName, checksumAssetName, extractArchive) => {
+            await withDownloadedMiseAsset(downloadUrls, resolvedVersion, downloadAssetName, checksumAssetName, async (downloadPath, tempDir) => {
                 if (!extractArchive) {
                     await mv(downloadPath, miseBinPath);
                     await exec('chmod', ['+x', miseBinPath]);
@@ -92703,19 +92748,19 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
             });
         };
         try {
-            if (fetchFromCdn) {
-                await installFromUrl(cdnUrl, rawAssetName, rawAssetName, false);
+            if (fetchLatestFromCdn) {
+                await installFromUrls([latestCdnUrl], rawAssetName, rawAssetName, false);
             }
             else {
-                await installFromUrl(githubUrl, assetName, assetName, true);
+                await installFromUrls(releaseUrls, assetName, assetName, true);
             }
         }
         catch (err) {
-            if (!fetchFromCdn) {
+            if (!fetchLatestFromCdn) {
                 throw err;
             }
-            warning(`Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`);
-            await installFromUrl(githubUrl, assetName, assetName, true);
+            warning(`Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified ${assetName} release asset.`);
+            await installFromUrls(releaseUrls, assetName, assetName, true);
         }
     }
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
@@ -92815,8 +92860,7 @@ async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
     try {
         const installedVersion = version || (await getInstalledMiseVersion(miseBinPath));
         const archiveName = `mise-v${installedVersion}-${await getTarget()}.zip`;
-        const url = `https://github.com/jdx/mise/releases/download/v${installedVersion}/${archiveName}`;
-        await withDownloadedMiseAsset(url, installedVersion, archiveName, archiveName, async (downloadPath, tempDir) => {
+        await withDownloadedMiseAsset(miseReleaseUrls(installedVersion, archiveName, fetchMiseFromGitHub), installedVersion, archiveName, archiveName, async (downloadPath, tempDir) => {
             await withExtractedZip(downloadPath, tempDir, async (extractDir) => {
                 await installWindowsMiseShim(path$1.join(extractDir, 'mise', 'bin'), miseShimPath);
             });
@@ -92841,20 +92885,20 @@ async function getDownloadTool() {
     info(`Using ${cachedDownloadTool} to download mise`);
     return cachedDownloadTool;
 }
-async function retryDownload(fn) {
+async function retryDownload(fn, retries = DOWNLOAD_RETRIES) {
     for (let retry = 0;; retry++) {
         try {
             return await fn();
         }
         catch (err) {
-            if (err instanceof NonRetryableError || retry === DOWNLOAD_RETRIES)
+            if (err instanceof NonRetryableError || retry >= retries)
                 throw err;
             warning(`Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`);
             await new Promise(resolve => setTimeout(resolve, DOWNLOAD_RETRY_DELAY_MS));
         }
     }
 }
-async function downloadToFile(url, filePath) {
+async function downloadToFile(url, filePath, retry = true) {
     const tool = await getDownloadTool();
     await retryDownload(async () => {
         if (tool === 'curl') {
@@ -92863,12 +92907,12 @@ async function downloadToFile(url, filePath) {
         else {
             await exec('wget', ['-qO', filePath, url]);
         }
-    });
+    }, retry ? DOWNLOAD_RETRIES : 0);
 }
 async function downloadText(url) {
     return (await downloadRawText(url)).trim();
 }
-async function downloadRawText(url) {
+async function downloadRawText(url, retry = true) {
     const tool = await getDownloadTool();
     return retryDownload(async () => {
         if (tool === 'curl') {
@@ -92881,13 +92925,18 @@ async function downloadRawText(url) {
             silent: true
         });
         return rsp.stdout;
-    });
+    }, retry ? DOWNLOAD_RETRIES : 0);
 }
-async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName, fn) {
+function logDownloadFallback(failed, next, err) {
+    info(`Could not download ${failed} (${errorMessage(err)}); trying ${next}`);
+}
+async function withDownloadedMiseAsset(urls, version, assetName, verifyAssetName, fn) {
     const tempDir = await fs.promises.mkdtemp(path$1.join(os.tmpdir(), 'mise-action-'));
     try {
         const downloadPath = path$1.join(tempDir, assetName);
-        await downloadToFile(url, downloadPath);
+        // Only the download falls back to another source. The file is verified
+        // once, whichever source it came from, so a mismatch fails the step.
+        await downloadFromFirstAvailable(urls, async (url, retry) => downloadToFile(url, downloadPath, retry), logDownloadFallback);
         if (verifyAssetName) {
             await verifyDownloadedMiseAsset(downloadPath, version, verifyAssetName);
         }
@@ -92957,10 +93006,12 @@ async function verifiedMiseShasums(version) {
         return cached;
     }
     try {
-        const shasumsUrl = `https://github.com/jdx/mise/releases/download/v${version}/SHASUMS256.txt`;
-        const minisigUrl = `${shasumsUrl}.minisig`;
-        const shasums = await downloadRawText(shasumsUrl);
-        const minisig = await downloadRawText(minisigUrl);
+        // The signature is checked after the download, whichever source the
+        // files came from, and a bad signature is not retried elsewhere.
+        const [shasums, minisig] = await downloadFromFirstAvailable(miseReleaseUrls(version, 'SHASUMS256.txt', fetchMiseFromGitHub), async (shasumsUrl, retry) => [
+            await downloadRawText(shasumsUrl, retry),
+            await downloadRawText(`${shasumsUrl}.minisig`, retry)
+        ], logDownloadFallback);
         verifyMinisign(shasums, minisig);
         verifiedShasums.set(version, shasums);
         return shasums;

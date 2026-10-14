@@ -18,6 +18,7 @@ jobs:
         with:
           version: 2026.3.10 # [default: newest release at least 24h old] mise version to install
           # minimum_release_age: 7d # default: 24h; use 0s to disable the delay
+          fetch_from_github: false # [default: false] download mise from GitHub releases instead of mise.jdx.dev
           install: true # [default: true] run `mise install`
           install_args: "bun" # [default: ""] additional arguments to `mise install`
           monorepo: true # [default: true] add `--monorepo` when monorepo.config_roots is configured
@@ -78,6 +79,20 @@ Set `minimum_release_age: 0s` to select the latest stable release without a dela
 Release selection reads the public CDN release index and does not consume GitHub
 API quota. If the index is unavailable
 or invalid, the action fails rather than bypassing the age policy.
+
+## Where mise is downloaded from
+
+The action downloads the mise release archive for the selected version from
+`https://mise.jdx.dev/v<version>/`, a mirror of the GitHub release with the same
+file names. If the mirror does not have that version (old releases are pruned
+from it) or cannot be reached, the action downloads it from the GitHub release
+instead. The signed `SHASUMS256.txt` is fetched the same way.
+
+The archive is verified against the minisign-signed checksums (or the `sha256`
+input) after the download, whichever host it came from. A checksum or signature
+mismatch fails the step; it is not retried from the other host.
+
+Set `fetch_from_github: true` to download only from GitHub releases.
 This input controls the mise binary; it does not set the release-age policy for
 tools installed by mise.
 

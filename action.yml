@@ -119,8 +119,10 @@ inputs:
       A token value exports that credential instead, while this action continues to use github_token or env.MISE_GITHUB_TOKEN.
   fetch_from_github:
     required: false
-    default: "true"
-    description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.
+    default: "false"
+    description: |
+      If false (default), download mise from the mise.jdx.dev release mirror (https://mise.jdx.dev/v<version>/) and fall back to the GitHub release when the mirror does not have that version or is unreachable.
+      If true, always download mise and its signed checksums from GitHub releases.
   env:
     description: Automatically load mise environment variables for subsequent steps.
     required: false
