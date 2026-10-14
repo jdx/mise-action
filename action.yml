@@ -78,12 +78,16 @@ inputs:
     required: false
     default: "mise-v1"
     description: The prefix key to use for the cache, change this to invalidate the cache
+  cache_max_age_days:
+    required: false
+    default: "30"
+    description: Rebuild the cache from scratch at least this often, so a frequently used cache still picks up the latest mise and tools. Adds a period number to the default cache key. Set 0 to disable.
   cache_key:
     required: false
     description: |
       Override the complete cache key (ignores all other cache key options).
       Supports template variables: {{version}}, {{cache_key_prefix}}, {{platform}}, {{file_hash}},
-      {{mise_env}}, {{install_args_hash}}, {{bootstrap_hash}}, {{default}}, {{env.VAR_NAME}} for environment variables,
+      {{mise_env}}, {{install_args_hash}}, {{bootstrap_hash}}, {{cache_period}}, {{default}}, {{env.VAR_NAME}} for environment variables,
       and conditional logic like {{#if version}}...{{/if}}
   experimental:
     required: false

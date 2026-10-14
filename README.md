@@ -134,6 +134,7 @@ You can customize the cache key used by the action:
   with:
     cache_key: "my-custom-cache-key"  # Override the entire cache key
     cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
+    cache_max_age_days: 30                  # Rebuild the cache at least this often (default: 30, 0 disables)
 ```
 
 ### Using Another Cache Action
@@ -185,6 +186,7 @@ Available template variables:
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
 - `{{bootstrap_hash}}` - SHA256 hash of bootstrap mode, skip list, and args
 - `{{plugins_hash}}` - SHA256 hash of the `plugins` input (empty when unset)
+- `{{cache_period}}` - The current `cache_max_age_days` period number (empty when that is `0`)
 - `{{default}}` - The processed default cache key (useful for extending)
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.

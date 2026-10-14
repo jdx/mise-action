@@ -9,6 +9,7 @@ import * as os from 'os'
 import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
+import { cachePeriod } from './cache-period.js'
 import { setupGitHubToken } from './github-token.js'
 import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
@@ -47,7 +48,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
-  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
+  '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}{{#if cache_period}}-p{{cache_period}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}'
 
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/]
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/]
@@ -1601,7 +1602,10 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     mise_env: miseEnv,
     install_args_hash: installArgsHash,
     bootstrap_hash: bootstrapHash,
-    plugins_hash: pluginsHash
+    plugins_hash: pluginsHash,
+    cache_period: cachePeriod(
+      Number.parseInt(core.getInput('cache_max_age_days') || '30', 10)
+    )
   }
 
   // Calculate the default cache key by processing the default template
