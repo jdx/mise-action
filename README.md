@@ -136,7 +136,7 @@ You can customize the cache key used by the action:
     cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
 ```
 
-The default key also expires: it includes a period number, so the cache is rebuilt from scratch at least every `cache_max_age_days` days (default `30`, `0` disables) and picks up the latest mise. A custom `cache_key` replaces the default key and doesn't expire unless it includes `{{cache_period}}`:
+The default key also expires: it includes a period number, so the cache is rebuilt from scratch at least every `cache_max_age_days` days (default `30`, `0` disables) and picks up the latest mise. This only helps runners that start clean: a self-hosted runner that keeps the mise data directory between jobs keeps its installed mise across a rollover, so set `auto_update: true` there. A custom `cache_key` replaces the default key and doesn't expire unless it includes `{{cache_period}}`:
 
 ```yaml
 - uses: jdx/mise-action@v4
