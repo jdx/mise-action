@@ -92174,6 +92174,21 @@ function buildInstallCommand(installArgs, useLocked, useMonorepo) {
     ].join(' ');
 }
 
+/**
+ * The PATH entries mise manages, from the output of `mise env --paths`.
+ * mise versions without the flag exit non-zero; those return undefined so the
+ * caller derives the entries from the computed PATH instead.
+ */
+function parseManagedPaths(exitCode, stdout) {
+    if (exitCode !== 0)
+        return undefined;
+    return stdout.split(/\r?\n/).filter(Boolean);
+}
+/** Prefer the entries mise reported; derive them only when it did not. */
+function selectPathAdditions(managedPaths, derive) {
+    return managedPaths ?? derive();
+}
+
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -92347,6 +92362,7 @@ async function exportMiseEnv() {
                 cwd
             });
             const actualVars = JSON.parse(actualOutput.stdout);
+            const managedPaths = await getMiseManagedPaths(cwd);
             // Export environment variables and add only mise's PATH changes through
             // GITHUB_PATH. Exporting the complete computed PATH through GITHUB_ENV
             // would snapshot the runner environment and interfere with other actions.
@@ -92354,7 +92370,7 @@ async function exportMiseEnv() {
                 if (typeof value !== 'string')
                     continue;
                 if (key.toUpperCase() === 'PATH') {
-                    exportMisePath(value);
+                    exportMisePath(value, managedPaths);
                 }
                 else {
                     exportVariable(key, value);
@@ -92413,11 +92429,26 @@ function getMisePathAdditions(computedPath) {
     const currentSet = new Set(normalizedCurrent);
     return computedEntries.filter(entry => !currentSet.has(normalizePathEntry(entry)));
 }
-function exportMisePath(computedPath) {
+/**
+ * The PATH entries mise manages, as `mise env --paths` reports them. Older
+ * mise versions reject the flag, so this returns undefined for them and the
+ * caller derives the entries from the computed PATH instead.
+ */
+async function getMiseManagedPaths(cwd) {
+    if (!getBooleanInput('export_path'))
+        return undefined;
+    const output = await getExecOutput('mise', ['env', '--paths'], {
+        cwd,
+        silent: true,
+        ignoreReturnCode: true
+    });
+    return parseManagedPaths(output.exitCode, output.stdout);
+}
+function exportMisePath(computedPath, managedPaths) {
     if (!getBooleanInput('export_path'))
         return;
-    const additions = getMisePathAdditions(computedPath);
-    for (const entry of additions.reverse()) {
+    const additions = selectPathAdditions(managedPaths, () => getMisePathAdditions(computedPath));
+    for (const entry of additions.slice().reverse()) {
         info(`Adding ${entry} to PATH`);
         addPath(entry);
     }
@@ -92432,8 +92463,9 @@ async function exportMisePathFromJson(cwd) {
         });
         const vars = JSON.parse(output.stdout);
         const pathEntry = Object.entries(vars).find(([key, value]) => key.toUpperCase() === 'PATH' && typeof value === 'string');
-        if (pathEntry)
-            exportMisePath(pathEntry[1]);
+        if (pathEntry) {
+            exportMisePath(pathEntry[1], await getMiseManagedPaths(cwd));
+        }
     }
     catch {
         warning('Unable to export mise PATH entries from JSON output');

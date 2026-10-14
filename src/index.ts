@@ -14,6 +14,7 @@ import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
+import { parseManagedPaths, selectPathAdditions } from './managed-paths.js'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -207,6 +208,7 @@ async function exportMiseEnv(): Promise<void> {
         cwd
       })
       const actualVars = JSON.parse(actualOutput.stdout)
+      const managedPaths = await getMiseManagedPaths(cwd)
 
       // Export environment variables and add only mise's PATH changes through
       // GITHUB_PATH. Exporting the complete computed PATH through GITHUB_ENV
@@ -215,7 +217,7 @@ async function exportMiseEnv(): Promise<void> {
         if (typeof value !== 'string') continue
 
         if (key.toUpperCase() === 'PATH') {
-          exportMisePath(value)
+          exportMisePath(value, managedPaths)
         } else {
           core.exportVariable(key, value)
         }
@@ -285,11 +287,29 @@ function getMisePathAdditions(computedPath: string): string[] {
   )
 }
 
-function exportMisePath(computedPath: string): void {
+/**
+ * The PATH entries mise manages, as `mise env --paths` reports them. Older
+ * mise versions reject the flag, so this returns undefined for them and the
+ * caller derives the entries from the computed PATH instead.
+ */
+async function getMiseManagedPaths(cwd: string): Promise<string[] | undefined> {
+  if (!core.getBooleanInput('export_path')) return undefined
+
+  const output = await exec.getExecOutput('mise', ['env', '--paths'], {
+    cwd,
+    silent: true,
+    ignoreReturnCode: true
+  })
+  return parseManagedPaths(output.exitCode, output.stdout)
+}
+
+function exportMisePath(computedPath: string, managedPaths?: string[]): void {
   if (!core.getBooleanInput('export_path')) return
 
-  const additions = getMisePathAdditions(computedPath)
-  for (const entry of additions.reverse()) {
+  const additions = selectPathAdditions(managedPaths, () =>
+    getMisePathAdditions(computedPath)
+  )
+  for (const entry of additions.slice().reverse()) {
     core.info(`Adding ${entry} to PATH`)
     core.addPath(entry)
   }
@@ -308,7 +328,9 @@ async function exportMisePathFromJson(cwd: string): Promise<void> {
       ([key, value]) =>
         key.toUpperCase() === 'PATH' && typeof value === 'string'
     )
-    if (pathEntry) exportMisePath(pathEntry[1] as string)
+    if (pathEntry) {
+      exportMisePath(pathEntry[1] as string, await getMiseManagedPaths(cwd))
+    }
   } catch {
     core.warning('Unable to export mise PATH entries from JSON output')
   }
