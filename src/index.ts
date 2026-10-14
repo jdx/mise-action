@@ -1604,7 +1604,7 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
     bootstrap_hash: bootstrapHash,
     plugins_hash: pluginsHash,
     cache_period: cachePeriod(
-      Number.parseInt(core.getInput('cache_max_age_days') || '30', 10)
+      Number(core.getInput('cache_max_age_days').trim() || '30')
     )
   }
 

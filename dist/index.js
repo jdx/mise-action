@@ -93491,7 +93491,7 @@ async function processCacheKeyTemplate(template) {
         install_args_hash: installArgsHash,
         bootstrap_hash: bootstrapHash,
         plugins_hash: pluginsHash,
-        cache_period: cachePeriod(Number.parseInt(getInput('cache_max_age_days') || '30', 10))
+        cache_period: cachePeriod(Number(getInput('cache_max_age_days').trim() || '30'))
     };
     // Calculate the default cache key by processing the default template
     const defaultTemplate = libExports.compile(DEFAULT_CACHE_KEY_TEMPLATE);

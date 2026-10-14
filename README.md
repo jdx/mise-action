@@ -134,7 +134,15 @@ You can customize the cache key used by the action:
   with:
     cache_key: "my-custom-cache-key"  # Override the entire cache key
     cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
-    cache_max_age_days: 30                  # Rebuild the cache at least this often (default: 30, 0 disables)
+```
+
+The default key also expires: it includes a period number, so the cache is rebuilt from scratch at least every `cache_max_age_days` days (default `30`, `0` disables) and picks up the latest mise. A custom `cache_key` replaces the default key and doesn't expire unless it includes `{{cache_period}}`:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    cache_max_age_days: 14
+    cache_key: "my-key-{{cache_period}}-{{file_hash}}"
 ```
 
 ### Using Another Cache Action
