@@ -154,7 +154,7 @@ The path to cache is mise's data directory, `~/.local/share/mise` by default (`%
 
 ### Cache Validated Downloads
 
-For a cache that avoids restoring already-installed tools, cache mise's download artifacts instead. `mise.lock` records checksums for locked downloads; mise verifies downloads against those checksums, and only downloads with a checksum are reused from its downloads cache. Tools are unpacked and installed on each run, and source builds are compiled each time. See mise's [CI guidance](https://mise.jdx.dev/continuous-integration.html#cache-downloads-not-installs) for details.
+With a committed `mise.lock`, mise verifies cached downloads against lockfile checksums before use, so a poisoned or stale cache cannot change what gets installed. Only downloads with checksums are reused. Tools are unpacked and installed each run; source-built tools compile each time. See mise's [CI guidance](https://mise.jdx.dev/continuous-integration.html#cache-downloads-not-installs) for details.
 
 ```yaml
 - uses: actions/cache@v6
