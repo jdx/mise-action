@@ -140,6 +140,36 @@ jobs:
             exit 1
           fi
 
+  path_promoted_entry:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Put a mise env path on PATH before setup
+        shell: bash
+        run: |
+          for fixture in promoted added; do
+            mkdir -p "mise-env-path-$fixture"
+            printf '#!/usr/bin/env bash\necho %s\n' "$fixture" > "mise-env-path-$fixture/mise-path-order"
+            chmod +x "mise-env-path-$fixture/mise-path-order"
+          done
+          echo "$PWD/mise-env-path-promoted" >> "$GITHUB_PATH"
+      - name: Setup mise
+        uses: $/
+        with:
+          install: false
+          mise_toml: |
+            [env]
+            _.path = [
+              "{{config_root}}/mise-env-path-promoted",
+              "{{config_root}}/mise-env-path-added",
+            ]
+      - name: Check the promoted entry keeps its position
+        shell: bash
+        run: test "$(mise-path-order)" = "promoted"
+
   specific_version:
     timeout-minutes: 10
     runs-on: ubuntu-latest
@@ -669,6 +699,7 @@ jobs:
       - hk
       - test
       - path_opt_out
+      - path_promoted_entry
       - specific_version
       - minimum_release_age
       - checksum_failure

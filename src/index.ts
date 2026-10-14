@@ -14,6 +14,7 @@ import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
+import { getMisePathAdditions } from './path-additions.js'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -249,46 +250,10 @@ function exportMiseDotenv(dotenv: string): void {
   fs.appendFileSync(process.env.GITHUB_ENV!, withoutPath)
 }
 
-function normalizePathEntry(entry: string): string {
-  const normalized = path.normalize(entry)
-  return process.platform === 'win32' ? normalized.toLowerCase() : normalized
-}
-
-function getMisePathAdditions(computedPath: string): string[] {
-  const currentEntries = (process.env.PATH || '')
-    .split(path.delimiter)
-    .filter(Boolean)
-  const computedEntries = computedPath.split(path.delimiter).filter(Boolean)
-  const normalizedCurrent = currentEntries.map(normalizePathEntry)
-  const normalizedComputed = computedEntries.map(normalizePathEntry)
-
-  // mise prepends its tool and [env] _.path entries to the existing PATH.
-  // Prefer the prefix before the unchanged current PATH so entries that mise
-  // intentionally promotes retain their position.
-  if (normalizedCurrent.length > 0) {
-    for (
-      let index = 0;
-      index <= normalizedComputed.length - normalizedCurrent.length;
-      index++
-    ) {
-      const currentPathStartsHere = normalizedCurrent.every(
-        (entry, offset) => normalizedComputed[index + offset] === entry
-      )
-      if (currentPathStartsHere) return computedEntries.slice(0, index)
-    }
-  }
-
-  // Fall back to a set difference if mise normalized the inherited PATH.
-  const currentSet = new Set(normalizedCurrent)
-  return computedEntries.filter(
-    entry => !currentSet.has(normalizePathEntry(entry))
-  )
-}
-
 function exportMisePath(computedPath: string): void {
   if (!core.getBooleanInput('export_path')) return
 
-  const additions = getMisePathAdditions(computedPath)
+  const additions = getMisePathAdditions(process.env.PATH || '', computedPath)
   for (const entry of additions.reverse()) {
     core.info(`Adding ${entry} to PATH`)
     core.addPath(entry)
