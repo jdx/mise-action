@@ -136,6 +136,15 @@ You can customize the cache key used by the action:
     cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
 ```
 
+The default key also expires: it includes a period number, so the cache is rebuilt from scratch at least every `cache_max_age_days` days (default `30`, `0` disables) and picks up the latest mise. This only helps runners that start clean: a self-hosted runner that keeps the mise data directory between jobs keeps its installed mise across a rollover, so set `auto_update: true` there. A custom `cache_key` replaces the default key and doesn't expire unless it includes `{{cache_period}}`:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    cache_max_age_days: 14
+    cache_key: "my-key-{{cache_period}}-{{file_hash}}"
+```
+
 ### Using Another Cache Action
 
 The built-in cache uses GitHub's cache. To store the cache elsewhere (for example with [runs-on/cache](https://github.com/runs-on/cache) and S3), turn the built-in cache off and cache the mise data directory yourself with any action that has the `actions/cache` interface:
@@ -185,6 +194,7 @@ Available template variables:
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
 - `{{bootstrap_hash}}` - SHA256 hash of bootstrap mode, skip list, and args
 - `{{plugins_hash}}` - SHA256 hash of the `plugins` input (empty when unset)
+- `{{cache_period}}` - The current `cache_max_age_days` period number (empty when that is `0`)
 - `{{default}}` - The processed default cache key (useful for extending)
 
 Conditional logic is also supported using Handlebars syntax like `{{#if version}}...{{/if}}`.

@@ -92017,6 +92017,22 @@ function cacheKeyToSave(primaryKey, restoredKey) {
     return restoredKey === primaryKey ? undefined : primaryKey;
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+/**
+ * Number of whole `maxAgeDays` periods since the Unix epoch. Putting it in the
+ * cache key makes the cache roll over at most every `maxAgeDays`, so a cache
+ * that is hit often (and so never evicted by GitHub) still gets rebuilt with
+ * the latest mise. Returns an empty string when `maxAgeDays` is 0.
+ */
+function cachePeriod(maxAgeDays, now = Date.now()) {
+    if (!Number.isInteger(maxAgeDays) || maxAgeDays < 0) {
+        throw new Error(`cache_max_age_days must be a non-negative integer, got: ${maxAgeDays}`);
+    }
+    if (maxAgeDays === 0)
+        return '';
+    return String(Math.floor(now / MS_PER_DAY / maxAgeDays));
+}
+
 /** Authenticate this action; persist a token only when explicitly requested. */
 function setupGitHubToken() {
     const githubToken = getInput('github_token');
@@ -92218,7 +92234,7 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `**/.tool-versions`
 ];
 // Default cache key template
-const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
+const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}{{#if cache_period}}-p{{cache_period}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_DIR_MISE_LOCK_FILE_PATTERNS = [/^mise(?:\.[^.]+)?\.lock$/];
 const CONFIG_MISE_LOCK_FILE_PATTERNS = [/^config(?:\.[^.]+)?\.lock$/];
@@ -93474,7 +93490,8 @@ async function processCacheKeyTemplate(template) {
         mise_env: miseEnv,
         install_args_hash: installArgsHash,
         bootstrap_hash: bootstrapHash,
-        plugins_hash: pluginsHash
+        plugins_hash: pluginsHash,
+        cache_period: cachePeriod(Number(getInput('cache_max_age_days').trim() || '30'))
     };
     // Calculate the default cache key by processing the default template
     const defaultTemplate = libExports.compile(DEFAULT_CACHE_KEY_TEMPLATE);
