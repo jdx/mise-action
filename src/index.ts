@@ -14,6 +14,7 @@ import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
+import { parseManagedPaths, selectPathAdditions } from './managed-paths.js'
 
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
@@ -299,15 +300,16 @@ async function getMiseManagedPaths(cwd: string): Promise<string[] | undefined> {
     silent: true,
     ignoreReturnCode: true
   })
-  if (output.exitCode !== 0) return undefined
-  return output.stdout.split(/\r?\n/).filter(Boolean)
+  return parseManagedPaths(output.exitCode, output.stdout)
 }
 
 function exportMisePath(computedPath: string, managedPaths?: string[]): void {
   if (!core.getBooleanInput('export_path')) return
 
-  const additions = managedPaths ?? getMisePathAdditions(computedPath)
-  for (const entry of additions.reverse()) {
+  const additions = selectPathAdditions(managedPaths, () =>
+    getMisePathAdditions(computedPath)
+  )
+  for (const entry of additions.slice().reverse()) {
     core.info(`Adding ${entry} to PATH`)
     core.addPath(entry)
   }

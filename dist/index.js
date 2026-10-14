@@ -92174,6 +92174,21 @@ function buildInstallCommand(installArgs, useLocked, useMonorepo) {
     ].join(' ');
 }
 
+/**
+ * The PATH entries mise manages, from the output of `mise env --paths`.
+ * mise versions without the flag exit non-zero; those return undefined so the
+ * caller derives the entries from the computed PATH instead.
+ */
+function parseManagedPaths(exitCode, stdout) {
+    if (exitCode !== 0)
+        return undefined;
+    return stdout.split(/\r?\n/).filter(Boolean);
+}
+/** Prefer the entries mise reported; derive them only when it did not. */
+function selectPathAdditions(managedPaths, derive) {
+    return managedPaths ?? derive();
+}
+
 // Configuration file patterns for cache key generation
 const MISE_CONFIG_FILE_PATTERNS = [
     `**/.config/mise/config.toml`,
@@ -92427,15 +92442,13 @@ async function getMiseManagedPaths(cwd) {
         silent: true,
         ignoreReturnCode: true
     });
-    if (output.exitCode !== 0)
-        return undefined;
-    return output.stdout.split(/\r?\n/).filter(Boolean);
+    return parseManagedPaths(output.exitCode, output.stdout);
 }
 function exportMisePath(computedPath, managedPaths) {
     if (!getBooleanInput('export_path'))
         return;
-    const additions = managedPaths ?? getMisePathAdditions(computedPath);
-    for (const entry of additions.reverse()) {
+    const additions = selectPathAdditions(managedPaths, () => getMisePathAdditions(computedPath));
+    for (const entry of additions.slice().reverse()) {
         info(`Adding ${entry} to PATH`);
         addPath(entry);
     }
