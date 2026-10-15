@@ -138417,18 +138417,49 @@ async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName,
         await rmRF(tempDir);
     }
 }
-/** Downloads the packslip bundle; undefined when the release has none (404). */
+/**
+ * Downloads the packslip bundle with the same proxy-aware curl/wget as every
+ * other download; undefined when the release has none (HTTP 404). Any other
+ * failure throws, so a missing packslip is the only thing that falls back.
+ */
 async function fetchPackslipBundle(url) {
+    const tool = await getDownloadTool();
     return retryDownload(async () => {
-        const rsp = await fetch(url);
-        if (rsp.status === 404) {
+        const rsp = tool === 'curl'
+            ? await getExecOutput('curl', ['-sSL', '-w', '\n%{http_code}', url], { silent: true, ignoreReturnCode: true })
+            : await getExecOutput('wget', ['-qO-', '--server-response', url], {
+                silent: true,
+                ignoreReturnCode: true
+            });
+        if (tool === 'curl') {
+            const nl = rsp.stdout.lastIndexOf('\n');
+            const status = Number(rsp.stdout.slice(nl + 1));
+            if (status === 404)
+                return undefined;
+            if (rsp.exitCode === 0 && status >= 200 && status < 300) {
+                return rsp.stdout.slice(0, nl);
+            }
+            throwDownloadStatus(url, status || undefined, rsp.stderr);
+        }
+        if (rsp.exitCode === 0)
+            return rsp.stdout;
+        if (/HTTP\/\S+\s+404\b/.test(rsp.stderr))
             return undefined;
-        }
-        if (!rsp.ok) {
-            throw new Error(`HTTP ${rsp.status} fetching ${url}`);
-        }
-        return rsp.text();
+        const m = /HTTP\/\S+\s+(\d{3})/.exec(rsp.stderr);
+        throwDownloadStatus(url, m ? Number(m[1]) : undefined, rsp.stderr);
     });
+}
+// Permanent client errors will not change on retry; 408 and 429 might.
+function throwDownloadStatus(url, status, stderr) {
+    const msg = `Could not download ${url}${status ? ` (HTTP ${status})` : ''}: ${stderr.trim()}`;
+    if (status &&
+        status >= 400 &&
+        status < 500 &&
+        status !== 408 &&
+        status !== 429) {
+        throw new NonRetryableError(msg);
+    }
+    throw new Error(msg);
 }
 async function verifyDownloadedMiseAsset(filePath, version, assetName) {
     if (getInput('sha256')) {
