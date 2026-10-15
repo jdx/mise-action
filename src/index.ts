@@ -12,6 +12,8 @@ import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import { setupGitHubToken } from './github-token.js'
+import * as packslip from 'packslip'
+import { verifyAgainstPackslip } from './packslip.js'
 import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
@@ -939,12 +941,42 @@ async function withDownloadedMiseAsset(
   }
 }
 
+/** Downloads the packslip bundle; undefined when the release has none (404). */
+async function fetchPackslipBundle(url: string): Promise<string | undefined> {
+  return retryDownload(async () => {
+    const rsp = await fetch(url)
+    if (rsp.status === 404) {
+      return undefined
+    }
+    if (!rsp.ok) {
+      throw new Error(`HTTP ${rsp.status} fetching ${url}`)
+    }
+    return rsp.text()
+  })
+}
+
 async function verifyDownloadedMiseAsset(
   filePath: string,
   version: string,
   assetName: string
 ): Promise<void> {
   if (core.getInput('sha256')) {
+    return
+  }
+
+  // The signed packslip is the primary assertion. Releases without one fall
+  // through to the minisign checksums; a packslip that fails verification
+  // throws and never falls back to the weaker check.
+  if (
+    await verifyAgainstPackslip(
+      filePath,
+      version,
+      assetName,
+      fetchPackslipBundle,
+      packslip
+    )
+  ) {
+    core.info(`Verified ${assetName} against the signed packslip`)
     return
   }
 
