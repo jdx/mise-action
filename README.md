@@ -175,7 +175,19 @@ With a committed `mise.lock`, mise verifies cached downloads against lockfile ch
     cache: false
 ```
 
-The path is mise's default cache directory on Linux. On macOS, cache `~/Library/Caches/mise/downloads-cas`; on Windows, `%TEMP%\mise\downloads-cas`. If `MISE_CACHE_DIR` is set, cache `downloads-cas` under it. See mise's [directories](https://mise.jdx.dev/directories.html).
+The path is mise's default cache directory on Linux. On macOS, cache `~/Library/Caches/mise/downloads-cas`; on Windows, mise uses `%TEMP%\mise\downloads-cas` by default. `actions/cache` does not expand `%TEMP%`, so on Windows set `MISE_CACHE_DIR` and use the matching resolved path:
+
+```yaml
+env:
+  MISE_CACHE_DIR: ${{ runner.temp }}\mise
+steps:
+  - uses: actions/cache@v6
+    with:
+      path: ${{ runner.temp }}\mise\downloads-cas
+      key: mise-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock') }}
+```
+
+If you set `MISE_CACHE_DIR` to a different location, cache `downloads-cas` under it. See mise's [directories](https://mise.jdx.dev/directories.html).
 
 This is a separate cache from the action's built-in installed-tools cache. The action's `cache-hit` output describes only its built-in cache and does not report hits from this external downloads cache.
 
