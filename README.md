@@ -161,6 +161,24 @@ The built-in cache uses GitHub's cache. To store the cache elsewhere (for exampl
 
 The path to cache is mise's data directory, `~/.local/share/mise` by default (`%LOCALAPPDATA%\mise` on Windows). The action uses the first of these that is set: its `mise_dir` input, then `MISE_DATA_DIR`, then `$XDG_DATA_HOME/mise`, then the default above. When `mise_dir` is set, the action also exports it as `MISE_DATA_DIR` so mise installs tools into the cached directory; mise's state directory is unaffected (set `MISE_STATE_DIR` to move it). If several are set, `path` must be the directory that wins in that order. Build the key from your config files as above (list every config name your repo uses, including environment-specific `mise.<env>.toml` files, since the key must change whenever the tools do), and add anything else that should invalidate it (`install_args`, `MISE_ENV`, the runner image).
 
+### Cache Validated Downloads
+
+With a committed `mise.lock`, mise verifies cached downloads against lockfile checksums before use, so a poisoned or stale cache cannot change what gets installed. Only downloads with checksums are reused. Tools are unpacked and installed each run; source-built tools compile each time. See mise's [CI guidance](https://mise.jdx.dev/continuous-integration.html#cache-downloads-not-installs) for details.
+
+```yaml
+- uses: actions/cache@v6
+  with:
+    path: ~/.cache/mise/downloads-cas
+    key: mise-downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.lock') }}
+- uses: jdx/mise-action@v5
+  with:
+    cache: false
+```
+
+The path is mise's default cache directory on Linux. On macOS, cache `~/Library/Caches/mise/downloads-cas`; on Windows, `%TEMP%\mise\downloads-cas`. If `MISE_CACHE_DIR` is set, cache `downloads-cas` under it. See mise's [directories](https://mise.jdx.dev/directories.html).
+
+This is a separate cache from the action's built-in installed-tools cache. The action's `cache-hit` output describes only its built-in cache and does not report hits from this external downloads cache.
+
 ### Release workflows
 
 Don't restore a cache in a workflow that publishes artifacts. A release job can restore caches written on the default branch, so a lower-trust workflow that can write there, such as one triggered by `pull_request_target`, `workflow_run` or `issue_comment` that runs untrusted code, can put files of an attacker's choosing into the release. An ordinary `pull_request` build only writes to its own merge-ref scope, which a release job doesn't restore. This action's cache holds installed tools. Turn it off in release jobs:
