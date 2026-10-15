@@ -12,5 +12,7 @@
   "arrowParens": "avoid",
   "proseWrap": "always",
   "htmlWhitespaceSensitivity": "css",
-  "endOfLine": "lf"
+  "endOfLine": "lf",
+  "sortPackageJson": false,
+  "ignorePatterns": ["dist/", "node_modules/", "coverage/"]
 }

@@ -23,7 +23,7 @@ aube install --frozen-lockfile
 aubr all
 
 # Individual commands
-aubr format:write  # Format code with Prettier
+aubr format:write  # Format code with oxfmt
 aubr lint         # Run ESLint and format check
 aubr package      # Bundle with rollup for distribution
 
