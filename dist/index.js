@@ -92364,6 +92364,9 @@ class MiseIntegrityMismatchError extends Error {
 }
 async function run() {
     try {
+        // Fail on a bad budget before any cache call, not partway through the run.
+        cacheRetryBudgetMs('restore');
+        cacheRetryBudgetMs('save');
         await setToolVersions();
         await setMiseToml();
         let cacheKey;
@@ -92666,10 +92669,13 @@ async function setEnvVars() {
     }
 }
 /** Run a cache call, retrying while GitHub throttles it (see cache-retry.ts). */
-function retryCache(kind, op) {
+function cacheRetryBudgetMs(kind) {
     const input = `cache_${kind}_retry_budget`;
+    return parseDuration(getInput(input), input);
+}
+function retryCache(kind, op) {
     return withThrottleRetry(op, {
-        budgetMs: parseDuration(getInput(input), input),
+        budgetMs: cacheRetryBudgetMs(kind),
         onRetry: (delayMs, remainingMs) => info(`GitHub throttled the cache ${kind}; retrying in ${(delayMs / 1000).toFixed(1)}s (${(remainingMs / 1000).toFixed(1)}s of retry budget left)`)
     });
 }

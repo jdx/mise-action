@@ -70,6 +70,9 @@ class MiseIntegrityMismatchError extends Error {}
 
 async function run(): Promise<void> {
   try {
+    // Fail on a bad budget before any cache call, not partway through the run.
+    cacheRetryBudgetMs('restore')
+    cacheRetryBudgetMs('save')
     await setToolVersions()
     await setMiseToml()
 
@@ -416,13 +419,17 @@ async function setEnvVars(): Promise<void> {
 }
 
 /** Run a cache call, retrying while GitHub throttles it (see cache-retry.ts). */
+function cacheRetryBudgetMs(kind: 'restore' | 'save'): number {
+  const input = `cache_${kind}_retry_budget`
+  return parseDuration(core.getInput(input), input)
+}
+
 function retryCache<T>(
   kind: 'restore' | 'save',
   op: () => Promise<T>
 ): Promise<T> {
-  const input = `cache_${kind}_retry_budget`
   return withThrottleRetry(op, {
-    budgetMs: parseDuration(core.getInput(input), input),
+    budgetMs: cacheRetryBudgetMs(kind),
     onRetry: (delayMs, remainingMs) =>
       core.info(
         `GitHub throttled the cache ${kind}; retrying in ${(delayMs / 1000).toFixed(1)}s (${(remainingMs / 1000).toFixed(1)}s of retry budget left)`
