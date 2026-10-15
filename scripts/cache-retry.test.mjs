@@ -97,6 +97,7 @@ test('zero budget never retries', async () => {
   const r = await run([{ retryAfterMs: 1000 }, undefined], 0)
   assert.deepEqual(r.sleeps, [])
   assert.equal(r.calls, 1)
+  assert.equal(r.value, 1)
 })
 
 test('stops when the next delay exceeds the remaining budget', async () => {
@@ -105,11 +106,13 @@ test('stops when the next delay exceeds the remaining budget', async () => {
   const r = await run([t, t, t, t, undefined], 15000, 0.5)
   assert.deepEqual(r.sleeps, [6000, 6000])
   assert.equal(r.calls, 3)
+  assert.equal(r.value, 3)
 })
 
 test('a single delay larger than the budget does not retry', async () => {
   const r = await run([{ retryAfterMs: 90000 }, undefined], 60000)
   assert.equal(r.calls, 1)
+  assert.equal(r.value, 1)
 })
 
 test('captureWarnings collects warning commands and passes output through', async () => {
