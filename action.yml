@@ -74,6 +74,14 @@ inputs:
     required: false
     default: "false"
     description: if true, save the cache in the post step instead of right after install, so tools installed by later steps (e.g. monorepo sub-projects or task tools) are included. Only applies on a cache miss. The post step runs even if a later step fails, as the immediate save would have.
+  cache_restore_retry_budget:
+    required: false
+    default: "0s"
+    description: Total time to keep retrying a cache restore that GitHub throttles with HTTP 429, as a duration like `60s`. Each wait is at least the advertised Retry-After plus up to 2s of jitter and counts against the budget. `0s` disables retries. A cache miss is never retried.
+  cache_save_retry_budget:
+    required: false
+    default: "0s"
+    description: Total time to keep retrying a cache save that GitHub throttles with HTTP 429, as a duration like `60s`. Each wait is at least the advertised Retry-After plus up to 2s of jitter and counts against the budget. `0s` disables retries. A reservation conflict (another job is saving the same key) is never retried.
   cache_key_prefix:
     required: false
     default: "mise-v1"
@@ -124,7 +132,7 @@ inputs:
   fetch_from_github:
     required: false
     default: "true"
-    description: If true (default), fetch the mise binary from GitHub. If false and using the latest version, fetch from mise.jdx.dev instead.
+    description: If true (default), fetch the mise binary from GitHub, falling back to mise.jdx.dev when the latest version is requested and the GitHub download fails. If false and using the latest version, fetch from mise.jdx.dev first and fall back to GitHub. A pinned version is only ever fetched from GitHub. Downloads are verified against the signed checksums either way.
   env:
     description: Automatically load mise environment variables for subsequent steps.
     required: false

@@ -10,6 +10,7 @@ import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
+import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import { setupGitHubToken } from './github-token.js'
 import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
@@ -69,6 +70,9 @@ class MiseIntegrityMismatchError extends Error {}
 
 async function run(): Promise<void> {
   try {
+    // Fail on a bad budget before any cache call, not partway through the run.
+    cacheRetryBudgetMs('restore')
+    cacheRetryBudgetMs('save')
     await setToolVersions()
     await setMiseToml()
 
@@ -414,6 +418,25 @@ async function setEnvVars(): Promise<void> {
   }
 }
 
+/** Run a cache call, retrying while GitHub throttles it (see cache-retry.ts). */
+function cacheRetryBudgetMs(kind: 'restore' | 'save'): number {
+  const input = `cache_${kind}_retry_budget`
+  return parseDuration(core.getInput(input), input)
+}
+
+function retryCache<T>(
+  kind: 'restore' | 'save',
+  op: () => Promise<T>
+): Promise<T> {
+  return withThrottleRetry(op, {
+    budgetMs: cacheRetryBudgetMs(kind),
+    onRetry: (delayMs, remainingMs) =>
+      core.info(
+        `GitHub throttled the cache ${kind}; retrying in ${(delayMs / 1000).toFixed(1)}s (${(remainingMs / 1000).toFixed(1)}s of retry budget left)`
+      )
+  })
+}
+
 async function restoreMiseCache(): Promise<string | undefined> {
   core.startGroup('Restoring mise cache')
   const cachePath = miseDir()
@@ -426,7 +449,9 @@ async function restoreMiseCache(): Promise<string | undefined> {
   core.saveState('PRIMARY_KEY', primaryKey)
   core.saveState('MISE_DIR', cachePath)
 
-  const cacheKey = await cache.restoreCache([cachePath], primaryKey)
+  const cacheKey = await retryCache('restore', () =>
+    cache.restoreCache([cachePath], primaryKey)
+  )
   core.setOutput('cache-hit', Boolean(cacheKey))
 
   if (!cacheKey) {
@@ -657,6 +682,11 @@ async function setupMise(
         }
       )
     }
+    // The CDN only serves the newest binary, so it is a fallback only when
+    // that is what was asked for. It is verified against the signed checksums
+    // for `resolvedVersion` either way, so a newer CDN build fails the check
+    // rather than being trusted.
+    const cdnEligible = !version && !useMinimumReleaseAge
     try {
       if (fetchFromCdn) {
         await installFromUrl(cdnUrl, rawAssetName, rawAssetName, false)
@@ -664,13 +694,19 @@ async function setupMise(
         await installFromUrl(githubUrl, assetName, assetName, true)
       }
     } catch (err) {
-      if (!fetchFromCdn) {
+      if (fetchFromCdn) {
+        core.warning(
+          `Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`
+        )
+        await installFromUrl(githubUrl, assetName, assetName, true)
+      } else if (cdnEligible) {
+        core.warning(
+          `Could not install mise from GitHub: ${errorMessage(err)}. Falling back to the verified CDN binary.`
+        )
+        await installFromUrl(cdnUrl, rawAssetName, rawAssetName, false)
+      } else {
         throw err
       }
-      core.warning(
-        `Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`
-      )
-      await installFromUrl(githubUrl, assetName, assetName, true)
     }
   }
   await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion)
@@ -719,7 +755,7 @@ async function restoreMiseBinCache(
   paths: string[]
 ): Promise<void> {
   try {
-    if (await cache.restoreCache(paths, key)) {
+    if (await retryCache('restore', () => cache.restoreCache(paths, key))) {
       core.info(`mise binary restored from key: ${key}`)
     }
   } catch (err) {
@@ -729,7 +765,7 @@ async function restoreMiseBinCache(
 
 async function saveMiseBinCache(key: string, paths: string[]): Promise<void> {
   try {
-    await cache.saveCache(paths, key)
+    await retryCache('save', () => cache.saveCache(paths, key))
     core.info(`mise binary cached with key: ${key}`)
   } catch (err) {
     core.warning(`Failed to save mise binary cache: ${errorMessage(err)}`)
@@ -1513,7 +1549,9 @@ async function saveCache(cacheKey: string): Promise<void> {
       throw new Error(`Cache folder path does not exist on disk: ${cachePath}`)
     }
 
-    const cacheId = await cache.saveCache([cachePath], cacheKey)
+    const cacheId = await retryCache('save', () =>
+      cache.saveCache([cachePath], cacheKey)
+    )
     if (cacheId === -1) return
 
     core.info(`Cache saved from ${cachePath} with key: ${cacheKey}`)
