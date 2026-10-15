@@ -92033,6 +92033,114 @@ function cachePeriod(maxAgeDays, now = Date.now()) {
     return String(Math.floor(now / MS_PER_DAY / maxAgeDays));
 }
 
+/**
+ * Retry cache restores and saves that GitHub throttles with HTTP 429.
+ *
+ * `@actions/cache` swallows the 429: it logs a warning and reports a miss
+ * (restore) or `-1` (save), so callers can't see the error. Its warnings are
+ * the only signal, so `captureWarnings` records the `::warning::` commands
+ * written while an attempt runs and `detectThrottle` matches the messages
+ * `@actions/cache` emits for a 429. This depends on that wording; if it
+ * changes, throttling goes undetected and behavior falls back to no retries.
+ */
+const MAX_JITTER_MS = 2000;
+const DEFAULT_RETRY_AFTER_MS = 1000;
+/** Parse `60s`, `500ms`, `2m` or `1h`. A bare number is seconds. */
+function parseDuration(input, name = 'duration') {
+    const trimmed = input.trim();
+    if (trimmed === '')
+        return 0;
+    const match = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h)?$/i.exec(trimmed);
+    if (!match) {
+        throw new Error(`${name} must be a duration like 60s, 2m or 0s, got: ${input}`);
+    }
+    const unit = (match[2] ?? 's').toLowerCase();
+    const factor = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 }[unit];
+    return Math.round(Number(match[1]) * factor);
+}
+/**
+ * Find a throttle in the warnings emitted by one cache call. Returns
+ * `undefined` for anything else, including cache misses and reservation
+ * conflicts.
+ */
+function detectThrottle(warnings) {
+    const throttled = warnings.some(w => /^Failed to (?:restore|save): Rate limited:/.test(w) ||
+        /^Failed to (?:restore|save): .*\(429\)/.test(w));
+    if (!throttled)
+        return undefined;
+    for (const w of warnings) {
+        const m = /rate limit will reset in (\d+) seconds/.exec(w);
+        if (m)
+            return { retryAfterMs: Number(m[1]) * 1000 };
+    }
+    return {};
+}
+/**
+ * Run `attempt` until it isn't throttled or the next delay no longer fits in
+ * the budget. Each delay is `Retry-After` (1s when absent) plus jitter in
+ * [0, 2s], and the whole delay counts against the budget. When the budget
+ * runs out the last (throttled) result is returned unchanged, so the caller's
+ * existing fallback applies.
+ */
+async function retryOnThrottle(attempt, opts) {
+    const sleep = opts.sleep ?? ((ms) => new Promise(r => setTimeout(r, ms)));
+    const random = opts.random ?? Math.random;
+    let remaining = opts.budgetMs;
+    for (;;) {
+        const { value, throttle } = await attempt();
+        if (!throttle)
+            return value;
+        const delay = (throttle.retryAfterMs ?? DEFAULT_RETRY_AFTER_MS) +
+            Math.floor(random() * (MAX_JITTER_MS + 1));
+        if (delay > remaining)
+            return value;
+        remaining -= delay;
+        opts.onRetry?.(delay, remaining);
+        await sleep(delay);
+    }
+}
+/** Run `fn` and collect the `::warning::` messages it writes to stdout. */
+async function captureWarnings(fn) {
+    const warnings = [];
+    const original = process.stdout.write;
+    let pending = '';
+    const collect = (chunk) => {
+        pending += chunk;
+        const lines = pending.split(/\r?\n/);
+        pending = lines.pop() ?? '';
+        for (const line of lines) {
+            const m = /^::warning(?: [^:]*)?::(.*)$/.exec(line);
+            if (m)
+                warnings.push(decodeData(m[1]));
+        }
+    };
+    process.stdout.write = function (chunk, ...rest) {
+        collect(typeof chunk === 'string'
+            ? chunk
+            : Buffer.from(chunk).toString());
+        return original.call(process.stdout, chunk, ...rest);
+    };
+    try {
+        const value = await fn();
+        return { value, warnings };
+    }
+    finally {
+        process.stdout.write = original;
+    }
+}
+function decodeData(s) {
+    return s.replace(/%0D/gi, '\r').replace(/%0A/gi, '\n').replace(/%25/g, '%');
+}
+/** Call a cache operation, retrying while GitHub throttles it with a 429. */
+async function withThrottleRetry(op, opts) {
+    if (opts.budgetMs <= 0)
+        return op();
+    return retryOnThrottle(async () => {
+        const { value, warnings } = await captureWarnings(op);
+        return { value, throttle: detectThrottle(warnings) };
+    }, opts);
+}
+
 /** Authenticate this action; persist a token only when explicitly requested. */
 function setupGitHubToken() {
     const githubToken = getInput('github_token');
@@ -92552,6 +92660,14 @@ async function setEnvVars() {
         addPath(shimsDir);
     }
 }
+/** Run a cache call, retrying while GitHub throttles it (see cache-retry.ts). */
+function retryCache(kind, op) {
+    const input = `cache_${kind}_retry_budget`;
+    return withThrottleRetry(op, {
+        budgetMs: parseDuration(getInput(input), input),
+        onRetry: (delayMs, remainingMs) => info(`GitHub throttled the cache ${kind}; retrying in ${(delayMs / 1000).toFixed(1)}s (${(remainingMs / 1000).toFixed(1)}s of retry budget left)`)
+    });
+}
 async function restoreMiseCache() {
     startGroup('Restoring mise cache');
     const cachePath = miseDir();
@@ -92560,7 +92676,7 @@ async function restoreMiseCache() {
     const primaryKey = await processCacheKeyTemplate(cacheKeyTemplate);
     saveState('PRIMARY_KEY', primaryKey);
     saveState('MISE_DIR', cachePath);
-    const cacheKey = await restoreCache([cachePath], primaryKey);
+    const cacheKey = await retryCache('restore', () => restoreCache([cachePath], primaryKey));
     setOutput('cache-hit', Boolean(cacheKey));
     if (!cacheKey) {
         info(`mise cache not found for ${primaryKey}`);
@@ -92718,6 +92834,11 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
                 }
             });
         };
+        // The CDN only serves the newest binary, so it is a fallback only when
+        // that is what was asked for. It is verified against the signed checksums
+        // for `resolvedVersion` either way, so a newer CDN build fails the check
+        // rather than being trusted.
+        const cdnEligible = !version && !useMinimumReleaseAge;
         try {
             if (fetchFromCdn) {
                 await installFromUrl(cdnUrl, rawAssetName, rawAssetName, false);
@@ -92727,11 +92848,17 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
             }
         }
         catch (err) {
-            if (!fetchFromCdn) {
+            if (fetchFromCdn) {
+                warning(`Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`);
+                await installFromUrl(githubUrl, assetName, assetName, true);
+            }
+            else if (cdnEligible) {
+                warning(`Could not install mise from GitHub: ${errorMessage(err)}. Falling back to the verified CDN binary.`);
+                await installFromUrl(cdnUrl, rawAssetName, rawAssetName, false);
+            }
+            else {
                 throw err;
             }
-            warning(`Could not verify mise from the CDN: ${errorMessage(err)}. Falling back to the verified GitHub release asset.`);
-            await installFromUrl(githubUrl, assetName, assetName, true);
         }
     }
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
@@ -92772,7 +92899,7 @@ function readRecordedMiseVersion(versionFile) {
 }
 async function restoreMiseBinCache(key, paths) {
     try {
-        if (await restoreCache(paths, key)) {
+        if (await retryCache('restore', () => restoreCache(paths, key))) {
             info(`mise binary restored from key: ${key}`);
         }
     }
@@ -92782,7 +92909,7 @@ async function restoreMiseBinCache(key, paths) {
 }
 async function saveMiseBinCache(key, paths) {
     try {
-        await saveCache$1(paths, key);
+        await retryCache('save', () => saveCache$1(paths, key));
         info(`mise binary cached with key: ${key}`);
     }
     catch (err) {
@@ -93409,7 +93536,7 @@ async function saveCache(cacheKey) {
         if (!fs.existsSync(cachePath)) {
             throw new Error(`Cache folder path does not exist on disk: ${cachePath}`);
         }
-        const cacheId = await saveCache$1([cachePath], cacheKey);
+        const cacheId = await retryCache('save', () => saveCache$1([cachePath], cacheKey));
         if (cacheId === -1)
             return;
         info(`Cache saved from ${cachePath} with key: ${cacheKey}`);

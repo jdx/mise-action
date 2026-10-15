@@ -25,6 +25,8 @@ jobs:
           bootstrap_skip: "tools,task" # [default: ""] comma-separated parts to skip when bootstrapping
           bootstrap_args: "--yes" # [default: ""] additional arguments to `mise bootstrap`
           cache: true # [default: true] cache mise using GitHub's cache
+          cache_restore_retry_budget: 60s # [default: 0s] keep retrying a cache restore throttled with HTTP 429 for up to this long
+          cache_save_retry_budget: 60s # [default: 0s] same, for cache saves
           cache_save_post: false # [default: false] save the cache in the post step, after later steps install more tools
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
@@ -135,6 +137,21 @@ You can customize the cache key used by the action:
     cache_key: "my-custom-cache-key"  # Override the entire cache key
     cache_key_prefix: "mise-cache-v1"       # Or just change the prefix (default: "mise-v1")
 ```
+
+### Retrying throttled cache requests
+
+When GitHub's cache service answers HTTP 429 (too many requests), the restore is treated as a cache miss and the save is skipped. To wait it out instead, give each a retry budget:
+
+```yaml
+- uses: jdx/mise-action@v4
+  with:
+    cache_restore_retry_budget: 60s
+    cache_save_retry_budget: 120s
+```
+
+Each wait is at least the `Retry-After` GitHub advertises (1s if absent) plus random jitter of up to 2s, and the whole wait counts against the budget. When the next wait would exceed what is left, the action gives up and falls back as before: a restore miss installs the tools, a save is skipped. Both default to `0s` (no retries). Genuine cache misses and reservation conflicts (another job is saving the same key) are not throttling and are never retried. The budgets also apply to the mise binary cache.
+
+`@actions/cache` hides the 429 from callers and only logs a warning, so the action detects throttling from those warnings. If a future `@actions/cache` changes their wording, throttling goes undetected and nothing is retried.
 
 The default key also expires: it includes a period number, so the cache is rebuilt from scratch at least every `cache_max_age_days` days (default `30`, `0` disables) and picks up the latest mise. This only helps runners that start clean: a self-hosted runner that keeps the mise data directory between jobs keeps its installed mise across a rollover, so set `auto_update: true` there. A custom `cache_key` replaces the default key and doesn't expire unless it includes `{{cache_period}}`:
 
