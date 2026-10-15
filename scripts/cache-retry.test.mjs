@@ -32,8 +32,29 @@ test('detects throttling and Retry-After', () => {
   )
 })
 
+test('detects a throttled save reservation', () => {
+  assert.deepEqual(
+    detectThrottle([
+      "You've hit a rate limit, your rate limit will reset in 3 seconds",
+      'Failed to reserve cache: RateLimitError: Rate limited: Failed request: (429) Too Many Requests'
+    ]),
+    { retryAfterMs: 3000 }
+  )
+  // no Retry-After header: only the debug line is left
+  assert.deepEqual(
+    detectThrottle([
+      'Failed to reserve cache: RateLimitError: Rate limited: Failed request: (429) Too Many Requests'
+    ]),
+    {}
+  )
+})
+
 test('does not treat misses or reservation conflicts as throttling', () => {
   assert.equal(detectThrottle([]), undefined)
+  assert.equal(
+    detectThrottle(['Failed to reserve cache: Error: Response was not ok']),
+    undefined
+  )
   assert.equal(
     detectThrottle(['Failed to save: Unable to reserve cache with key k']),
     undefined
@@ -94,12 +115,12 @@ test('a single delay larger than the budget does not retry', async () => {
 test('captureWarnings collects warning commands and passes output through', async () => {
   const { value, warnings } = await captureWarnings(async () => {
     process.stdout.write('::warning::a%0Ab\n')
-    process.stdout.write('::notice::skip\n::warning')
+    process.stdout.write('::debug::dbg\n::notice::skip\n::warning')
     process.stdout.write('::split\n')
     return 42
   })
   assert.equal(value, 42)
-  assert.deepEqual(warnings, ['a\nb', 'split'])
+  assert.deepEqual(warnings, ['a\nb', 'dbg', 'split'])
 })
 
 test('withThrottleRetry retries a swallowed 429', async () => {

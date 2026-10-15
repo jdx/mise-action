@@ -151,7 +151,7 @@ When GitHub's cache service answers HTTP 429 (too many requests), the restore is
 
 Each wait is at least the `Retry-After` GitHub advertises (1s if absent) plus random jitter of up to 2s, and the whole wait counts against the budget. When the next wait would exceed what is left, the action gives up and falls back as before: a restore miss installs the tools, a save is skipped. Both default to `0s` (no retries). Genuine cache misses and reservation conflicts (another job is saving the same key) are not throttling and are never retried. The budgets also apply to the mise binary cache.
 
-`@actions/cache` hides the 429 from callers and only logs a warning, so the action detects throttling from those warnings. If a future `@actions/cache` changes their wording, throttling goes undetected and nothing is retried.
+`@actions/cache` hides the 429 from callers and only logs it, so the action detects throttling from the warnings and debug lines it writes. If a future `@actions/cache` changes their wording, throttling goes undetected and nothing is retried.
 
 The default key also expires: it includes a period number, so the cache is rebuilt from scratch at least every `cache_max_age_days` days (default `30`, `0` disables) and picks up the latest mise. This only helps runners that start clean: a self-hosted runner that keeps the mise data directory between jobs keeps its installed mise across a rollover, so set `auto_update: true` there. A custom `cache_key` replaces the default key and doesn't expire unless it includes `{{cache_period}}`:
 

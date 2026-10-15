@@ -3,7 +3,7 @@
  *
  * `@actions/cache` swallows the 429: it logs a warning and reports a miss
  * (restore) or `-1` (save), so callers can't see the error. Its warnings are
- * the only signal, so `captureWarnings` records the `::warning::` commands
+ * the only signal (a throttled save reservation is rethrown as a reservation conflict and logged only at debug level), so `captureWarnings` records the `::warning::` commands
  * written while an attempt runs and `detectThrottle` matches the messages
  * `@actions/cache` emits for a 429. This depends on that wording; if it
  * changes, throttling goes undetected and behavior falls back to no retries.
@@ -47,10 +47,15 @@ export function parseDuration(input: string, name = 'duration'): number {
  * conflicts.
  */
 export function detectThrottle(warnings: string[]): Throttle | undefined {
+  // A 429 while reserving a save is rethrown as a `ReserveCacheError`
+  // (logged at info, so only its debug line carries the cause); a bare
+  // "hit a rate limit" warning is only ever logged for a 429.
   const throttled = warnings.some(
     w =>
       /^Failed to (?:restore|save): Rate limited:/.test(w) ||
-      /^Failed to (?:restore|save): .*\(429\)/.test(w)
+      /^Failed to (?:restore|save): .*\(429\)/.test(w) ||
+      /^Failed to reserve cache: .*Rate limited:/.test(w) ||
+      /^You've hit a rate limit/.test(w)
   )
   if (!throttled) return undefined
   for (const w of warnings) {
@@ -88,7 +93,7 @@ export async function retryOnThrottle<T>(
   }
 }
 
-/** Run `fn` and collect the `::warning::` messages it writes to stdout. */
+/** Run `fn` and collect the `::warning::` and `::debug::` messages it writes to stdout. */
 export async function captureWarnings<T>(
   fn: () => Promise<T>
 ): Promise<{ value: T; warnings: string[] }> {
@@ -100,7 +105,7 @@ export async function captureWarnings<T>(
     const lines = pending.split(/\r?\n/)
     pending = lines.pop() ?? ''
     for (const line of lines) {
-      const m = /^::warning(?: [^:]*)?::(.*)$/.exec(line)
+      const m = /^::(?:warning|debug)(?: [^:]*)?::(.*)$/.exec(line)
       if (m) warnings.push(decodeData(m[1]))
     }
   }
