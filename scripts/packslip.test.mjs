@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   packslipIdentity,
+  packslipRequired,
   packslipUrl,
   verifyAgainstPackslip
 } from '../src/packslip.ts'
@@ -113,13 +114,44 @@ test('asset missing from the packslip throws', async () => {
   )
 })
 
-test('missing packslip reports false so callers can fall back', async () => {
+test('a release before the first packslip reports false so callers can fall back', async () => {
   const v = fakeVerifier()
   assert.equal(
-    await verifyAgainstPackslip(good, version, asset, async () => undefined, v),
+    await verifyAgainstPackslip(
+      good,
+      '2026.9.2',
+      asset,
+      async () => undefined,
+      v
+    ),
     false
   )
   assert.deepEqual(v.calls, [])
+})
+
+test('a missing packslip on a release that must have one throws', async () => {
+  const v = fakeVerifier()
+  await assert.rejects(
+    verifyAgainstPackslip(good, version, asset, async () => undefined, v),
+    /must ship a signed packslip/
+  )
+  assert.deepEqual(v.calls, [])
+})
+
+test('packslipRequired starts at 2026.9.3', () => {
+  for (const v of [
+    '2026.9.3',
+    '2026.9.18',
+    '2026.10.0',
+    '2027.1.0',
+    '2026.10.11'
+  ]) {
+    assert.equal(packslipRequired(v), true, v)
+  }
+  for (const v of ['2026.9.2', '2026.8.16', '2025.12.31', '2026.9.0']) {
+    assert.equal(packslipRequired(v), false, v)
+  }
+  assert.equal(packslipRequired('not-a-version'), true)
 })
 
 test('a failed verification throws instead of falling back', async () => {
