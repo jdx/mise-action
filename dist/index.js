@@ -137522,6 +137522,25 @@ var packslip = /*#__PURE__*/Object.freeze({
 
 const PACKSLIP_ISSUER = 'https://token.actions.githubusercontent.com';
 const PACKSLIP_PROJECT = 'github.com/jdx/mise';
+/** The first mise release that shipped `packslip.sigstore.json`. */
+const PACKSLIP_REQUIRED_FROM = [2026, 9, 3];
+/**
+ * Releases from `PACKSLIP_REQUIRED_FROM` on always ship a packslip. A version
+ * that is not three dotted numbers is not a release this action can name, so
+ * it is held to the same rule rather than skipped.
+ */
+function packslipRequired(version) {
+    const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+    if (!m)
+        return true;
+    for (let i = 0; i < 3; i++) {
+        const have = Number(m[i + 1]);
+        if (have !== PACKSLIP_REQUIRED_FROM[i]) {
+            return have > PACKSLIP_REQUIRED_FROM[i];
+        }
+    }
+    return true;
+}
 function packslipUrl(version) {
     return `https://github.com/jdx/mise/releases/download/v${version}/packslip.sigstore.json`;
 }
@@ -137530,12 +137549,18 @@ function packslipIdentity(version) {
 }
 /**
  * Returns true once `filePath` is verified against the release's packslip, and
- * false when the release has no packslip (`fetchBundle` resolves undefined).
- * Any failure once a packslip exists throws; callers must not fall back.
+ * false when an older release has no packslip (`fetchBundle` resolves
+ * undefined). A release from `PACKSLIP_REQUIRED_FROM` on must have one, so a
+ * missing bundle there throws: it would otherwise let a tampered release
+ * downgrade to the weaker checksum check. Any failure throws; callers must not
+ * fall back.
  */
 async function verifyAgainstPackslip(filePath, version, assetName, fetchBundle, verifier) {
     const bundle = await fetchBundle(packslipUrl(version));
     if (bundle === undefined) {
+        if (packslipRequired(version)) {
+            throw new Error(`mise v${version} must ship a signed packslip, but ${packslipUrl(version)} was not found`);
+        }
         return false;
     }
     const statement = await verifier.verifyRelease(bundle, {
@@ -138465,7 +138490,7 @@ async function verifyDownloadedMiseAsset(filePath, version, assetName) {
     if (getInput('sha256')) {
         return;
     }
-    // The signed packslip is the primary assertion. Releases without one fall
+    // The signed packslip is the primary assertion. Releases before 2026.9.3 fall
     // through to the minisign checksums; a packslip that fails verification
     // throws and never falls back to the weaker check.
     if (await verifyAgainstPackslip(filePath, version, assetName, fetchPackslipBundle, packslip)) {

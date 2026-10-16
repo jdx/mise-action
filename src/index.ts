@@ -1004,7 +1004,7 @@ async function verifyDownloadedMiseAsset(
     return
   }
 
-  // The signed packslip is the primary assertion. Releases without one fall
+  // The signed packslip is the primary assertion. Releases before 2026.9.3 fall
   // through to the minisign checksums; a packslip that fails verification
   // throws and never falls back to the weaker check.
   if (
