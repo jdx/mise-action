@@ -16,3 +16,4 @@ communique = { version = 'latest', minimum_release_age = '0s' }
 hk = { version = 'latest', minimum_release_age = '0s' }
 pkl = 'latest'
 jactionlint = 'latest'
+oxfmt = 'latest'
