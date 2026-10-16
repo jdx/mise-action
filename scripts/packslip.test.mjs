@@ -152,6 +152,7 @@ test('packslipRequired starts at 2026.9.3', () => {
     assert.equal(packslipRequired(v), false, v)
   }
   assert.equal(packslipRequired('not-a-version'), true)
+  assert.equal(packslipRequired('2026.9.2-extra'), true)
 })
 
 test('a failed verification throws instead of falling back', async () => {

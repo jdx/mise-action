@@ -20,7 +20,7 @@ export const PACKSLIP_REQUIRED_FROM = [2026, 9, 3]
  * it is held to the same rule rather than skipped.
  */
 export function packslipRequired(version: string): boolean {
-  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(version)
+  const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(version)
   if (!m) return true
   for (let i = 0; i < 3; i++) {
     const have = Number(m[i + 1])
