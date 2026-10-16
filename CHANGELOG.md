@@ -1,7 +1,36 @@
 # Changelog
 
 ---
-## [5.1.2](https://github.com/jdx/mise-action/compare/v5.1.1..v5.1.2) - 2026-10-10
+## [5.2.0](https://github.com/jdx/mise-action/compare/v5.1.2..v5.2.0) - 2026-10-16
+
+### 🚀 Features
+
+- **(cache)** rebuild the cache every 30 days by default (#689) by [@jdx](https://github.com/jdx) in [#689](https://github.com/jdx/mise-action/pull/689)
+- **(cache)** retry throttled cache restores and saves (#692) by [@jdx](https://github.com/jdx) in [#692](https://github.com/jdx/mise-action/pull/692)
+- verify the mise binary against its signed packslip (#693) by [@jdx](https://github.com/jdx) in [#693](https://github.com/jdx/mise-action/pull/693)
+
+### 🐛 Bug Fixes
+
+- export the PATH entries mise reports with mise env --paths (#685) by [@jdx](https://github.com/jdx) in [#685](https://github.com/jdx/mise-action/pull/685)
+
+### 🔍 Other Changes
+
+- Use monorepo install when configured (#679) by [@zeitlinger](https://github.com/zeitlinger) in [#679](https://github.com/jdx/mise-action/pull/679)
+- Change minimum age for auto-merging release PRs by [@jdx](https://github.com/jdx) in [b511e8d](https://github.com/jdx/mise-action/commit/b511e8dec14aeeaeeac996371d336fcc5d0a6bed)
+
+### 📚 Documentation
+
+- tell release workflows not to use the cache (#682) by [@jdx](https://github.com/jdx) in [#682](https://github.com/jdx/mise-action/pull/682)
+- explain caching mise downloads instead of installs (#686) by [@zeitlinger](https://github.com/zeitlinger) in [#686](https://github.com/jdx/mise-action/pull/686)
+- use resolved Windows downloads cache path (#690) by [@zeitlinger](https://github.com/zeitlinger) in [#690](https://github.com/jdx/mise-action/pull/690)
+
+### ⚙️ Miscellaneous Tasks
+
+- stop restoring caches in release jobs (#683) by [@jdx](https://github.com/jdx) in [#683](https://github.com/jdx/mise-action/pull/683)
+- replace prettier with oxfmt (#694) by [@jdx](https://github.com/jdx) in [#694](https://github.com/jdx/mise-action/pull/694)
+
+---
+## [5.1.2](https://github.com/jdx/mise-action/compare/v5.1.1..v5.1.2) - 2026-10-12
 
 ### 🐛 Bug Fixes
 
