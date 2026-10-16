@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.2.1](https://github.com/jdx/mise-action/compare/v5.2.0..v5.2.1) - 2026-10-16
+
+### 🐛 Bug Fixes
+
+- require the signed packslip for mise 2026.9.3 and later (#695) by [@jdx](https://github.com/jdx) in [#695](https://github.com/jdx/mise-action/pull/695)
+
+---
 ## [5.2.0](https://github.com/jdx/mise-action/compare/v5.1.2..v5.2.0) - 2026-10-16
 
 ### 🚀 Features
