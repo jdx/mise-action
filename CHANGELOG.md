@@ -1,7 +1,18 @@
 # Changelog
 
 ---
-## [5.2.1](https://github.com/jdx/mise-action/compare/v5.2.0..v5.2.1) - 2026-10-16
+## [5.2.2](https://github.com/jdx/mise-action/compare/v5.2.1..v5.2.2) - 2026-10-21
+
+### 🐛 Bug Fixes
+
+- hash conf.d config fragments in cache key (#698) by [@rileymichael](https://github.com/rileymichael) in [#698](https://github.com/jdx/mise-action/pull/698)
+
+### New Contributors
+
+* @rileymichael made their first contribution in [#698](https://github.com/jdx/mise-action/pull/698)
+
+---
+## [5.2.1](https://github.com/jdx/mise-action/compare/v5.2.0..v5.2.1) - 2026-10-19
 
 ### 🐛 Bug Fixes
 
