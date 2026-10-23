@@ -18,6 +18,11 @@ test('stops at the workspace and ignores a working directory outside it', () => 
   assert.deepEqual(configFileGlobs('/elsewhere'), [])
 })
 
+test('keeps directories whose names start with two dots', () => {
+  process.env.GITHUB_WORKSPACE = '/ws'
+  assert.ok(configFileGlobs('/ws/..app').includes('..app/mise.toml'))
+})
+
 test('escapes glob characters in directory names', () => {
   process.env.GITHUB_WORKSPACE = '/ws'
   assert.ok(configFileGlobs('/ws/a[1]').includes('a[[]1[]]/mise.toml'))
@@ -28,5 +33,8 @@ test('only template expressions that reach the file hash need it', () => {
   assert.equal(templateUsesFileHash('{{default}}-x'), true)
   assert.equal(templateUsesFileHash('{{#if file_hash}}a{{/if}}'), true)
   assert.equal(templateUsesFileHash('default-{{platform}}-file_hash'), false)
+  assert.equal(templateUsesFileHash('{{this.file_hash}}'), true)
+  assert.equal(templateUsesFileHash('{{./default}}'), true)
+  assert.equal(templateUsesFileHash('{{lookup . "file_hash"}}'), true)
   assert.equal(templateUsesFileHash('static'), false)
 })

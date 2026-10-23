@@ -47,10 +47,16 @@ export function templateUsesFileHash(template: string): boolean {
     if (Array.isArray(node)) return node.some(walk)
     if (node === null || typeof node !== 'object') return false
     const n = node as Record<string, unknown>
+    // `parts` drops `this.` and `./`; a string literal could name it through a helper
+    const names = ['file_hash', 'default']
     if (
       n.type === 'PathExpression' &&
-      (n.original === 'file_hash' || n.original === 'default')
+      Array.isArray(n.parts) &&
+      n.parts.some(part => names.includes(part as string))
     ) {
+      return true
+    }
+    if (n.type === 'StringLiteral' && names.includes(n.value as string)) {
       return true
     }
     return Object.values(n).some(walk)
@@ -71,7 +77,13 @@ export function configFileGlobs(cwd: string): string[] {
   const globs: string[] = []
   for (let dir = path.resolve(cwd); ; dir = path.dirname(dir)) {
     const rel = path.relative(workspace, dir)
-    if (rel.startsWith('..') || path.isAbsolute(rel)) break
+    if (
+      rel === '..' ||
+      rel.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(rel)
+    ) {
+      break
+    }
     const prefix = rel
       ? `${rel
           .split(path.sep)

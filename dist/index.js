@@ -92508,8 +92508,14 @@ function templateUsesFileHash(template) {
         if (node === null || typeof node !== 'object')
             return false;
         const n = node;
+        // `parts` drops `this.` and `./`; a string literal could name it through a helper
+        const names = ['file_hash', 'default'];
         if (n.type === 'PathExpression' &&
-            (n.original === 'file_hash' || n.original === 'default')) {
+            Array.isArray(n.parts) &&
+            n.parts.some(part => names.includes(part))) {
+            return true;
+        }
+        if (n.type === 'StringLiteral' && names.includes(n.value)) {
             return true;
         }
         return Object.values(n).some(walk);
@@ -92530,8 +92536,11 @@ function configFileGlobs(cwd) {
     const globs = [];
     for (let dir = path$2.resolve(cwd);; dir = path$2.dirname(dir)) {
         const rel = path$2.relative(workspace, dir);
-        if (rel.startsWith('..') || path$2.isAbsolute(rel))
+        if (rel === '..' ||
+            rel.startsWith(`..${path$2.sep}`) ||
+            path$2.isAbsolute(rel)) {
             break;
+        }
         const prefix = rel
             ? `${rel
                 .split(path$2.sep)
