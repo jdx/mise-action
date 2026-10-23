@@ -9,6 +9,7 @@ test('globs are relative to each directory and never recurse', () => {
   assert.ok(globs.includes('mise.toml'))
   assert.ok(globs.includes('app/mise.toml'))
   assert.ok(globs.includes('app/web/.tool-versions'))
+  assert.ok(globs.includes('.config/mise/mise.lock'))
   assert.ok(globs.every(g => !g.includes('**')))
 })
 

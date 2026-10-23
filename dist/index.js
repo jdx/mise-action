@@ -92474,6 +92474,8 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `.config/mise/config.*.lock`,
     `.config/mise/mise.toml`,
     `.config/mise/mise.*.toml`,
+    `.config/mise/mise.lock`,
+    `.config/mise/mise.*.lock`,
     `.config/mise.toml`,
     `.config/mise.lock`,
     `.config/mise.*.toml`,
