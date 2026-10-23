@@ -10,6 +10,7 @@ import * as path from 'path'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
+import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import { setupGitHubToken } from './github-token.js'
 import * as packslip from 'packslip'
@@ -19,47 +20,6 @@ import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
 import { parseManagedPaths, selectPathAdditions } from './managed-paths.js'
-
-// Configuration file patterns for cache key generation
-const MISE_CONFIG_FILE_PATTERNS = [
-  `**/.config/mise/config.toml`,
-  `**/.config/mise/config.lock`,
-  `**/.config/mise/config.*.toml`,
-  `**/.config/mise/config.*.lock`,
-  `**/.config/mise/conf.d/*.toml`,
-  `**/.config/mise.toml`,
-  `**/.config/mise.lock`,
-  `**/.config/mise.*.toml`,
-  `**/.config/mise.*.lock`,
-  `**/.mise/config.toml`,
-  `**/.mise/config.lock`,
-  `**/.mise/config.*.toml`,
-  `**/.mise/config.*.lock`,
-  `**/.mise/conf.d/*.toml`,
-  `**/mise/config.toml`,
-  `**/mise/config.lock`,
-  `**/mise/config.*.toml`,
-  `**/mise/config.*.lock`,
-  `**/mise/conf.d/*.toml`,
-  `**/.mise.toml`,
-  `**/.mise.lock`,
-  `**/.mise.*.toml`,
-  `**/.mise.*.lock`,
-  `**/mise.toml`,
-  `**/mise.lock`,
-  `**/mise.*.toml`,
-  `**/mise.*.lock`,
-  `**/.tool-versions`
-]
-
-// Directories that hold installed dependencies, never mise config. Excluded
-// directories aren't descended into, so this keeps `**/` from walking
-// hundreds of thousands of files when the action runs after `npm install`.
-const MISE_CONFIG_FILE_EXCLUDES = [
-  `!**/node_modules/**`,
-  `!**/vendor/**`,
-  `!**/.git/**`
-]
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
@@ -1679,14 +1639,11 @@ async function processCacheKeyTemplate(template: string): Promise<string> {
   const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-')
   const platform = `${await getTarget()}-${getRunnerImageId()}`
 
-  // Calculate file hash. Walking the workspace can be slow, so skip it when the
-  // template can't reach it (it is only used by `file_hash` and `default`).
+  // Calculate file hash, unless the template can't reach it
   let fileHash = ''
-  if (/\b(file_hash|default)\b/.test(template)) {
+  if (templateUsesFileHash(template)) {
     const start = Date.now()
-    fileHash = await glob.hashFiles(
-      [...MISE_CONFIG_FILE_PATTERNS, ...MISE_CONFIG_FILE_EXCLUDES].join('\n')
-    )
+    fileHash = await glob.hashFiles(configFileGlobs(getCwd()).join('\n'))
     core.info(
       `Hashed mise config files in ${((Date.now() - start) / 1000).toFixed(1)}s`
     )
