@@ -138119,6 +138119,14 @@ const MISE_CONFIG_FILE_PATTERNS = [
     `**/mise.*.lock`,
     `**/.tool-versions`
 ];
+// Directories that hold installed dependencies, never mise config. Excluded
+// directories aren't descended into, so this keeps `**/` from walking
+// hundreds of thousands of files when the action runs after `npm install`.
+const MISE_CONFIG_FILE_EXCLUDES = [
+    `!**/node_modules/**`,
+    `!**/vendor/**`,
+    `!**/.git/**`
+];
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}{{#if cache_period}}-p{{cache_period}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
@@ -139411,8 +139419,14 @@ async function processCacheKeyTemplate(template) {
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
     const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
     const platform = `${await getTarget()}-${getRunnerImageId()}`;
-    // Calculate file hash
-    const fileHash = await hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
+    // Calculate file hash. Walking the workspace can be slow, so skip it when the
+    // template can't reach it (it is only used by `file_hash` and `default`).
+    let fileHash = '';
+    if (/\b(file_hash|default)\b/.test(template)) {
+        const start = Date.now();
+        fileHash = await hashFiles([...MISE_CONFIG_FILE_PATTERNS, ...MISE_CONFIG_FILE_EXCLUDES].join('\n'));
+        info(`Hashed mise config files in ${((Date.now() - start) / 1000).toFixed(1)}s`);
+    }
     // Calculate install args hash
     let installArgsHash = '';
     if (installArgs) {
