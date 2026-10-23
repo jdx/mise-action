@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.2.3](https://github.com/jdx/mise-action/compare/v5.2.2..v5.2.3) - 2026-10-23
+
+### 🐛 Bug Fixes
+
+- **(cache)** hash mise config files without walking the workspace (#703) by [@jdx](https://github.com/jdx) in [#703](https://github.com/jdx/mise-action/pull/703)
+
+---
 ## [5.2.2](https://github.com/jdx/mise-action/compare/v5.2.1..v5.2.2) - 2026-10-21
 
 ### 🐛 Bug Fixes
