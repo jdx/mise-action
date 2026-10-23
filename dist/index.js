@@ -92432,6 +92432,7 @@ function requireLib$c () {
 }
 
 var libExports = requireLib$c();
+var Handlebars = /*@__PURE__*/getDefaultExportFromCjs(libExports);
 
 /**
  * Decide which key (if any) to save the mise cache under after a restore.
@@ -92458,6 +92459,103 @@ function cachePeriod(maxAgeDays, now = Date.now()) {
     if (maxAgeDays === 0)
         return '';
     return String(Math.floor(now / MS_PER_DAY / maxAgeDays));
+}
+
+// Config files mise reads from each directory, relative to that directory (see
+// DEFAULT_CONFIG_FILENAMES in mise). The cache key hashes these in the working
+// directory and its parents, as mise finds them, rather than walking every
+// subdirectory, which is slow once node_modules or vendor/bundle exist.
+const MISE_CONFIG_FILE_PATTERNS = [
+    `.config/mise/conf.d/*.toml`,
+    `.config/mise/conf.d/*/mise*.toml`,
+    `.config/mise/config.toml`,
+    `.config/mise/config.lock`,
+    `.config/mise/config.*.toml`,
+    `.config/mise/config.*.lock`,
+    `.config/mise/mise.toml`,
+    `.config/mise/mise.*.toml`,
+    `.config/mise/mise.lock`,
+    `.config/mise/mise.*.lock`,
+    `.config/mise.toml`,
+    `.config/mise.lock`,
+    `.config/mise.*.toml`,
+    `.config/mise.*.lock`,
+    `.mise/conf.d/*.toml`,
+    `.mise/conf.d/*/mise*.toml`,
+    `.mise/config.toml`,
+    `.mise/config.lock`,
+    `.mise/config.*.toml`,
+    `.mise/config.*.lock`,
+    `mise/conf.d/*.toml`,
+    `mise/conf.d/*/mise*.toml`,
+    `mise/config.toml`,
+    `mise/config.lock`,
+    `mise/config.*.toml`,
+    `mise/config.*.lock`,
+    `.mise.toml`,
+    `.mise.lock`,
+    `.mise.*.toml`,
+    `.mise.*.lock`,
+    `mise.toml`,
+    `mise.lock`,
+    `mise.*.toml`,
+    `mise.*.lock`,
+    `.tool-versions`
+];
+/** True when the template references `file_hash` or `default` (which embeds it). */
+function templateUsesFileHash(template) {
+    const walk = (node) => {
+        if (Array.isArray(node))
+            return node.some(walk);
+        if (node === null || typeof node !== 'object')
+            return false;
+        const n = node;
+        // `parts` drops `this.` and `./`; a string literal could name it through a helper
+        const names = ['file_hash', 'default'];
+        if (n.type === 'PathExpression' &&
+            Array.isArray(n.parts) &&
+            n.parts.some(part => names.includes(part))) {
+            return true;
+        }
+        if (n.type === 'StringLiteral' && names.includes(n.value)) {
+            return true;
+        }
+        return Object.values(n).some(walk);
+    };
+    try {
+        return walk(Handlebars.parseWithoutProcessing(template));
+    }
+    catch {
+        return true;
+    }
+}
+/**
+ * Globs for the config files mise would find from `cwd`: each pattern in `cwd`
+ * and every parent up to the workspace, which is all `hashFiles` can see.
+ */
+function configFileGlobs(cwd) {
+    const workspace = path$2.resolve(process.env.GITHUB_WORKSPACE || process.cwd());
+    const globs = [];
+    for (let dir = path$2.resolve(cwd);; dir = path$2.dirname(dir)) {
+        const rel = path$2.relative(workspace, dir);
+        if (rel === '..' ||
+            rel.startsWith(`..${path$2.sep}`) ||
+            path$2.isAbsolute(rel)) {
+            break;
+        }
+        const prefix = rel
+            ? `${rel
+                .split(path$2.sep)
+                .join('/')
+                .replace(/[*?[\]{}()!+@]/g, '[$&]')}/`
+            : '';
+        for (const pattern of MISE_CONFIG_FILE_PATTERNS) {
+            globs.push(prefix + pattern);
+        }
+        if (dir === workspace)
+            break;
+    }
+    return globs;
 }
 
 /**
@@ -138088,37 +138186,6 @@ function selectPathAdditions(managedPaths, derive) {
     return managedPaths ?? derive();
 }
 
-// Configuration file patterns for cache key generation
-const MISE_CONFIG_FILE_PATTERNS = [
-    `**/.config/mise/config.toml`,
-    `**/.config/mise/config.lock`,
-    `**/.config/mise/config.*.toml`,
-    `**/.config/mise/config.*.lock`,
-    `**/.config/mise/conf.d/*.toml`,
-    `**/.config/mise.toml`,
-    `**/.config/mise.lock`,
-    `**/.config/mise.*.toml`,
-    `**/.config/mise.*.lock`,
-    `**/.mise/config.toml`,
-    `**/.mise/config.lock`,
-    `**/.mise/config.*.toml`,
-    `**/.mise/config.*.lock`,
-    `**/.mise/conf.d/*.toml`,
-    `**/mise/config.toml`,
-    `**/mise/config.lock`,
-    `**/mise/config.*.toml`,
-    `**/mise/config.*.lock`,
-    `**/mise/conf.d/*.toml`,
-    `**/.mise.toml`,
-    `**/.mise.lock`,
-    `**/.mise.*.toml`,
-    `**/.mise.*.lock`,
-    `**/mise.toml`,
-    `**/mise.lock`,
-    `**/mise.*.toml`,
-    `**/mise.*.lock`,
-    `**/.tool-versions`
-];
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}{{#if cache_period}}-p{{cache_period}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
@@ -139411,8 +139478,13 @@ async function processCacheKeyTemplate(template) {
     const cacheKeyPrefix = getInput('cache_key_prefix') || 'mise-v1';
     const miseEnv = process.env.MISE_ENV?.replace(/,/g, '-');
     const platform = `${await getTarget()}-${getRunnerImageId()}`;
-    // Calculate file hash
-    const fileHash = await hashFiles(MISE_CONFIG_FILE_PATTERNS.join('\n'));
+    // Calculate file hash, unless the template can't reach it
+    let fileHash = '';
+    if (templateUsesFileHash(template)) {
+        const start = Date.now();
+        fileHash = await hashFiles(configFileGlobs(getCwd()).join('\n'));
+        info(`Hashed mise config files in ${((Date.now() - start) / 1000).toFixed(1)}s`);
+    }
     // Calculate install args hash
     let installArgsHash = '';
     if (installArgs) {
