@@ -12,7 +12,11 @@ import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
-import { readCachedShasums, writeCachedShasums } from './shasums-cache.js'
+import {
+  readCachedShasums,
+  shasumsPaths,
+  writeCachedShasums
+} from './shasums-cache.js'
 import { setupGitHubToken } from './github-token.js'
 import * as packslip from 'packslip'
 import { verifyAgainstPackslip } from './packslip.js'
@@ -478,10 +482,13 @@ async function setupMise(
     versionFile
   ]
   let binCacheKey: string | undefined
+  let binCacheFiles = binCachePaths
   const useBinCache = async (v: string): Promise<void> => {
     if (!core.getBooleanInput('cache')) return
     binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${v}`
-    await restoreMiseBinCache(binCacheKey, binCachePaths)
+    // The signed checksums go with the binary they verify.
+    binCacheFiles = [...binCachePaths, ...shasumsPaths(miseBinDir, v)]
+    await restoreMiseBinCache(binCacheKey, binCacheFiles)
   }
   if (!resolvedVersion && autoUpdate) {
     resolvedVersion = cleanVersion(
@@ -690,12 +697,14 @@ async function setupMise(
     // Releases checked against a packslip never fetch the signed checksums, so
     // save them now: the cache saved after this run is what later runs verify
     // the binary from.
-    try {
-      await verifiedMiseShasums(installedVersion)
-    } catch (err) {
-      core.info(
-        `Could not save signed checksums for mise@${installedVersion}: ${errorMessage(err)}`
-      )
+    if (!miseReleasePredatesMinisign(installedVersion)) {
+      try {
+        await verifiedMiseShasums(installedVersion)
+      } catch (err) {
+        core.info(
+          `Could not save signed checksums for mise@${installedVersion}: ${errorMessage(err)}`
+        )
+      }
     }
   }
   // compare with provided hash
@@ -712,7 +721,7 @@ async function setupMise(
   }
 
   if (needsInstall && binCacheKey && core.getBooleanInput('cache_save')) {
-    await saveMiseBinCache(binCacheKey, binCachePaths)
+    await saveMiseBinCache(binCacheKey, binCacheFiles)
   }
 
   core.addPath(miseBinDir)

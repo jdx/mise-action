@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-function shasumsPaths(dir: string, version: string): [string, string] {
+export function shasumsPaths(dir: string, version: string): [string, string] {
   const file = path.join(dir, `SHASUMS256-${version}.txt`)
   return [file, `${file}.minisig`]
 }

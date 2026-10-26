@@ -138473,11 +138473,14 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         versionFile
     ];
     let binCacheKey;
+    let binCacheFiles = binCachePaths;
     const useBinCache = async (v) => {
         if (!getBooleanInput('cache'))
             return;
         binCacheKey = `mise-bin-v1-${target}-${getRunnerImageId()}-${v}`;
-        await restoreMiseBinCache(binCacheKey, binCachePaths);
+        // The signed checksums go with the binary they verify.
+        binCacheFiles = [...binCachePaths, ...shasumsPaths(miseBinDir, v)];
+        await restoreMiseBinCache(binCacheKey, binCacheFiles);
     };
     if (!resolvedVersion && autoUpdate) {
         resolvedVersion = cleanVersion(await latestMiseVersion(useMinimumReleaseAge ? minimumReleaseAge : undefined));
@@ -138625,11 +138628,13 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         // Releases checked against a packslip never fetch the signed checksums, so
         // save them now: the cache saved after this run is what later runs verify
         // the binary from.
-        try {
-            await verifiedMiseShasums(installedVersion);
-        }
-        catch (err) {
-            info(`Could not save signed checksums for mise@${installedVersion}: ${errorMessage(err)}`);
+        if (!miseReleasePredatesMinisign(installedVersion)) {
+            try {
+                await verifiedMiseShasums(installedVersion);
+            }
+            catch (err) {
+                info(`Could not save signed checksums for mise@${installedVersion}: ${errorMessage(err)}`);
+            }
         }
     }
     // compare with provided hash
@@ -138643,7 +138648,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         }
     }
     if (needsInstall && binCacheKey && getBooleanInput('cache_save')) {
-        await saveMiseBinCache(binCacheKey, binCachePaths);
+        await saveMiseBinCache(binCacheKey, binCacheFiles);
     }
     addPath(miseBinDir);
 }
