@@ -12,6 +12,7 @@ import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
+import { readCachedShasums, writeCachedShasums } from './shasums-cache.js'
 import { setupGitHubToken } from './github-token.js'
 import * as packslip from 'packslip'
 import { verifyAgainstPackslip } from './packslip.js'
@@ -1073,12 +1074,20 @@ async function verifiedMiseShasums(
     return cached
   }
 
+  const binDir = path.join(miseDir(), 'bin')
+  const saved = readCachedShasums(binDir, version, verifyMinisign)
+  if (saved) {
+    verifiedShasums.set(version, saved)
+    return saved
+  }
+
   try {
     const shasumsUrl = `https://github.com/jdx/mise/releases/download/v${version}/SHASUMS256.txt`
     const minisigUrl = `${shasumsUrl}.minisig`
     const shasums = await downloadRawText(shasumsUrl)
     const minisig = await downloadRawText(minisigUrl)
     verifyMinisign(shasums, minisig)
+    writeCachedShasums(binDir, version, shasums, minisig)
     verifiedShasums.set(version, shasums)
     return shasums
   } catch (err) {
