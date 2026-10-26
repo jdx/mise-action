@@ -138628,7 +138628,10 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         // Releases checked against a packslip never fetch the signed checksums, so
         // save them now: the cache saved after this run is what later runs verify
         // the binary from.
-        if (!miseReleasePredatesMinisign(installedVersion)) {
+        // A configured `sha256` is verified instead, so the checksums are never
+        // fetched and there is nothing to save.
+        if (!getInput('sha256') &&
+            !miseReleasePredatesMinisign(installedVersion)) {
             try {
                 await verifiedMiseShasums(installedVersion);
             }
