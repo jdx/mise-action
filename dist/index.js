@@ -138622,6 +138622,15 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     await ensureWindowsMiseShim(miseBinPath, miseShimPath, installedVersion);
     if (needsInstall) {
         await fs.promises.writeFile(versionFile, installedVersion);
+        // Releases checked against a packslip never fetch the signed checksums, so
+        // save them now: the cache saved after this run is what later runs verify
+        // the binary from.
+        try {
+            await verifiedMiseShasums(installedVersion);
+        }
+        catch (err) {
+            info(`Could not save signed checksums for mise@${installedVersion}: ${errorMessage(err)}`);
+        }
     }
     // compare with provided hash
     const want = getInput('sha256');
