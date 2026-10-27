@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [5.2.3](https://github.com/jdx/mise-action/compare/v5.2.2..v5.2.3) - 2026-10-23
+## [5.2.4](https://github.com/jdx/mise-action/compare/v5.2.3..v5.2.4) - 2026-10-26
+
+### 🐛 Bug Fixes
+
+- **(cache)** reuse signed checksums saved with a cached mise (#708) by [@jdx](https://github.com/jdx) in [#708](https://github.com/jdx/mise-action/pull/708)
+
+---
+## [5.2.3](https://github.com/jdx/mise-action/compare/v5.2.2..v5.2.3) - 2026-10-24
 
 ### 🐛 Bug Fixes
 
