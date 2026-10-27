@@ -13,8 +13,8 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
         with:
           version: 2026.3.10 # [default: newest release at least 24h old] mise version to install
           # minimum_release_age: 7d # default: 24h; use 0s to disable the delay
@@ -46,8 +46,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: jdx/mise-action@v4
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
       # .tool-versions will be read from repo root
       - run: node ./my_app.js
 ```
@@ -299,8 +299,8 @@ strategy:
 env:
   MISE_RUBY_VERSION: ${{ matrix.ruby-version }}
 steps:
-  - uses: actions/checkout@v6
-  - uses: jdx/mise-action@v4
+  - uses: actions/checkout@v7
+  - uses: jdx/mise-action@v5
     with:
       cache_key: "{{default}}-ruby${{ matrix.ruby-version }}"
   - run: mise exec -- ruby --version
@@ -420,7 +420,7 @@ jobs:
     env:
       MISE_ENABLE_TOOLS: rust
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: jdx/mise-action@v5
         with:
           cache_key_prefix: mise-v0-${{ env.MISE_ENABLE_TOOLS }}
