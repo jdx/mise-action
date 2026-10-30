@@ -27,8 +27,8 @@ importers:
         specifier: ^4.7.8
         version: 4.7.10
       packslip:
-        specifier: 1.8.0
-        version: 1.8.0(supports-color@8.1.1)
+        specifier: 1.11.0
+        version: 1.11.0(supports-color@8.1.1)
     devDependencies:
       '@eslint/eslintrc':
         specifier: ^3.2.0
@@ -2178,8 +2178,8 @@ packages:
     resolution: {integrity: sha512-gFL35q7kbE/zBaPA3UKhp2vSzcPYx2ecbYuwv1ucE9Il6IIgBDweBlH8D68UFGZic2MkllKa2KHCfC1IQBQUYA==}
     engines: {node: '>=12'}
 
-  packslip@1.8.0:
-    resolution: {integrity: sha512-HbiXUyNw8opPiPt0YIckwXWAVPm7t06wYOZLxhE1N1kWbnEdXep+k24hzsgbr/+V5pcFtHkrva8yWhgh3zO0ZA==}
+  packslip@1.11.0:
+    resolution: {integrity: sha512-K17DSx6zsBfb6qeEaYWPTsftW1y4gUFX0Fn1eVj3ciceJuRmvALVNJjy3pvXR2D8H+GPhh43gpIozRDLJTdE/g==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
   parent-module@1.0.1:
@@ -4946,7 +4946,7 @@ snapshots:
 
   package-name-regex@2.0.6: {}
 
-  packslip@1.8.0(supports-color@8.1.1):
+  packslip@1.11.0(supports-color@8.1.1):
     dependencies:
       sigstore: 5.0.0(supports-color@8.1.1)
     transitivePeerDependencies:

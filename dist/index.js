@@ -37932,7 +37932,7 @@ function createEmptyPipeline$1() {
  * Helper to determine when an input is a generic JS object.
  * @returns true when input is an object type that is not null, Array, RegExp, or Date.
  */
-function isObject$2(input) {
+function isObject$3(input) {
     return (typeof input === "object" &&
         input !== null &&
         !Array.isArray(input) &&
@@ -37947,7 +37947,7 @@ function isObject$2(input) {
  * @param e - Something caught by a catch clause.
  */
 function isError$1(e) {
-    if (isObject$2(e)) {
+    if (isObject$3(e)) {
         const hasName = typeof e.name === "string";
         const hasMessage = typeof e.message === "string";
         return hasName && hasMessage;
@@ -38033,13 +38033,13 @@ class Sanitizer {
                     message: value.message,
                 };
             }
-            if (key === "headers" && isObject$2(value)) {
+            if (key === "headers" && isObject$3(value)) {
                 return this.sanitizeHeaders(value);
             }
             else if (key === "url" && typeof value === "string") {
                 return this.sanitizeUrl(value);
             }
-            else if (key === "query" && isObject$2(value)) {
+            else if (key === "query" && isObject$3(value)) {
                 return this.sanitizeQuery(value);
             }
             else if (key === "body") {
@@ -38055,7 +38055,7 @@ class Sanitizer {
                 // field with the autorest spec. No need to log it.
                 return undefined;
             }
-            else if (Array.isArray(value) || isObject$2(value)) {
+            else if (Array.isArray(value) || isObject$3(value)) {
                 if (seen.has(value)) {
                     return "[Circular]";
                 }
@@ -137672,10 +137672,59 @@ class IdentityError extends PackslipError {
         this.actualIssuer = actual.issuer;
     }
 }
-/** The signed statement is malformed or is not a packslip release statement. */
+/**
+ * The signed statement is not a packslip release statement (`predicate-type`),
+ * breaks the release/v1 structural rules (`statement`), or names another project
+ * or tag than the caller requires (`project`, `tag`).
+ */
 class StatementError extends PackslipError {
     constructor(message, code = 'statement') {
         super(code, message);
+    }
+}
+/**
+ * The statement's `identity` block does not describe the certificate that
+ * signed it: it declares a key-signed release (`sigstore-key`), another signer,
+ * or another issuer.
+ */
+class DeclaredIdentityError extends PackslipError {
+    /** The field of the statement's `predicate.identity` that differs. */
+    field;
+    /** What the statement declares. */
+    declared;
+    /** What the signing certificate says. */
+    actual;
+    constructor(field, declared, actual) {
+        super('declared-identity', field === 'scheme'
+            ? `the statement declares scheme ${declared}, but the bundle was signed by an OIDC identity`
+            : field === 'key_id'
+                ? `the statement declares signer ${JSON.stringify(declared)}, but the bundle was signed by ${JSON.stringify(actual)}`
+                : `the statement declares issuer ${JSON.stringify(declared)}, but the certificate says ${JSON.stringify(actual)}`);
+        this.field = field;
+        this.declared = declared;
+        this.actual = actual;
+    }
+}
+/**
+ * The certificate does not belong to the GitHub or GitLab repository that the
+ * requested `project` names. It came through another issuer (`issuer`), records
+ * another source repository (`source-repository`), or records none and was
+ * signed outside the repository (`signer`).
+ */
+class ProjectSignerError extends PackslipError {
+    project;
+    reason;
+    actualIdentity;
+    actualIssuer;
+    /** The Source Repository URI the certificate records, if any. */
+    sourceRepository;
+    constructor(message, details) {
+        super('project-signer', message);
+        this.project = details.project;
+        this.reason = details.reason;
+        this.actualIdentity = details.identity;
+        this.actualIssuer = details.issuer;
+        this.sourceRepository = details.sourceRepository;
     }
 }
 /** The statement does not list the requested asset. */
@@ -137701,85 +137750,948 @@ class DigestMismatchError extends PackslipError {
     }
 }
 
+/** A github.com or gitlab.com project split into its repository's name and a monorepo subpath. */
+function forgeName(project) {
+    const [host, ...path] = project.split('/');
+    if (host === 'github.com' && path.length >= 2 && path[0] !== '' && path[1] !== '') {
+        return { host, repository: `${path[0]}/${path[1]}`, subpath: path.slice(2).join('/') };
+    }
+    if (host === 'gitlab.com' && path.length >= 1 && path.every((segment) => segment !== '')) {
+        return { host, repository: path.join('/'), subpath: '' };
+    }
+    return undefined;
+}
+const foldAscii = (text) => text.replace(/[A-Z]/g, (c) => c.toLowerCase());
+/**
+ * Whether two project names name the same project. On github.com and gitlab.com
+ * the repository's name (`owner/repo`, or the GitLab project path) compares
+ * without regard to ASCII case, as the forge resolves it; a monorepo subpath,
+ * and a name on any other host, compare exactly.
+ */
+function sameProject(a, b) {
+    const x = forgeName(a);
+    const y = forgeName(b);
+    if (x === undefined || y === undefined)
+        return a === b;
+    return x.host === y.host && foldAscii(x.repository) === foldAscii(y.repository) && x.subpath === y.subpath;
+}
+/**
+ * Where a repository's name lies in a GitHub or GitLab URL or certificate
+ * identity: `owner/repo` after `https://github.com/`, or the project path
+ * before `//` after `https://gitlab.com/`. Undefined for any other URL.
+ */
+function repositorySpan(url) {
+    if (url.startsWith('https://github.com/')) {
+        const start = 'https://github.com/'.length;
+        const owner = url.indexOf('/', start);
+        const repo = owner < 0 ? -1 : url.indexOf('/', owner + 1);
+        return [start, repo < 0 ? url.length : repo];
+    }
+    if (url.startsWith('https://gitlab.com/')) {
+        const start = 'https://gitlab.com/'.length;
+        const config = url.indexOf('//', start);
+        return [start, config < 0 ? url.length : config];
+    }
+    return undefined;
+}
+/**
+ * Whether the certificate identity or URL `identity` starts with `prefix`. The
+ * GitHub or GitLab repository name that `prefix` spells compares without
+ * regard to ASCII case, as the forge resolves it; everything else, including a
+ * workflow's path and ref, compares exactly.
+ */
+function identityHasPrefix(identity, prefix) {
+    const span = repositorySpan(prefix);
+    if (span === undefined)
+        return identity.startsWith(prefix);
+    const [start, end] = span;
+    return (identity.length >= end &&
+        identity.slice(0, start) === prefix.slice(0, start) &&
+        foldAscii(identity.slice(start, end)) === foldAscii(prefix.slice(start, end)) &&
+        identity.slice(end).startsWith(prefix.slice(end)));
+}
+/**
+ * Whether two certificate identities are the same. A GitHub or GitLab
+ * repository's name in them compares without regard to ASCII case, as the
+ * forge resolves it; everything else, including a workflow's path and ref,
+ * compares exactly.
+ */
+function sameIdentity(actual, expected) {
+    const span = repositorySpan(expected);
+    if (span === undefined || actual.length !== expected.length)
+        return actual === expected;
+    const [start, end] = span;
+    return (actual.slice(0, start) === expected.slice(0, start) &&
+        foldAscii(actual.slice(start, end)) === foldAscii(expected.slice(start, end)) &&
+        actual.slice(end) === expected.slice(end));
+}
+
+// What the signing certificate says, checked against the statement's own
+// `identity` block (`check_declared` in the Rust crate's src/verify.rs) and
+// against the forge project the caller asked for (`forge::check_source` in
+// src/forge.rs, as `packslip verify` applies it to the statement's project).
+const GITHUB_ISSUER = 'https://token.actions.githubusercontent.com';
+const GITLAB_ISSUER = 'https://gitlab.com';
+// Fulcio's Source Repository URI extension: the repository whose CI run
+// requested the certificate, whichever workflow signed.
+const OID_SOURCE_REPOSITORY_URI = '1.3.6.1.4.1.57264.1.12';
+/** What a verified sigstore certificate says about its signer. */
+function certificateSigner(signer) {
+    const identity = signer.identity?.subjectAlternativeName;
+    const issuer = signer.identity?.extensions?.issuer;
+    if (identity === undefined || issuer === undefined) {
+        throw new IdentityError('the bundle is not signed with a certificate that names an identity and issuer');
+    }
+    const extension = signer.identity?.oids?.find((entry) => entry.oid?.id.join('.') === OID_SOURCE_REPOSITORY_URI);
+    let sourceRepository;
+    if (extension !== undefined) {
+        const text = derUtf8String(extension.value);
+        if (text === undefined) {
+            throw new IdentityError(`the certificate's Source Repository URI extension is malformed`, { identity, issuer });
+        }
+        // An empty value means the forge had none to give.
+        sourceRepository = text === '' ? undefined : text;
+    }
+    return { identity, issuer, sourceRepository };
+}
+/** The text of a DER UTF8String, or undefined when the bytes are not exactly one. */
+function derUtf8String(der) {
+    if (der[0] !== 0x0c || der.length < 2)
+        return undefined;
+    let length = der[1] ?? 0;
+    let offset = 2;
+    if (length & 0x80) {
+        const octets = length & 0x7f;
+        if (octets === 0 || octets > 3 || der.length < 2 + octets)
+            return undefined;
+        length = 0;
+        for (let i = 0; i < octets; i++)
+            length = length * 256 + (der[2 + i] ?? 0);
+        offset += octets;
+    }
+    if (offset + length !== der.length)
+        return undefined;
+    try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(der.subarray(offset));
+    }
+    catch {
+        return undefined;
+    }
+}
+/**
+ * Check the statement's `identity` block against the certificate that signed
+ * it. This package verifies keyless bundles only, so the scheme must be
+ * `sigstore-oidc`, `key_id` the certificate's identity, and `issuer` the
+ * certificate's issuer. `checkStatement` has already refused a sigstore-oidc
+ * identity without an issuer.
+ */
+function checkDeclaredIdentity(declared, signer) {
+    if (declared.scheme !== 'sigstore-oidc') {
+        throw new DeclaredIdentityError('scheme', declared.scheme, 'sigstore-oidc');
+    }
+    if (declared.key_id !== signer.identity) {
+        throw new DeclaredIdentityError('key_id', declared.key_id, signer.identity);
+    }
+    if (declared.issuer !== signer.issuer) {
+        throw new DeclaredIdentityError('issuer', declared.issuer ?? '', signer.issuer);
+    }
+}
+/** A GitHub or GitLab project name split along its forge's layout. */
+function forgeRepository(project) {
+    const [host, ...path] = project.split('/');
+    if (host === 'github.com') {
+        // `github.com/owner/repo`, with an optional monorepo subpath after it that
+        // names a tool of the repository.
+        const [owner, repo] = path;
+        return owner && repo ? { host, repository: `${owner}/${repo}` } : undefined;
+    }
+    // GitLab subgroups make paths arbitrary depth, so the whole path is the repository.
+    if (host === 'gitlab.com' && path.length > 0 && path.every((segment) => segment !== '')) {
+        return { host, repository: path.join('/') };
+    }
+    return undefined;
+}
+/**
+ * Check that the certificate belongs to the repository a GitHub or GitLab
+ * `project` names, as the specification's Project names and Repository
+ * identity sections require: the forge's issuer, and a Source Repository URI
+ * that is the project's repository. The signer may then be a reusable workflow
+ * of another repository. A certificate that records no Source Repository URI
+ * must instead be signed by a workflow of the repository. The repository's name
+ * compares without regard to ASCII case, as the forge resolves it. Any other
+ * project has no repository to compare, so the caller's identity policy is all
+ * there is.
+ */
+function checkProjectSigner(project, signer) {
+    const forge = forgeRepository(project);
+    if (forge === undefined)
+        return;
+    const details = { project, identity: signer.identity, issuer: signer.issuer, sourceRepository: signer.sourceRepository };
+    const issuer = forge.host === 'gitlab.com' ? GITLAB_ISSUER : GITHUB_ISSUER;
+    if (signer.issuer !== issuer) {
+        throw new ProjectSignerError(`${project} is signed through issuer ${JSON.stringify(signer.issuer)}, expected ${issuer}`, {
+            ...details,
+            reason: 'issuer',
+        });
+    }
+    const repository = `https://${forge.host}/${forge.repository}`;
+    if (signer.sourceRepository === undefined) {
+        const prefix = forge.host === 'gitlab.com' ? `${repository}//` : `${repository}/`;
+        if (!identityHasPrefix(signer.identity, prefix)) {
+            throw new ProjectSignerError(`signed by ${signer.identity}, which is not a workflow of ${repository}`, {
+                ...details,
+                reason: 'signer',
+            });
+        }
+    }
+    else if (!sameIdentity(signer.sourceRepository, repository)) {
+        throw new ProjectSignerError(`the certificate's source repository is ${signer.sourceRepository}, not ${repository}`, {
+            ...details,
+            reason: 'source-repository',
+        });
+    }
+}
+
+// The release/v1 statement and its structural rules, ported from the Rust
+// crate's `Statement::validate` (src/model.rs) by way of the Go module's
+// `Statement.Validate` (go/model.go). `checkStatement` reads a decoded payload
+// the way serde reads it there, then applies the same rules, so a statement the
+// reference implementation refuses is refused here too. The conformance
+// vectors in tests/conformance/statement-validity.json run against it.
+//
+// Like the Go module, it also refuses four things that the Rust crate in
+// packslip 1.10.1 accepts: an object written as an array of its fields, a
+// timestamp that is not RFC 3339, an executable with an empty name, and a
+// sigstore-oidc identity without a key_id or an issuer.
+const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 /** The predicate type of a release statement. Release lists (`releases/v1`) are not releases. */
 const RELEASE_PREDICATE_TYPE = 'https://packslip.dev/release/v1';
-const STATEMENT_TYPES = ['https://in-toto.io/Statement/v1'];
+// Semver 2.0.0, as its specification spells the grammar.
+const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+// An `os`, `arch`, `libc`, `format`, or `variant` value.
+const TOKEN = /^[a-z0-9][a-z0-9_.-]*$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const SHA512 = /^[0-9a-f]{128}$/;
+// RFC 3339 with any offset, the space separator its section 5.6 allows, and at
+// most nanosecond precision. The Rust crate's parser (jiff) also takes some ISO
+// 8601 spellings that are not RFC 3339, such as a `+0200` offset or no seconds;
+// that is a leniency of that crate, so like the Go module this refuses them.
+const RFC3339 = /^(\d{4})-(\d{2})-(\d{2})[Tt ](\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(?:[Zz]|[+-](\d{2}):(\d{2}))$/;
+// Formats whose artifact is one executable rather than an archive.
+const BARE_FORMATS = ['raw', 'gz', 'xz', 'zst', 'bz2'];
+function isObject$2(value) {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+const q = (value) => JSON.stringify(value);
+// ---------------------------------------------------------------------------
+// Reading: what serde enforces in the Rust crate. A required field must be
+// present with its type; an optional scalar may also be null; a list or map
+// that defaults to empty may be absent but not null. Unknown fields are
+// ignored, so a later revision of version 1 can add optional ones.
+//
+// This reads what JSON.parse returns, which keeps each value but not how it was
+// written, so two things serde_json sees in the text cannot be seen here. A
+// field named twice in one object keeps its last value, where the Rust crate
+// refuses a duplicate field (the Go module also keeps the last one). And a
+// whole-number size written as a decimal or with an exponent, such as `5.0` or
+// `1e3`, reads as that number, where both reference implementations refuse it.
+// ---------------------------------------------------------------------------
+class Fields {
+    #value;
+    #path;
+    constructor(value, path) {
+        if (!isObject$2(value))
+            throw new StatementError(`${path === '' ? 'the statement' : path} must be an object`);
+        this.#value = value;
+        this.#path = path;
+    }
+    at(key) {
+        return this.#path === '' ? key : `${this.#path}.${key}`;
+    }
+    get(key) {
+        return Object.hasOwn(this.#value, key) ? this.#value[key] : undefined;
+    }
+    #required(key) {
+        const value = this.get(key);
+        if (value === undefined)
+            throw new StatementError(`${this.at(key)} is required`);
+        return value;
+    }
+    string(key) {
+        const value = this.#required(key);
+        if (typeof value !== 'string')
+            throw new StatementError(`${this.at(key)} must be a string`);
+        return value;
+    }
+    optionalString(key) {
+        const value = this.get(key);
+        if (value === undefined || value === null)
+            return undefined;
+        if (typeof value !== 'string')
+            throw new StatementError(`${this.at(key)} must be a string`);
+        return value;
+    }
+    optionalBoolean(key) {
+        const value = this.get(key);
+        if (value === undefined || value === null)
+            return undefined;
+        if (typeof value !== 'boolean')
+            throw new StatementError(`${this.at(key)} must be a boolean`);
+        return value;
+    }
+    // A whole number of bytes. Number.isSafeInteger also refuses a size above
+    // 2^53 - 1, which the Rust crate's u64 takes, because no JavaScript number
+    // holds it exactly for comparison with a downloaded file's size.
+    size(key) {
+        const value = this.#required(key);
+        if (!Number.isSafeInteger(value) || value < 0) {
+            throw new StatementError(`${this.at(key)} must be a non-negative integer`);
+        }
+        return value;
+    }
+    object(key) {
+        return new Fields(this.#required(key), this.at(key));
+    }
+    optionalObject(key) {
+        const value = this.get(key);
+        return value === undefined || value === null ? undefined : new Fields(value, this.at(key));
+    }
+    list(key, each, required = false) {
+        const value = required ? this.#required(key) : this.get(key);
+        if (value === undefined)
+            return [];
+        if (!Array.isArray(value))
+            throw new StatementError(`${this.at(key)} must be an array`);
+        return Array.from(value, (item, i) => each(item, `${this.at(key)}[${i}]`));
+    }
+    optionalList(key, each) {
+        const value = this.get(key);
+        return value === undefined || value === null ? undefined : this.list(key, each);
+    }
+    strings(key) {
+        return this.list(key, stringAt);
+    }
+    map(key) {
+        const value = this.get(key);
+        if (value === undefined)
+            return {};
+        if (!isObject$2(value))
+            throw new StatementError(`${this.at(key)} must be an object`);
+        return value;
+    }
+    stringMap(key) {
+        const value = this.map(key);
+        for (const [name, entry] of Object.entries(value)) {
+            if (typeof entry !== 'string')
+                throw new StatementError(`${this.at(key)}.${name} must be a string`);
+        }
+        return value;
+    }
+}
+function stringAt(value, path) {
+    if (typeof value !== 'string')
+        throw new StatementError(`${path} must be a string`);
+    return value;
+}
+function readSubject(value, path) {
+    const fields = new Fields(value, path);
+    const digest = fields.object('digest');
+    return {
+        name: fields.string('name'),
+        digest: { sha256: digest.string('sha256'), sha512: digest.optionalString('sha512') },
+    };
+}
+// A string names the executable at that path under its own file name; an
+// object gives both. Either way a name ending in `.exe` (in any case) is read as
+// the name without it, as the Rust crate's `Bin` reads it: `bin/tool.exe` and
+// `{ "path": "tool-x64.exe", "name": "tool.exe" }` both name the command `tool`.
+function readBin(value, path) {
+    if (typeof value === 'string')
+        return { path: value, name: commandName(fileName(value)) };
+    if (isObject$2(value) && typeof value['path'] === 'string' && typeof value['name'] === 'string') {
+        return { path: value['path'], name: commandName(value['name']) };
+    }
+    throw new StatementError(`${path} must be a path, or an object with a path and a name`);
+}
+function readRequires(fields) {
+    return {
+        os_min: fields.optionalString('os_min'),
+        glibc_min: fields.optionalString('glibc_min'),
+        libs: fields.optionalList('libs', stringAt),
+        bin: fields.list('bin', (item, path) => {
+            const bin = new Fields(item, path);
+            return { name: bin.string('name'), min: bin.optionalString('min') };
+        }),
+    };
+}
+function readArtifact(value, path) {
+    const fields = new Fields(value, path);
+    const requires = fields.optionalObject('requires');
+    return {
+        name: fields.string('name'),
+        os: fields.optionalString('os'),
+        arch: fields.optionalString('arch'),
+        libc: fields.optionalString('libc'),
+        variant: fields.optionalString('variant'),
+        size: fields.size('size'),
+        url: fields.optionalString('url'),
+        // Optional here so that its absence is reported by name below.
+        format: fields.optionalString('format'),
+        bin: fields.list('bin', readBin),
+        requires: requires === undefined ? undefined : readRequires(requires),
+        provenance: fields.strings('provenance'),
+        extensions: fields.map('extensions'),
+    };
+}
+function readResource(value, path) {
+    const fields = new Fields(value, path);
+    return {
+        kind: fields.string('kind'),
+        artifact: fields.optionalString('artifact'),
+        os: fields.optionalString('os'),
+        arch: fields.optionalString('arch'),
+        libc: fields.optionalString('libc'),
+        shell: fields.optionalString('shell'),
+        shells: fields.strings('shells'),
+        name: fields.optionalString('name'),
+        bin: fields.optionalString('bin'),
+        format: fields.optionalString('format'),
+        archive: fields.optionalString('archive'),
+        asset: fields.optionalString('asset'),
+        url: fields.optionalString('url'),
+        repo: fields.optionalString('repo'),
+        exec: fields.strings('exec'),
+        env: fields.stringMap('env'),
+        extensions: fields.map('extensions'),
+    };
+}
+function readIdentity(fields) {
+    const scheme = fields.string('scheme');
+    if (scheme !== 'sigstore-oidc' && scheme !== 'sigstore-key') {
+        throw new StatementError(`${fields.at('scheme')} must be sigstore-oidc or sigstore-key, got ${q(scheme)}`);
+    }
+    return {
+        scheme,
+        key_id: fields.string('key_id'),
+        issuer: fields.optionalString('issuer'),
+        pin_workflow: fields.optionalBoolean('pin_workflow'),
+    };
+}
+function readPredicate(fields) {
+    const source = fields.optionalObject('source');
+    // Absent means the vendor; null is not a value the field takes.
+    const attested = fields.get('attested_by') === undefined ? 'vendor' : fields.get('attested_by');
+    if (attested !== 'vendor' && attested !== 'repackager') {
+        throw new StatementError(`${fields.at('attested_by')} must be vendor or repackager`);
+    }
+    return {
+        project: fields.string('project'),
+        version: fields.string('version'),
+        published_at: fields.string('published_at'),
+        source: source === undefined
+            ? undefined
+            : { repo: source.string('repo'), commit: source.optionalString('commit'), tag: source.optionalString('tag') },
+        artifacts: fields.list('artifacts', readArtifact, true),
+        resources: fields.list('resources', readResource),
+        identity: readIdentity(fields.object('identity')),
+        attested_by: attested,
+        evidence: fields.list('evidence', (item, path) => {
+            const evidence = new Fields(item, path);
+            return { kind: evidence.string('kind'), detail: evidence.optionalString('detail') };
+        }),
+        notes_url: fields.optionalString('notes_url'),
+        extensions: fields.map('extensions'),
+    };
+}
+function checkTypes(type, predicateType) {
+    if (type !== STATEMENT_TYPE)
+        throw new StatementError(`_type must be ${STATEMENT_TYPE}, got ${q(type)}`);
+    if (predicateType !== RELEASE_PREDICATE_TYPE) {
+        throw new StatementError(`predicateType must be ${RELEASE_PREDICATE_TYPE}, got ${q(predicateType)}`, 'predicate-type');
+    }
+}
+/**
+ * Read a decoded statement and check it against the release/v1 rules. Throws
+ * {@link StatementError}, with code `predicate-type` for a statement that is
+ * not a release (a `releases/v1` release list among them).
+ */
+function checkStatement(value) {
+    const fields = new Fields(value, '');
+    // The types come first, so that a release list or another predicate is
+    // refused as what it is rather than for lacking a release's fields.
+    checkTypes(fields.string('_type'), fields.string('predicateType'));
+    const statement = {
+        _type: fields.string('_type'),
+        subject: fields.list('subject', readSubject, true),
+        predicateType: fields.string('predicateType'),
+        predicate: readPredicate(fields.object('predicate')),
+    };
+    validateStatement(statement);
+    return statement;
+}
+// ---------------------------------------------------------------------------
+// Validation: the structural invariants beyond the field types. This proves
+// nothing about the signature.
+// ---------------------------------------------------------------------------
+/** Check a statement's structural invariants. Throws {@link StatementError}. */
+function validateStatement(s) {
+    checkTypes(s._type, s.predicateType);
+    const subjects = new Set();
+    for (const subject of s.subject) {
+        if (subjects.has(subject.name))
+            throw new StatementError(`subject ${q(subject.name)} appears more than once`);
+        subjects.add(subject.name);
+        if (!SHA256.test(subject.digest.sha256)) {
+            throw new StatementError(`sha256 for ${q(subject.name)} must be 64 lowercase hex characters`);
+        }
+        if (subject.digest.sha512 !== undefined && !SHA512.test(subject.digest.sha512)) {
+            throw new StatementError(`sha512 for ${q(subject.name)} must be 128 lowercase hex characters`);
+        }
+    }
+    const p = s.predicate;
+    if (!validProject(p.project)) {
+        throw new StatementError(`project must be a host path such as github.com/owner/repo or tool.example.com, got ${q(p.project)}`);
+    }
+    if (p.version === '')
+        throw new StatementError('version must not be empty');
+    if (!SEMVER.test(p.version)) {
+        throw new StatementError(`version must be semver 2.0.0 (MAJOR.MINOR.PATCH, with an optional prerelease part), got ${q(p.version)}`);
+    }
+    if (!validTimestamp(p.published_at))
+        throw new StatementError(`published_at must be RFC 3339, got ${q(p.published_at)}`);
+    // A keyless identity names the certificate's subject and the issuer that vouched for it.
+    if (p.identity.scheme === 'sigstore-oidc') {
+        if (p.identity.key_id === '')
+            throw new StatementError('a sigstore-oidc identity needs a key_id, the certificate identity');
+        if (p.identity.issuer === undefined || p.identity.issuer === '') {
+            throw new StatementError('a sigstore-oidc identity needs an issuer');
+        }
+    }
+    if (p.artifacts.length === 0)
+        throw new StatementError('at least one artifact is required');
+    checkExtensions('the release', p.extensions);
+    const artifacts = new Set();
+    p.artifacts.forEach((artifact, i) => {
+        const name = q(artifact.name);
+        if (artifacts.has(artifact.name))
+            throw new StatementError(`artifact ${name} appears more than once`);
+        artifacts.add(artifact.name);
+        checkExtensions(`artifact ${name}`, artifact.extensions);
+        if (!subjects.has(artifact.name))
+            throw new StatementError(`artifact ${name} has no matching subject`);
+        // A consumer skips a format it does not handle, and none handles an absent one.
+        if (artifact.format === undefined) {
+            throw new StatementError(`artifact ${name} has no format, so no consumer can select it`);
+        }
+        checkTokens(`artifact ${name}`, {
+            os: artifact.os,
+            arch: artifact.arch,
+            libc: artifact.libc,
+            variant: artifact.variant,
+            format: artifact.format,
+        });
+        const bare = isBareFormat(artifact.format) ? bareFileName(artifact.name, artifact.format) : undefined;
+        for (const bin of artifact.bin) {
+            if (bin.path === '')
+                throw new StatementError(`artifact ${name} has an executable with an empty path`);
+            // Read without `.exe`, so `.exe` and a path ending in `/` have no name either.
+            if (bin.name === '')
+                throw new StatementError(`artifact ${name} has an executable with an empty name`);
+            if (bin.name.includes('/')) {
+                throw new StatementError(`artifact ${name} has an executable name containing a slash: ${q(bin.name)}`);
+            }
+            if (commandName(bin.name) !== bin.name) {
+                throw new StatementError(`artifact ${name} has an executable name ending in .exe: ${q(bin.name)}; a name is the command as typed, and the path carries the extension`);
+            }
+            if (bare !== undefined && bin.path !== bare) {
+                throw new StatementError(`artifact ${name} is a bare executable, so its bin must be ${q(bare)}, not ${q(bin.path)}`);
+            }
+        }
+        // Two artifacts for one platform, variant, and format leave a consumer
+        // nothing to choose by.
+        const other = p.artifacts.slice(0, i).find((a) => selectorsEqual(a, artifact));
+        if (other !== undefined) {
+            throw new StatementError(`artifacts ${q(other.name)} and ${name} describe the same os, arch, libc, variant, and format; give one a variant`);
+        }
+    });
+    const binNames = new Set(p.artifacts.flatMap((a) => a.bin.map((b) => commandName(b.name))));
+    const isBin = (name) => binNames.has(commandName(name));
+    for (const artifact of p.artifacts) {
+        if (artifact.requires !== undefined)
+            validateRequires(q(artifact.name), artifact.requires, isBin);
+    }
+    const assets = new Set();
+    for (const resource of p.resources) {
+        const asset = validateResource(resource, p, subjects, binNames);
+        if (asset !== undefined)
+            assets.add(asset);
+    }
+    for (const subject of s.subject) {
+        if (!artifacts.has(subject.name) && !assets.has(subject.name)) {
+            throw new StatementError(`subject ${q(subject.name)} has no matching artifact`);
+        }
+    }
+}
+function validateRequires(name, requires, isBin) {
+    const libs = new Set();
+    for (const lib of requires.libs ?? []) {
+        if (!validLib(lib)) {
+            throw new StatementError(`artifact ${name} requires library ${q(lib)}; a library is named as its loader resolves it, such as libssl.so.3`);
+        }
+        if (libs.has(lib))
+            throw new StatementError(`artifact ${name} requires library ${q(lib)} twice`);
+        libs.add(lib);
+    }
+    const commands = new Set();
+    for (const required of requires.bin) {
+        if (!validRequiredBin(required.name)) {
+            throw new StatementError(`artifact ${name} requires command ${q(required.name)}; a command is a bare name such as java`);
+        }
+        if (required.min !== undefined && !validMin(required.min)) {
+            throw new StatementError(`artifact ${name} requires command ${q(required.name)} with minimum ${q(required.min)}; a minimum starts with a digit, as in 17 or 3.12`);
+        }
+        if (commands.has(required.name))
+            throw new StatementError(`artifact ${name} requires command ${q(required.name)} twice`);
+        commands.add(required.name);
+        if (isBin(required.name)) {
+            throw new StatementError(`artifact ${name} requires command ${q(required.name)}, which the release itself provides`);
+        }
+    }
+}
+/** The one source a resource declares, or undefined when it declares none or several. */
+function sourceOf(r) {
+    const sources = [];
+    if (r.archive !== undefined)
+        sources.push('archive');
+    if (r.asset !== undefined)
+        sources.push('asset');
+    if (r.repo !== undefined)
+        sources.push('repo');
+    if (r.exec.length > 0)
+        sources.push('exec');
+    return sources.length === 1 ? sources[0] : undefined;
+}
+/** A short label for messages: `completion/zsh`, `skill/mise`, `cli-spec/usage/mise`. */
+function label(r) {
+    let text = r.kind;
+    for (const part of [r.format, r.bin, r.shell, r.name])
+        if (part !== undefined)
+            text += `/${part}`;
+    if (r.shells.length > 0)
+        text += `/${r.shells.join(',')}`;
+    return text;
+}
+/** Check one resource; returns the asset it names, if any. */
+function validateResource(r, p, subjects, binNames) {
+    const name = q(label(r));
+    // A resource's `bin` and the program an `exec` runs are command names too, so
+    // `mise.exe` there is the executable `mise`.
+    const isBin = (bin) => binNames.has(commandName(bin));
+    if (r.kind === '')
+        throw new StatementError('a resource has an empty kind');
+    checkExtensions(`resource ${name}`, r.extensions);
+    // Said before the scope check below, which would report it as a platform mismatch.
+    if (r.archive !== undefined && r.artifact !== undefined) {
+        const format = p.artifacts.find((a) => a.name === r.artifact)?.format;
+        if (format !== undefined && isBareFormat(format)) {
+            throw new StatementError(`resource ${name} names a path inside artifact ${q(r.artifact)}, which is a bare ${format} executable and holds no paths`);
+        }
+    }
+    if (r.artifact !== undefined && !p.artifacts.some((a) => fits(r, a))) {
+        throw new StatementError(`resource ${name} names artifact ${q(r.artifact)}, which is absent or outside its platform scope`);
+    }
+    const source = sourceOf(r);
+    if (source === undefined)
+        throw new StatementError(`resource ${name} must have exactly one of archive, asset, repo, exec`);
+    checkTokens(`resource ${name}`, { os: r.os, arch: r.arch, libc: r.libc });
+    let asset;
+    switch (source) {
+        case 'archive':
+            if (!validRelativePath(r.archive ?? '')) {
+                throw new StatementError(`resource ${name}: archive path must be relative with no empty or .. segments`);
+            }
+            break;
+        case 'asset':
+            asset = r.asset ?? '';
+            if (!subjects.has(asset))
+                throw new StatementError(`resource ${name} names asset ${q(asset)}, which is not a subject`);
+            break;
+        case 'repo':
+            if (!validRelativePath(r.repo ?? '')) {
+                throw new StatementError(`resource ${name}: repo path must be relative with no empty or .. segments`);
+            }
+            if (p.source?.commit === undefined) {
+                throw new StatementError(`resource ${name} comes from the repository, which needs source.commit`);
+            }
+            break;
+        case 'exec': {
+            const program = r.exec[0] ?? '';
+            if (!isBin(program)) {
+                throw new StatementError(`resource ${name} runs ${q(program)}, which is not a bin name of any artifact`);
+            }
+            break;
+        }
+    }
+    const env = Object.keys(r.env);
+    if (env.length > 0 && source !== 'exec')
+        throw new StatementError(`resource ${name} has env but its source is not exec`);
+    const badName = env.find((key) => key === '' || key.includes('=') || key.includes('\0'));
+    if (badName !== undefined) {
+        throw new StatementError(`resource ${name} has an env variable named ${q(badName)}; a name is non-empty and holds no = or NUL`);
+    }
+    if (r.url !== undefined && source !== 'asset') {
+        throw new StatementError(`resource ${name} has a url but its source is not an asset`);
+    }
+    if (r.kind === 'completion' || r.kind === 'man') {
+        if (r.bin !== undefined && !isBin(r.bin)) {
+            throw new StatementError(`resource ${name} is for ${q(r.bin)}, which is not a bin name of any artifact`);
+        }
+        if (r.bin === undefined && binNames.size > 1) {
+            throw new StatementError(`resource ${name} does not say which executable it is for, and the release has several: ${[...binNames].sort().join(', ')}`);
+        }
+    }
+    switch (r.kind) {
+        case 'completion': {
+            if ((r.shell !== undefined) !== (r.shells.length === 0)) {
+                throw new StatementError(`completion ${name} needs exactly one of shell or shells`);
+            }
+            const badShell = [...(r.shell === undefined ? [] : [r.shell]), ...r.shells].find((shell) => !validShell(shell));
+            if (badShell !== undefined) {
+                throw new StatementError(`completion ${name} names shell ${q(badShell)}; a shell is a lowercase word such as zsh`);
+            }
+            const mentionsShell = [...r.exec, ...Object.values(r.env)].some((value) => value.includes('{shell}'));
+            if ((source === 'exec' && r.shell !== undefined) || (r.shells.length > 0 && (source !== 'exec' || !mentionsShell))) {
+                throw new StatementError(`completion ${name} lists shells, so its source must be exec with a {shell} placeholder`);
+            }
+            break;
+        }
+        case 'cli-spec':
+            if (r.format === undefined || r.bin === undefined)
+                throw new StatementError(`cli-spec ${name} needs format and bin`);
+            if (!isBin(r.bin)) {
+                throw new StatementError(`cli-spec ${name} describes ${q(r.bin)}, which is not a bin name of any artifact`);
+            }
+            break;
+        case 'skill':
+            if (r.name === undefined || r.name === '' || r.name.includes('/')) {
+                throw new StatementError(`skill ${name} needs a name without a slash`);
+            }
+            break;
+        case 'app':
+            if (source !== 'archive')
+                throw new StatementError(`app ${name} must come from an archive`);
+            break;
+        case 'sbom':
+            if (r.format === undefined || source === 'exec') {
+                throw new StatementError(`sbom ${name} needs a format (cyclonedx or spdx) and a static source, not exec`);
+            }
+            break;
+    }
+    return asset;
+}
+// Extension keys name who defines them, so an empty one is a mistake.
+function checkExtensions(owner, extensions) {
+    if (Object.hasOwn(extensions, ''))
+        throw new StatementError(`${owner} has an extension with an empty key`);
+}
+function checkTokens(owner, values) {
+    for (const [field, value] of Object.entries(values)) {
+        if (value !== undefined && !TOKEN.test(value)) {
+            throw new StatementError(`${owner} has ${field} ${q(value)}; a value is a lowercase word of letters, digits, _, -, and .`);
+        }
+    }
+}
+function selectorsEqual(a, b) {
+    return (a.os === b.os &&
+        a.arch === b.arch &&
+        a.libc === b.libc &&
+        a.variant === b.variant &&
+        a.format === b.format &&
+        a.format !== undefined);
+}
+/** Whether a resource applies to an artifact, as `resource_fits` in the Rust crate says. */
+function fits(r, a) {
+    const insideBareArtifact = r.archive !== undefined && a.format !== undefined && isBareFormat(a.format);
+    return (!insideBareArtifact &&
+        (r.artifact === undefined || r.artifact === a.name) &&
+        (r.os === undefined || r.os === a.os) &&
+        (r.arch === undefined || r.arch === a.arch) &&
+        (r.libc === undefined || r.libc === a.libc));
+}
+function isBareFormat(format) {
+    return BARE_FORMATS.includes(format);
+}
+/** The file inside a bare-format artifact: its own name, minus any compression suffix. */
+function bareFileName(name, format) {
+    if (format === 'raw' || !name.endsWith(`.${format}`))
+        return name;
+    return name.slice(0, -(format.length + 1));
+}
+/**
+ * A project name is a lowercase DNS host, optionally followed by path segments:
+ * `github.com/jdx/mise`, `mise.jdx.dev`. No scheme, no empty or dot segments,
+ * no trailing slash, and the host has at least one dot.
+ */
+function validProject(project) {
+    const [host = '', ...segments] = project.split('/');
+    const hostOk = host.includes('.') &&
+        !host.startsWith('.') &&
+        !host.endsWith('.') &&
+        !host.includes('..') &&
+        host
+            .split('.')
+            .every((label) => label !== '' && !label.startsWith('-') && !label.endsWith('-') && /^[a-z0-9-]+$/.test(label));
+    return hostOk && segments.every((segment) => segment !== '.' && segment !== '..' && /^[A-Za-z0-9._~-]+$/.test(segment));
+}
+function validTimestamp(value) {
+    const match = RFC3339.exec(value);
+    if (match === null)
+        return false;
+    // An absent offset is `Z`.
+    const [year = 0, month = 0, day = 0, hour = 0, minute = 0, second = 0, offsetHour = 0, offsetMinute = 0] = match
+        .slice(1)
+        .map((part) => Number(part ?? 0));
+    const leap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+    const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1];
+    return (days !== undefined &&
+        day >= 1 &&
+        day <= days &&
+        hour <= 23 &&
+        minute <= 59 &&
+        // A leap second is accepted, as the Rust crate's parser accepts one.
+        second <= 60 &&
+        offsetHour <= 23 &&
+        offsetMinute <= 59);
+}
+/** A path inside an archive or a repository: relative, with no empty or `..` segments. */
+function validRelativePath(path) {
+    return path !== '' && !path.startsWith('/') && path.split('/').every((segment) => segment !== '' && segment !== '..');
+}
+/** A shared library name as a loader resolves it: one path segment, no whitespace or control characters. */
+function validLib(name) {
+    return name !== '' && !/[/\\\x00-\x20\x7f]/.test(name);
+}
+/** A command name as typed at a shell: one segment, no `.exe`. */
+function validRequiredBin(name) {
+    return validLib(name) && !/\.exe$/i.test(name);
+}
+/** A minimum version: dot-separated components starting with a digit. */
+function validMin(min) {
+    return /^[0-9][A-Za-z0-9.+-]*$/.test(min);
+}
+/** A shell name is a plain lowercase word: `bash`, `zsh`, `powershell`. */
+function validShell(shell) {
+    return /^[a-z0-9_-]+$/.test(shell);
+}
+function fileName(path) {
+    return path.slice(path.lastIndexOf('/') + 1);
+}
+/** A command's name as the specification writes it: as typed at a shell, without `.exe`. */
+function commandName(name) {
+    return /\.exe$/i.test(name) ? name.slice(0, -4) : name;
+}
+
 function isObject$1(value) {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
-function parseStatement(payload) {
+function parsePayload(payload) {
     let statement;
     try {
         statement = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
     }
-    catch (cause) {
+    catch {
         throw new StatementError('the signed payload is not valid JSON');
     }
     if (!isObject$1(statement))
         throw new StatementError('the signed payload is not an object');
     return statement;
 }
-function parseSubjects(value) {
-    if (!Array.isArray(value) || value.length === 0)
-        throw new StatementError('the statement has no subjects');
-    const seen = new Set();
-    return value.map((entry) => {
-        const digest = isObject$1(entry) ? entry['digest'] : undefined;
-        if (!isObject$1(entry) || typeof entry['name'] !== 'string' || !isObject$1(digest)) {
-            throw new StatementError('a subject needs a name and a digest');
-        }
-        const name = entry['name'];
-        if (seen.has(name))
-            throw new StatementError(`the statement lists ${JSON.stringify(name)} twice`);
-        seen.add(name);
-        const sha256 = digest['sha256'];
-        const sha512 = digest['sha512'];
-        if (typeof sha256 !== 'string' || !SHA256.test(sha256)) {
-            throw new StatementError(`${name}: sha256 must be 64 lowercase hexadecimal characters`);
-        }
-        if (sha512 !== undefined && (typeof sha512 !== 'string' || !SHA512.test(sha512))) {
-            throw new StatementError(`${name}: sha512 must be 128 lowercase hexadecimal characters`);
-        }
-        return { name, digest: sha512 === undefined ? { sha256 } : { sha256, sha512 } };
-    });
+/**
+ * Decode a DSSE payload and check it against the release/v1 rules. Returns the
+ * statement as this package exposes it, with the predicate as it was signed,
+ * and the parsed model the signer checks read.
+ */
+function readRelease(payload) {
+    const raw = parsePayload(payload);
+    const model = checkStatement(raw);
+    const subject = model.subject.map(({ name, digest: { sha256, sha512 } }) => ({
+        name,
+        digest: sha512 === undefined ? { sha256 } : { sha256, sha512 },
+    }));
+    return {
+        statement: {
+            _type: model._type,
+            subject,
+            predicateType: RELEASE_PREDICATE_TYPE,
+            predicate: raw['predicate'],
+        },
+        model,
+    };
 }
-function readStatement(payload, expect) {
-    const statement = parseStatement(payload);
-    const type = statement['_type'];
-    if (typeof type !== 'string' || !STATEMENT_TYPES.includes(type)) {
-        throw new StatementError('the signed payload is not an in-toto statement');
-    }
-    if (statement['predicateType'] !== RELEASE_PREDICATE_TYPE) {
-        throw new StatementError(`the predicate type is ${JSON.stringify(statement['predicateType'])}, not ${RELEASE_PREDICATE_TYPE}`, 'predicate-type');
-    }
-    const predicate = statement['predicate'];
-    if (!isObject$1(predicate) ||
-        typeof predicate['project'] !== 'string' ||
-        typeof predicate['version'] !== 'string' ||
-        !Array.isArray(predicate['artifacts'])) {
-        throw new StatementError('the predicate needs a project, a version, and artifacts');
-    }
-    for (const artifact of predicate['artifacts']) {
-        if (!isObject$1(artifact) ||
-            typeof artifact['name'] !== 'string' ||
-            (artifact['size'] !== undefined && !(Number.isSafeInteger(artifact['size']) && artifact['size'] >= 0))) {
-            throw new StatementError('each artifact needs a name and, if present, a non-negative integer size');
-        }
-    }
-    const subject = parseSubjects(statement['subject']);
-    if (expect.project !== undefined && predicate['project'] !== expect.project) {
-        throw new StatementError(`the statement is for ${predicate['project']}, not ${expect.project}`, 'project');
+/**
+ * Require the statement to name the project and source tag the caller asked
+ * for. A GitHub or GitLab repository's name matches in any case, as the
+ * forge resolves it.
+ */
+function checkExpected(model, expect) {
+    if (expect.project !== undefined && !sameProject(model.predicate.project, expect.project)) {
+        throw new StatementError(`the statement is for ${model.predicate.project}, not ${expect.project}`, 'project');
     }
     if (expect.tag !== undefined) {
-        const source = predicate['source'];
-        const tag = isObject$1(source) ? source['tag'] : undefined;
+        const tag = model.predicate.source?.tag;
         if (tag !== expect.tag) {
             throw new StatementError(`the statement's source tag is ${JSON.stringify(tag)}, not ${JSON.stringify(expect.tag)}`, 'tag');
         }
     }
-    return { _type: type, subject, predicateType: RELEASE_PREDICATE_TYPE, predicate: predicate };
+}
+
+// What verifyRelease checks once sigstore has verified a bundle: the caller's
+// signer policy, then the statement, the signer it declares, and the requested
+// project and tag. It is kept apart from the sigstore call so the tests can run
+// it on certificate fields that no published bundle carries, such as a
+// repackager's signature for another repository's project.
+/**
+ * Refuse options that cannot mean what the caller wants, before any network
+ * access. `allowOtherRepository` lifts the repository requirement a GitHub or
+ * GitLab `project` brings, as `packslip verify --allow-other-repository` does,
+ * so it needs a `project`, and an `identity` (with the required `issuer`) that
+ * names the signer it accepts instead.
+ */
+function checkOptions(options) {
+    if (options.allowOtherRepository !== true)
+        return;
+    if (options.project === undefined) {
+        throw new TypeError('allowOtherRepository lifts the repository requirement a project brings, so it needs a project');
+    }
+    if (typeof options.identity !== 'string' && typeof options.identity !== 'function') {
+        throw new TypeError('allowOtherRepository needs an identity that names the signer it accepts');
+    }
+}
+/**
+ * Check a certificate sigstore has verified, and the statement it signed,
+ * against the caller's options, and return the statement with its signer.
+ */
+function checkSigned(certificate, payload, options) {
+    const { identity, issuer } = certificate;
+    const identityOk = typeof options.identity === 'string' ? sameIdentity(identity, options.identity) : options.identity(identity);
+    if (!identityOk) {
+        throw new IdentityError(`the signing identity ${identity} is not the expected one`, { identity, issuer });
+    }
+    if (issuer !== options.issuer) {
+        throw new IdentityError(`the certificate issuer ${issuer} is not the expected ${options.issuer}`, {
+            identity,
+            issuer,
+        });
+    }
+    const { statement, model } = readRelease(payload);
+    checkDeclaredIdentity(model.predicate.identity, certificate);
+    checkExpected(model, options);
+    // A GitHub or GitLab project must be signed from its repository, whatever
+    // `identity` accepts, unless the caller accepts a signer outside it.
+    if (options.project !== undefined && options.allowOtherRepository !== true) {
+        checkProjectSigner(options.project, certificate);
+    }
+    return { ...statement, signer: { identity, issuer } };
 }
 
 const DSSE_PAYLOAD_TYPE = 'application/vnd.in-toto+json';
@@ -137810,18 +138722,21 @@ function parseBundle(bundleJson) {
     }
     return value;
 }
-/** The certificate's SAN URI, from the leaf the bundle carries. */
-function signerFromSigstore(signer) {
-    return { identity: signer.identity?.subjectAlternativeName, issuer: signer.identity?.extensions?.issuer };
-}
 /**
  * Verify a release bundle (the contents of `packslip.sigstore.json`) against a
  * signer the caller already trusts, and return its statement.
  *
  * The bundle must carry a Fulcio certificate and a transparency log entry that
- * sigstore's public-good instance accepts. Key-signed bundles are refused.
+ * sigstore's public-good instance accepts. Key-signed bundles are refused. Once
+ * the signature and the caller's identity and issuer check out, the statement
+ * must follow the release/v1 structural rules, and its `predicate.identity`
+ * must name the certificate's identity and issuer. Then come the optional
+ * `project` and `tag` checks, and, unless `allowOtherRepository` is set, the
+ * check that a GitHub or GitLab `project` was signed from its repository.
+ * Options that need another option throw a `TypeError` before verification.
  */
 async function verifyRelease(bundleJson, options) {
+    checkOptions(options);
     const bundle = parseBundle(bundleJson);
     let signer;
     try {
@@ -137831,22 +138746,7 @@ async function verifyRelease(bundleJson, options) {
         const message = cause instanceof Error ? cause.message : String(cause);
         throw new SignatureError(`sigstore refused the bundle: ${message}`, { cause });
     }
-    const { identity, issuer } = signerFromSigstore(signer);
-    if (identity === undefined || issuer === undefined) {
-        throw new IdentityError('the bundle is not signed with a certificate that names an identity and issuer');
-    }
-    const identityOk = typeof options.identity === 'string' ? identity === options.identity : options.identity(identity);
-    if (!identityOk) {
-        throw new IdentityError(`the signing identity ${identity} is not the expected one`, { identity, issuer });
-    }
-    if (issuer !== options.issuer) {
-        throw new IdentityError(`the certificate issuer ${issuer} is not the expected ${options.issuer}`, {
-            identity,
-            issuer,
-        });
-    }
-    const statement = readStatement(bundle.dsseEnvelope.payload, options);
-    return { ...statement, signer: { identity, issuer } };
+    return checkSigned(certificateSigner(signer), bundle.dsseEnvelope.payload, options);
 }
 /** Look up an asset in a verified statement by file name. */
 function findArtifact(statement, assetName) {
@@ -137893,9 +138793,11 @@ var packslip = /*#__PURE__*/Object.freeze({
     __proto__: null,
     ArtifactNotFoundError: ArtifactNotFoundError,
     BundleError: BundleError,
+    DeclaredIdentityError: DeclaredIdentityError,
     DigestMismatchError: DigestMismatchError,
     IdentityError: IdentityError,
     PackslipError: PackslipError,
+    ProjectSignerError: ProjectSignerError,
     RELEASE_PREDICATE_TYPE: RELEASE_PREDICATE_TYPE,
     SignatureError: SignatureError,
     StatementError: StatementError,
