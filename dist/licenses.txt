@@ -4161,7 +4161,7 @@ Author: bdehamer@github.com
 ---
 
 Name: packslip
-Version: 1.8.0
+Version: 1.11.0
 License: MIT
 Private: false
 Description: Verify a packslip release bundle and the files downloaded from it
