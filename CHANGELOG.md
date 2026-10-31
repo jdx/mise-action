@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [5.2.5](https://github.com/jdx/mise-action/compare/v5.2.4..v5.2.5) - 2026-10-30
+## [5.2.6](https://github.com/jdx/mise-action/compare/v5.2.5..v5.2.6) - 2026-10-31
+
+### 🐛 Bug Fixes
+
+- exit after run and post so a failed cache restore can't hang the step (#718) by [@jdx](https://github.com/jdx) in [#718](https://github.com/jdx/mise-action/pull/718)
+
+---
+## [5.2.5](https://github.com/jdx/mise-action/compare/v5.2.4..v5.2.5) - 2026-10-31
 
 ### 🔍 Other Changes
 
