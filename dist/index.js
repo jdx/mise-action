@@ -140178,12 +140178,24 @@ async function post() {
         warning(`Failed to save mise cache: ${errorMessage(err)}`);
     }
 }
+/**
+ * End the process once `work` settles instead of waiting for the event loop to
+ * drain. `@actions/cache` leaves a segment timer armed after a failed download
+ * (actions/toolkit#2470), which would keep the step open for ten minutes.
+ * `process.exit()` keeps the exit code `core.setFailed` set.
+ */
+function exitWhenDone(work) {
+    work.then(() => process.exit(), (err) => {
+        setFailed(errorMessage(err));
+        process.exit();
+    });
+}
 if (getState('IS_POST')) {
-    void post();
+    exitWhenDone(post());
 }
 else {
     saveState('IS_POST', 'true');
-    void run();
+    exitWhenDone(run());
 }
 function getCwd() {
     return (getInput('working_directory') ||

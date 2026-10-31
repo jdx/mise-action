@@ -1511,11 +1511,27 @@ async function post(): Promise<void> {
   }
 }
 
+/**
+ * End the process once `work` settles instead of waiting for the event loop to
+ * drain. `@actions/cache` leaves a segment timer armed after a failed download
+ * (actions/toolkit#2470), which would keep the step open for ten minutes.
+ * `process.exit()` keeps the exit code `core.setFailed` set.
+ */
+function exitWhenDone(work: Promise<void>): void {
+  work.then(
+    () => process.exit(),
+    (err: unknown) => {
+      core.setFailed(errorMessage(err))
+      process.exit()
+    }
+  )
+}
+
 if (core.getState('IS_POST')) {
-  void post()
+  exitWhenDone(post())
 } else {
   core.saveState('IS_POST', 'true')
-  void run()
+  exitWhenDone(run())
 }
 
 function getCwd(): string {
