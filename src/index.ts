@@ -1511,11 +1511,34 @@ async function post(): Promise<void> {
   }
 }
 
+/**
+ * End the process once `work` settles instead of waiting for the event loop to
+ * drain. `@actions/cache` leaves a segment timer armed after a failed download
+ * (actions/toolkit#2470), which would keep the step open for ten minutes.
+ * `process.exit()` keeps the exit code `core.setFailed` set. Queued output is
+ * flushed first, but only for a bounded time, so the leaked timer can't hold
+ * the step open through a stream that never drains.
+ */
+async function exitWhenDone(work: Promise<void>): Promise<void> {
+  try {
+    await work
+  } catch (err) {
+    core.setFailed(errorMessage(err))
+  }
+  const flush = (stream: NodeJS.WriteStream): Promise<void> =>
+    new Promise(resolve => stream.write('', () => resolve()))
+  await Promise.race([
+    Promise.all([flush(process.stdout), flush(process.stderr)]),
+    new Promise(resolve => setTimeout(resolve, 5000))
+  ])
+  process.exit()
+}
+
 if (core.getState('IS_POST')) {
-  void post()
+  void exitWhenDone(post())
 } else {
   core.saveState('IS_POST', 'true')
-  void run()
+  void exitWhenDone(run())
 }
 
 function getCwd(): string {
