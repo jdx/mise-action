@@ -1,7 +1,14 @@
 # Changelog
 
 ---
-## [5.2.4](https://github.com/jdx/mise-action/compare/v5.2.3..v5.2.4) - 2026-10-26
+## [5.2.5](https://github.com/jdx/mise-action/compare/v5.2.4..v5.2.5) - 2026-10-30
+
+### 🔍 Other Changes
+
+- bump versions (#710) by [@deining](https://github.com/deining) in [#710](https://github.com/jdx/mise-action/pull/710)
+
+---
+## [5.2.4](https://github.com/jdx/mise-action/compare/v5.2.3..v5.2.4) - 2026-10-27
 
 ### 🐛 Bug Fixes
 
