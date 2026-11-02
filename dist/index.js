@@ -129795,7 +129795,7 @@ function requireVerify () {
 	const crypto_1 = __importDefault(crypto__default);
 	const verifySignature = (metaDataSignedData, key, signature) => {
 	    const canonicalData = Buffer.from((0, canonical_json_1.canonicalize)(metaDataSignedData));
-	    return crypto_1.default.verify(undefined, canonicalData, key, Buffer.from(signature, 'hex'));
+	    return crypto_1.default.verify(key.hashAlgorithm, canonicalData, key, Buffer.from(signature, 'hex'));
 	};
 	verify.verifySignature = verifySignature;
 	return verify;
@@ -129927,6 +129927,9 @@ function requireBase () {
 	        }
 	        else if (!(typeof expires === 'string')) {
 	            throw new TypeError('expires must be a string');
+	        }
+	        else if (Number.isNaN(new Date(expires).getTime())) {
+	            throw new error_1.ValueError('Failed to parse expires');
 	        }
 	        if (!utils_1.guard.isDefined(version)) {
 	            throw new error_1.ValueError('version is not defined');
@@ -130178,11 +130181,11 @@ function requireOid () {
 	function encodeVariableLengthInteger(value) {
 	    const bytes = [];
 	    let mask = 0x00;
-	    while (value > 0) {
+	    do {
 	        bytes.unshift((value & 0x7f) | mask);
 	        value >>= 7;
 	        mask = 0x80;
-	    }
+	    } while (value > 0);
 	    return bytes;
 	}
 	return oid;
@@ -130207,6 +130210,7 @@ function requireKey$2 () {
 	const OID_EDDSA = '1.3.101.112';
 	const OID_EC_PUBLIC_KEY = '1.2.840.10045.2.1';
 	const OID_EC_CURVE_P256V1 = '1.2.840.10045.3.1.7';
+	const OID_EC_CURVE_P384 = '1.3.132.0.34';
 	const PEM_HEADER = '-----BEGIN PUBLIC KEY-----';
 	function getPublicKey(keyInfo) {
 	    switch (keyInfo.keyType) {
@@ -130230,8 +130234,11 @@ function requireKey$2 () {
 	    const key = crypto_1.default.createPublicKey(keyInfo.keyVal);
 	    switch (keyInfo.scheme) {
 	        case 'rsassa-pss-sha256':
+	        case 'rsassa-pss-sha384':
+	        case 'rsassa-pss-sha512':
 	            return {
 	                key: key,
+	                hashAlgorithm: keyInfo.scheme.slice('rsassa-pss-'.length),
 	                padding: crypto_1.default.constants.RSA_PKCS1_PSS_PADDING,
 	            };
 	        default:
@@ -130258,6 +130265,26 @@ function requireKey$2 () {
 	    return { key };
 	}
 	function getECDCSAPublicKey(keyInfo) {
+	    let namedCurve;
+	    let curveOID;
+	    let hashAlgorithm;
+	    switch (keyInfo.scheme) {
+	        case 'ecdsa-sha2-nistp256':
+	            namedCurve = 'prime256v1';
+	            curveOID = OID_EC_CURVE_P256V1;
+	            hashAlgorithm = 'sha256';
+	            break;
+	        case 'ecdsa-sha2-nistp384':
+	            namedCurve = 'secp384r1';
+	            curveOID = OID_EC_CURVE_P384;
+	            hashAlgorithm = 'sha384';
+	            break;
+	        default:
+	            throw new error_1.UnsupportedAlgorithmError(`Unsupported ECDSA scheme: ${keyInfo.scheme}`);
+	    }
+	    if (keyInfo.keyType !== 'ecdsa' && keyInfo.keyType !== keyInfo.scheme) {
+	        throw new error_1.CryptoError('ECDSA key type does not match scheme');
+	    }
 	    let key;
 	    // If key is already PEM-encoded we can just parse it
 	    if (keyInfo.keyVal.startsWith(PEM_HEADER)) {
@@ -130269,12 +130296,16 @@ function requireKey$2 () {
 	            throw new error_1.CryptoError('Invalid key format');
 	        }
 	        key = crypto_1.default.createPublicKey({
-	            key: ecdsa.hexToDER(keyInfo.keyVal),
+	            key: ecdsa.hexToDER(keyInfo.keyVal, curveOID),
 	            format: 'der',
 	            type: 'spki',
 	        });
 	    }
-	    return { key };
+	    if (key.asymmetricKeyType !== 'ec' ||
+	        key.asymmetricKeyDetails?.namedCurve !== namedCurve) {
+	        throw new error_1.CryptoError('ECDSA key curve does not match scheme');
+	    }
+	    return { key, hashAlgorithm };
 	}
 	const ed25519 = {
 	    // Translates a hex key into a crypto KeyObject
@@ -130306,7 +130337,7 @@ function requireKey$2 () {
 	    },
 	};
 	const ecdsa = {
-	    hexToDER: (hex) => {
+	    hexToDER: (hex, curveOID) => {
 	        const key = Buffer.from(hex, 'hex');
 	        const bitString = Buffer.concat([
 	            Buffer.from([ANS1_TAG_BIT_STRING]),
@@ -130316,7 +130347,7 @@ function requireKey$2 () {
 	        ]);
 	        const oids = Buffer.concat([
 	            (0, oid_1.encodeOIDString)(OID_EC_PUBLIC_KEY),
-	            (0, oid_1.encodeOIDString)(OID_EC_CURVE_P256V1),
+	            (0, oid_1.encodeOIDString)(curveOID),
 	        ]);
 	        const oidSequence = Buffer.concat([
 	            Buffer.from([ASN1_TAG_SEQUENCE]),
@@ -134425,7 +134456,7 @@ function requireFetcher () {
 
 var updater = {};
 
-var version$1 = "6.0.0";
+var version$1 = "6.0.1";
 var require$$4$1 = {
 	version: version$1};
 
@@ -134968,8 +134999,14 @@ function requireUpdater () {
 	    // Load local and remote targets metadata.
 	    // Client workflow 5.6: update targets role
 	    async loadTargets(role, parentRole) {
-	        if (this.trustedSet.getRole(role)) {
-	            return this.trustedSet.getRole(role);
+	        const cachedRole = this.trustedSet.getRole(role);
+	        if (cachedRole) {
+	            const delegator = this.trustedSet.getRole(parentRole);
+	            if (!delegator) {
+	                throw new error_1.RuntimeError(`No trusted ${parentRole} metadata`);
+	            }
+	            delegator.verifyDelegate(role, cachedRole);
+	            return cachedRole;
 	        }
 	        try {
 	            const buffer = this.loadLocalMetadata(role);
