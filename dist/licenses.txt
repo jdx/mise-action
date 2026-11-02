@@ -4045,7 +4045,7 @@ License Text:
 ---
 
 Name: tuf-js
-Version: 6.0.0
+Version: 6.0.1
 License: MIT
 Private: false
 Description: JavaScript implementation of The Update Framework (TUF)
@@ -4080,7 +4080,7 @@ SOFTWARE.
 ---
 
 Name: @tufjs/models
-Version: 5.0.0
+Version: 5.0.1
 License: MIT
 Private: false
 Description: TUF metadata models
