@@ -336,7 +336,7 @@ software or this license, under any kind of legal claim._**
 ---
 
 Name: semver
-Version: 7.8.5
+Version: 7.8.6
 License: ISC
 Private: false
 Description: The semantic version parser used by npm.
@@ -841,7 +841,7 @@ Private: false
 ---
 
 Name: fast-xml-parser
-Version: 5.11.2
+Version: 5.12.0
 License: MIT
 Private: false
 Description: Validate XML, Parse XML, Build XML without C/C++ based libraries
@@ -1022,7 +1022,7 @@ SOFTWARE.
 ---
 
 Name: is-unsafe
-Version: 2.0.2
+Version: 2.0.3
 License: MIT
 Private: false
 Description: Zero-dependency, DOM-free, pure predicate for detecting unsafe strings across HTML, XML, SVG, SQL, SHELL, and REGEX contexts
@@ -1718,7 +1718,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ---
 
 Name: sigstore
-Version: 5.0.0
+Version: 5.0.1
 License: Apache-2.0
 Private: false
 Description: code-signing for npm packages
@@ -1934,7 +1934,7 @@ License Text:
 ---
 
 Name: @sigstore/bundle
-Version: 5.0.0
+Version: 5.0.1
 License: Apache-2.0
 Private: false
 Description: Sigstore bundle type
@@ -2366,7 +2366,7 @@ License Text:
 ---
 
 Name: @sigstore/sign
-Version: 5.0.0
+Version: 5.1.0
 License: Apache-2.0
 Private: false
 Description: Sigstore signing library
@@ -3742,7 +3742,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 Name: ip-address
-Version: 10.7.5
+Version: 10.7.6
 License: MIT
 Private: false
 Description: A library for parsing IPv4 and IPv6 IP addresses in node and the browser.
@@ -3829,7 +3829,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 ---
 
 Name: @sigstore/tuf
-Version: 5.0.0
+Version: 5.0.1
 License: Apache-2.0
 Private: false
 Description: Client for the Sigstore TUF repository
@@ -4045,7 +4045,7 @@ License Text:
 ---
 
 Name: tuf-js
-Version: 6.0.1
+Version: 6.0.2
 License: MIT
 Private: false
 Description: JavaScript implementation of The Update Framework (TUF)
@@ -4080,7 +4080,7 @@ SOFTWARE.
 ---
 
 Name: @tufjs/models
-Version: 5.0.1
+Version: 5.0.2
 License: MIT
 Private: false
 Description: TUF metadata models
@@ -4150,7 +4150,7 @@ SOFTWARE.
 ---
 
 Name: @sigstore/verify
-Version: 4.1.2
+Version: 4.1.3
 License: Apache-2.0
 Private: false
 Description: Verification of Sigstore signatures
