@@ -6,7 +6,8 @@ import {
   describeUrl,
   hostOf,
   redirectedHost,
-  sanitizeDetail,
+  exitReason,
+  failedStatus,
   isRetryableStatus,
   NonRetryableError,
   retryDownload
@@ -38,17 +39,15 @@ test('failure messages name the status and host, not the query', () => {
   const err = downloadError({
     url: 'https://github.com/jdx/mise/releases/download/v1/x.tar.zst',
     status: 503,
-    stderr: ''
   })
   assert.match(err.message, /HTTP 503 from github\.com/)
   assert.ok(!(err instanceof NonRetryableError))
   assert.match(
-    downloadError({ url: 'https://h/x', stderr: 'curl: (28) timed out' })
-      .message,
-    /no HTTP response from h.*timed out/
+    downloadError({ url: 'https://h/x', tool: 'curl', exitCode: 28 }).message,
+    /no HTTP response from h.*curl exit 28 \(timed out\)/
   )
   assert.ok(
-    downloadError({ url: 'https://h/x', status: 404, stderr: '' }) instanceof
+    downloadError({ url: 'https://h/x', status: 404 }) instanceof
       NonRetryableError
   )
 })
@@ -60,7 +59,7 @@ test('retries a 503 then succeeds, sleeping with backoff', async () => {
   const result = await retryDownload(
     async () => {
       if (++calls < 3) {
-        throw downloadError({ url: 'https://h/x', status: 503, stderr: '' })
+        throw downloadError({ url: 'https://h/x', status: 503 })
       }
       return 'ok'
     },
@@ -77,7 +76,7 @@ test('a permanent error is not retried', async () => {
     retryDownload(
       async () => {
         calls++
-        throw downloadError({ url: 'https://h/x', status: 404, stderr: '' })
+        throw downloadError({ url: 'https://h/x', status: 404 })
       },
       { sleep: async () => {} }
     ),
@@ -92,7 +91,7 @@ test('gives up after the configured retries', async () => {
     retryDownload(
       async () => {
         calls++
-        throw downloadError({ url: 'https://h/x', status: 500, stderr: '' })
+        throw downloadError({ url: 'https://h/x', status: 500 })
       },
       { retries: 2, sleep: async () => {} }
     ),
@@ -105,51 +104,42 @@ test('an interrupted 200 transfer is retryable', () => {
   const err = downloadError({
     url: 'https://h/x',
     status: 200,
-    stderr: 'curl: (18) transfer closed'
+    tool: 'curl',
+    exitCode: 18
   })
   assert.ok(!(err instanceof NonRetryableError))
   assert.match(err.message, /transfer interrupted after HTTP 200 from h/)
 })
 
-test('diagnostics drop signed URLs and response headers', () => {
-  const wgetStderr = [
-    '  HTTP/1.1 302 Found',
-    '  Location: https://objects.example.com/x?X-Amz-Signature=secret',
-    '  Set-Cookie: session=secret',
-    'https://objects.example.com/x?X-Amz-Signature=secret: Connection reset'
-  ].join('\n')
-  assert.equal(
-    sanitizeDetail(wgetStderr),
-    'objects.example.com: Connection reset'
-  )
-  assert.equal(
-    sanitizeDetail('curl: (22) The requested URL returned error: 503'),
-    'curl: (22) The requested URL returned error: 503'
-  )
+test('diagnostics name an allowlisted reason, never the tool output', () => {
+  assert.equal(exitReason('curl', 6), 'curl exit 6 (could not resolve host)')
+  assert.equal(exitReason('wget', 4), 'wget exit 4 (network failure)')
+  assert.equal(exitReason('curl', 99), 'curl exit 99')
   const err = downloadError({
     url: 'https://github.com/jdx/mise/releases/download/v1/x.tar.zst?token=secret',
     status: 503,
-    stderr: wgetStderr
+    tool: 'wget',
+    exitCode: 8
   })
-  assert.ok(!/secret|Set-Cookie|Signature/.test(err.message), err.message)
-  assert.match(err.message, /github\.com\/…\/x\.tar\.zst \(HTTP 503 from github\.com\)/)
+  assert.ok(!/secret|token/.test(err.message), err.message)
+  assert.match(
+    err.message,
+    /github\.com\/…\/x\.tar\.zst \(HTTP 503 from github\.com\): wget exit 8/
+  )
 })
 
 test('a local write failure after HTTP 200 is not retried', () => {
   const err = downloadError({
     url: 'https://h/x',
     status: 200,
-    stderr: 'curl: (23) Failure writing output to destination',
+    tool: 'curl',
+    exitCode: 23,
     localError: true
   })
   assert.ok(err instanceof NonRetryableError)
 })
 
-test('userinfo never reaches diagnostics', () => {
-  assert.equal(
-    sanitizeDetail('failed: https://user:pw@cdn.example:8443/x?a=1'),
-    'failed: cdn.example:8443'
-  )
+test('hostOf never returns userinfo', () => {
   assert.equal(hostOf('https://user:pw@cdn.example/x'), 'cdn.example')
   assert.equal(hostOf('not a url'), undefined)
 })
@@ -159,32 +149,22 @@ test('reports the host that sent the failing response after a redirect', () => {
     url: 'https://github.com/jdx/mise/releases/download/v1/x.tar.zst',
     status: 503,
     host: 'objects.githubusercontent.com',
-    stderr: ''
   })
   assert.match(err.message, /HTTP 503 from objects\.githubusercontent\.com/)
   assert.match(err.message, /Could not download github\.com\/…\/x\.tar\.zst/)
 })
 
-test('quotes in userinfo do not leak through retry warnings or the final error', async () => {
-  const stderr =
-    "curl: (6) could not resolve https://user:pw'abc@cdn.example/x?a=1"
-  const logs = []
-  let final
-  try {
-    await retryDownload(
-      async () => {
-        throw downloadError({ url: 'https://github.com/a/b', stderr })
-      },
-      { retries: 1, sleep: async () => {}, onRetry: m => logs.push(m) }
-    )
-  } catch (err) {
-    final = err.message
-  }
-  assert.equal(logs.length, 1)
-  for (const text of [logs[0], final]) {
-    assert.ok(!/pw|abc|user/.test(text), text)
-    assert.match(text, /cdn\.example/)
-  }
+test('a failed redirect target is reported without the redirect status', async () => {
+  // The caller drops the 3xx status when the transfer failed, so the message
+  // names the target host as silent rather than as having sent that status.
+  const err = downloadError({
+    url: 'https://github.com/a/b',
+    host: 'objects.example',
+    tool: 'wget',
+    exitCode: 4
+  })
+  assert.match(err.message, /no HTTP response from objects\.example/)
+  assert.ok(!/302/.test(err.message))
 })
 
 test('follows absolute and relative redirects to the responding host', () => {
@@ -203,4 +183,12 @@ test('follows absolute and relative redirects to the responding host', () => {
     'other.example'
   )
   assert.equal(redirectedHost(url, ['http://[bad']), undefined)
+})
+
+test('a failed transfer after a redirect does not keep the redirect status', () => {
+  assert.equal(failedStatus(302, 4), undefined)
+  assert.equal(failedStatus(302, 0), 302)
+  assert.equal(failedStatus(503, 22), 503)
+  assert.equal(failedStatus(200, 18), 200)
+  assert.equal(failedStatus(undefined, 7), undefined)
 })

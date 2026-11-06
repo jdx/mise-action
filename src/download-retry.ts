@@ -48,28 +48,38 @@ export function describeUrl(url: string): string {
   }
 }
 
+const CURL_EXIT_REASONS: Record<number, string> = {
+  5: 'could not resolve proxy',
+  6: 'could not resolve host',
+  7: 'could not connect',
+  16: 'HTTP/2 error',
+  18: 'transfer ended early',
+  23: 'could not write the file',
+  28: 'timed out',
+  35: 'TLS handshake failed',
+  52: 'empty reply from server',
+  55: 'send failed',
+  56: 'receive failed',
+  60: 'TLS certificate not trusted',
+  92: 'HTTP/2 stream error'
+}
+
+const WGET_EXIT_REASONS: Record<number, string> = {
+  3: 'could not write the file',
+  4: 'network failure',
+  5: 'TLS verification failed',
+  8: 'server returned an error'
+}
+
 /**
- * The tool's own error line, minus anything that could leak: wget's
- * `--server-response` prints each response header indented, so indented lines
- * (which can include a signed `Location`) are dropped, and every URL left is
- * reduced to its host.
+ * A fixed phrase for the tool's exit code. The tool's own stderr is never
+ * logged: it can carry signed URLs, credentials or response headers, so the
+ * log gets an allowlisted reason and the exit code instead.
  */
-export function sanitizeDetail(stderr: string): string {
-  const line = stderr.split(/\r?\n/).find(l => l.trim() && !/^\s/.test(l))
-  if (!line) return ''
-  return (
-    line
-      // Keep only host[:port]; drop userinfo (`user:pass@`, which may itself
-      // contain quotes), path and query.
-      .replace(
-        /\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#]+)\S*?(?=:?(?:\s|$))/gi,
-        (_m, authority: string) =>
-          authority
-            .slice(authority.lastIndexOf('@') + 1)
-            .replace(/['")\]]+$/, '')
-      )
-      .trim()
-  )
+export function exitReason(tool: 'curl' | 'wget', exitCode: number): string {
+  const reasons = tool === 'curl' ? CURL_EXIT_REASONS : WGET_EXIT_REASONS
+  const reason = reasons[exitCode]
+  return `${tool} exit ${exitCode}${reason ? ` (${reason})` : ''}`
 }
 
 /**
@@ -91,6 +101,20 @@ export function redirectedHost(
   }
 }
 
+/**
+ * The status to blame for a failed attempt. A redirect status on a failed
+ * transfer means the redirect target never answered, so it is not credited
+ * with the previous hop's status.
+ */
+export function failedStatus(
+  status: number | undefined,
+  exitCode: number
+): number | undefined {
+  const redirected =
+    exitCode !== 0 && status !== undefined && status >= 300 && status < 400
+  return redirected ? undefined : status
+}
+
 /** Host of a URL (never its userinfo), or undefined when it doesn't parse. */
 export function hostOf(url: string): string | undefined {
   try {
@@ -106,7 +130,9 @@ export interface DownloadFailure {
   status?: number
   /** Host that sent the final response, which differs from `url` after a redirect. */
   host?: string
-  stderr: string
+  /** The tool that ran and its exit code; their stderr is deliberately not kept. */
+  tool?: 'curl' | 'wget'
+  exitCode?: number
   /** The tool failed writing the file locally, which another attempt won't fix. */
   localError?: boolean
 }
@@ -117,8 +143,11 @@ export function downloadError(failure: DownloadFailure): Error {
   const where = failure.status
     ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${host}`
     : `no HTTP response from ${host}`
-  const detail = sanitizeDetail(failure.stderr)
-  const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail ? `: ${detail}` : ''}`
+  const detail =
+    failure.tool && failure.exitCode
+      ? `: ${exitReason(failure.tool, failure.exitCode)}`
+      : ''
+  const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail}`
   return isRetryableStatus(failure.status) && !failure.localError
     ? new Error(msg)
     : new NonRetryableError(msg)

@@ -14,6 +14,7 @@ import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import {
   downloadError,
+  failedStatus,
   hostOf,
   redirectedHost,
   retryDownload
@@ -879,7 +880,7 @@ interface DownloadResponse {
   /** Host that sent the final response (differs from the request after a redirect). */
   host?: string
   body: string
-  stderr: string
+  tool: 'curl' | 'wget'
   /** The tool could not write the file (disk full, bad path): retrying won't help. */
   localError: boolean
 }
@@ -916,7 +917,7 @@ async function requestOnce(
       status: Number(code) || undefined,
       host: hostOf(effectiveUrl),
       body: rsp.stdout.slice(0, Math.max(nl, 0)),
-      stderr: rsp.stderr,
+      tool,
       // curl exit 23: write error
       localError: rsp.exitCode === 23
     }
@@ -938,7 +939,7 @@ async function requestOnce(
     status: last ? Number(last[1]) : undefined,
     host: redirectedHost(url, locations),
     body: rsp.stdout,
-    stderr: rsp.stderr,
+    tool,
     // wget exit 3: file I/O error
     localError: rsp.exitCode === 3
   }
@@ -964,9 +965,10 @@ async function download(
       if (opts.filePath) await io.rmRF(opts.filePath)
       throw downloadError({
         url,
-        status: rsp.status,
+        status: failedStatus(rsp.status, rsp.exitCode),
         host: rsp.host,
-        stderr: rsp.stderr,
+        tool: rsp.tool,
+        exitCode: rsp.exitCode,
         localError: rsp.localError
       })
     },

@@ -92592,23 +92592,36 @@ function describeUrl(url) {
         return 'unknown host';
     }
 }
+const CURL_EXIT_REASONS = {
+    5: 'could not resolve proxy',
+    6: 'could not resolve host',
+    7: 'could not connect',
+    16: 'HTTP/2 error',
+    18: 'transfer ended early',
+    23: 'could not write the file',
+    28: 'timed out',
+    35: 'TLS handshake failed',
+    52: 'empty reply from server',
+    55: 'send failed',
+    56: 'receive failed',
+    60: 'TLS certificate not trusted',
+    92: 'HTTP/2 stream error'
+};
+const WGET_EXIT_REASONS = {
+    3: 'could not write the file',
+    4: 'network failure',
+    5: 'TLS verification failed',
+    8: 'server returned an error'
+};
 /**
- * The tool's own error line, minus anything that could leak: wget's
- * `--server-response` prints each response header indented, so indented lines
- * (which can include a signed `Location`) are dropped, and every URL left is
- * reduced to its host.
+ * A fixed phrase for the tool's exit code. The tool's own stderr is never
+ * logged: it can carry signed URLs, credentials or response headers, so the
+ * log gets an allowlisted reason and the exit code instead.
  */
-function sanitizeDetail(stderr) {
-    const line = stderr.split(/\r?\n/).find(l => l.trim() && !/^\s/.test(l));
-    if (!line)
-        return '';
-    return (line
-        // Keep only host[:port]; drop userinfo (`user:pass@`, which may itself
-        // contain quotes), path and query.
-        .replace(/\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#]+)\S*?(?=:?(?:\s|$))/gi, (_m, authority) => authority
-        .slice(authority.lastIndexOf('@') + 1)
-        .replace(/['")\]]+$/, ''))
-        .trim());
+function exitReason(tool, exitCode) {
+    const reasons = tool === 'curl' ? CURL_EXIT_REASONS : WGET_EXIT_REASONS;
+    const reason = reasons[exitCode];
+    return `${tool} exit ${exitCode}${reason ? ` (${reason})` : ''}`;
 }
 /**
  * Host reached by following `locations` (the `Location:` headers of a redirect
@@ -92628,6 +92641,15 @@ function redirectedHost(url, locations) {
         return undefined;
     }
 }
+/**
+ * The status to blame for a failed attempt. A redirect status on a failed
+ * transfer means the redirect target never answered, so it is not credited
+ * with the previous hop's status.
+ */
+function failedStatus(status, exitCode) {
+    const redirected = exitCode !== 0 && status !== undefined && status >= 300 && status < 400;
+    return redirected ? undefined : status;
+}
 /** Host of a URL (never its userinfo), or undefined when it doesn't parse. */
 function hostOf(url) {
     try {
@@ -92643,8 +92665,10 @@ function downloadError(failure) {
     const where = failure.status
         ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${host}`
         : `no HTTP response from ${host}`;
-    const detail = sanitizeDetail(failure.stderr);
-    const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail ? `: ${detail}` : ''}`;
+    const detail = failure.tool && failure.exitCode
+        ? `: ${exitReason(failure.tool, failure.exitCode)}`
+        : '';
+    const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail}`;
     return isRetryableStatus(failure.status) && !failure.localError
         ? new Error(msg)
         : new NonRetryableError(msg);
@@ -139842,7 +139866,7 @@ async function requestOnce(url, filePath) {
             status: Number(code) || undefined,
             host: hostOf(effectiveUrl),
             body: rsp.stdout.slice(0, Math.max(nl, 0)),
-            stderr: rsp.stderr,
+            tool,
             // curl exit 23: write error
             localError: rsp.exitCode === 23
         };
@@ -139858,7 +139882,7 @@ async function requestOnce(url, filePath) {
         status: last ? Number(last[1]) : undefined,
         host: redirectedHost(url, locations),
         body: rsp.stdout,
-        stderr: rsp.stderr,
+        tool,
         // wget exit 3: file I/O error
         localError: rsp.exitCode === 3
     };
@@ -139881,9 +139905,10 @@ async function download(url, opts = {}) {
             await rmRF(opts.filePath);
         throw downloadError({
             url,
-            status: rsp.status,
+            status: failedStatus(rsp.status, rsp.exitCode),
             host: rsp.host,
-            stderr: rsp.stderr,
+            tool: rsp.tool,
+            exitCode: rsp.exitCode,
             localError: rsp.localError
         });
     }, { onRetry: warning });
