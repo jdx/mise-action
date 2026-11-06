@@ -12,7 +12,12 @@ import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
-import { downloadError, hostOf, retryDownload } from './download-retry.js'
+import {
+  downloadError,
+  hostOf,
+  redirectedHost,
+  retryDownload
+} from './download-retry.js'
 import {
   readCachedShasums,
   shasumsPaths,
@@ -923,13 +928,15 @@ async function requestOnce(
   )
   const statuses = [...rsp.stderr.matchAll(/HTTP\/\S+\s+(\d{3})/g)]
   const last = statuses[statuses.length - 1]
-  // Each redirect prints a `Location:` header; the last one is the final host.
-  const locations = [...rsp.stderr.matchAll(/^\s*Location:\s*(\S+)/gim)]
-  const location = locations[locations.length - 1]
+  // Each redirect prints a `Location:` header, possibly relative to the
+  // previous hop; following them all gives the host that answered last.
+  const locations = [...rsp.stderr.matchAll(/^\s*Location:\s*(\S+)/gim)].map(
+    m => m[1]
+  )
   return {
     exitCode: rsp.exitCode,
     status: last ? Number(last[1]) : undefined,
-    host: location ? hostOf(location[1]) : undefined,
+    host: redirectedHost(url, locations),
     body: rsp.stdout,
     stderr: rsp.stderr,
     // wget exit 3: file I/O error

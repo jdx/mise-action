@@ -5,6 +5,7 @@ import {
   downloadError,
   describeUrl,
   hostOf,
+  redirectedHost,
   sanitizeDetail,
   isRetryableStatus,
   NonRetryableError,
@@ -184,4 +185,22 @@ test('quotes in userinfo do not leak through retry warnings or the final error',
     assert.ok(!/pw|abc|user/.test(text), text)
     assert.match(text, /cdn\.example/)
   }
+})
+
+test('follows absolute and relative redirects to the responding host', () => {
+  const url = 'https://github.com/a/b'
+  assert.equal(redirectedHost(url, []), undefined)
+  assert.equal(
+    redirectedHost(url, ['https://cdn.example/a']),
+    'cdn.example'
+  )
+  assert.equal(
+    redirectedHost(url, ['https://cdn.example/a', '/b?sig=1']),
+    'cdn.example'
+  )
+  assert.equal(
+    redirectedHost(url, ['https://cdn.example/a', 'https://other.example/c']),
+    'other.example'
+  )
+  assert.equal(redirectedHost(url, ['http://[bad']), undefined)
 })

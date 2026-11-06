@@ -72,6 +72,25 @@ export function sanitizeDetail(stderr: string): string {
   )
 }
 
+/**
+ * Host reached by following `locations` (the `Location:` headers of a redirect
+ * chain, which may be relative) from `url`; undefined when there were none or
+ * one doesn't parse.
+ */
+export function redirectedHost(
+  url: string,
+  locations: string[]
+): string | undefined {
+  if (locations.length === 0) return undefined
+  try {
+    let current = new URL(url)
+    for (const location of locations) current = new URL(location, current)
+    return current.host || undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** Host of a URL (never its userinfo), or undefined when it doesn't parse. */
 export function hostOf(url: string): string | undefined {
   try {
