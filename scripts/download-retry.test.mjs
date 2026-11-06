@@ -4,6 +4,7 @@ import {
   backoffDelayMs,
   downloadError,
   describeUrl,
+  hostOf,
   sanitizeDetail,
   isRetryableStatus,
   NonRetryableError,
@@ -141,4 +142,24 @@ test('a local write failure after HTTP 200 is not retried', () => {
     localError: true
   })
   assert.ok(err instanceof NonRetryableError)
+})
+
+test('userinfo never reaches diagnostics', () => {
+  assert.equal(
+    sanitizeDetail('failed: https://user:pw@cdn.example:8443/x?a=1'),
+    'failed: cdn.example:8443'
+  )
+  assert.equal(hostOf('https://user:pw@cdn.example/x'), 'cdn.example')
+  assert.equal(hostOf('not a url'), undefined)
+})
+
+test('reports the host that sent the failing response after a redirect', () => {
+  const err = downloadError({
+    url: 'https://github.com/jdx/mise/releases/download/v1/x.tar.zst',
+    status: 503,
+    host: 'objects.githubusercontent.com',
+    stderr: ''
+  })
+  assert.match(err.message, /HTTP 503 from objects\.githubusercontent\.com/)
+  assert.match(err.message, /Could not download github\.com\/…\/x\.tar\.zst/)
 })

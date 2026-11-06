@@ -57,15 +57,33 @@ export function describeUrl(url: string): string {
 export function sanitizeDetail(stderr: string): string {
   const line = stderr.split(/\r?\n/).find(l => l.trim() && !/^\s/.test(l))
   if (!line) return ''
-  return line
-    .replace(/\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#'"]+)\S*?(?=:?(?:\s|$))/gi, '$1')
-    .trim()
+  return (
+    line
+      // Keep only host[:port]; drop userinfo (`user:pass@`), path and query.
+      .replace(
+        /\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#'"]+)\S*?(?=:?(?:\s|$))/gi,
+        (_m, authority: string) =>
+          authority.slice(authority.lastIndexOf('@') + 1)
+      )
+      .trim()
+  )
+}
+
+/** Host of a URL (never its userinfo), or undefined when it doesn't parse. */
+export function hostOf(url: string): string | undefined {
+  try {
+    return new URL(url).host || undefined
+  } catch {
+    return undefined
+  }
 }
 
 export interface DownloadFailure {
   url: string
   /** Final HTTP status; absent when the transfer failed before a response. */
   status?: number
+  /** Host that sent the final response, which differs from `url` after a redirect. */
+  host?: string
   stderr: string
   /** The tool failed writing the file locally, which another attempt won't fix. */
   localError?: boolean
@@ -73,7 +91,7 @@ export interface DownloadFailure {
 
 /** The error for a failed attempt: retryable unless the status is a permanent 4xx. */
 export function downloadError(failure: DownloadFailure): Error {
-  const host = describeUrl(failure.url).split('/')[0]
+  const host = failure.host ?? describeUrl(failure.url).split('/')[0]
   const where = failure.status
     ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${host}`
     : `no HTTP response from ${host}`

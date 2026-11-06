@@ -92602,13 +92602,23 @@ function sanitizeDetail(stderr) {
     const line = stderr.split(/\r?\n/).find(l => l.trim() && !/^\s/.test(l));
     if (!line)
         return '';
-    return line
-        .replace(/\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#'"]+)\S*?(?=:?(?:\s|$))/gi, '$1')
-        .trim();
+    return (line
+        // Keep only host[:port]; drop userinfo (`user:pass@`), path and query.
+        .replace(/\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#'"]+)\S*?(?=:?(?:\s|$))/gi, (_m, authority) => authority.slice(authority.lastIndexOf('@') + 1))
+        .trim());
+}
+/** Host of a URL (never its userinfo), or undefined when it doesn't parse. */
+function hostOf(url) {
+    try {
+        return new URL(url).host || undefined;
+    }
+    catch {
+        return undefined;
+    }
 }
 /** The error for a failed attempt: retryable unless the status is a permanent 4xx. */
 function downloadError(failure) {
-    const host = describeUrl(failure.url).split('/')[0];
+    const host = failure.host ?? describeUrl(failure.url).split('/')[0];
     const where = failure.status
         ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${host}`
         : `no HTTP response from ${host}`;
@@ -139800,15 +139810,16 @@ async function requestOnce(url, filePath) {
         const rsp = await getExecOutput('curl', [
             '-sSL',
             '-w',
-            '\n%{http_code}',
+            '\n%{http_code} %{url_effective}',
             ...(filePath ? ['--output', filePath] : []),
             url
         ], opts);
         const nl = rsp.stdout.lastIndexOf('\n');
-        const status = Number(rsp.stdout.slice(nl + 1)) || undefined;
+        const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ');
         return {
             exitCode: rsp.exitCode,
-            status,
+            status: Number(code) || undefined,
+            host: hostOf(effectiveUrl),
             body: rsp.stdout.slice(0, Math.max(nl, 0)),
             stderr: rsp.stderr,
             // curl exit 23: write error
@@ -139818,9 +139829,13 @@ async function requestOnce(url, filePath) {
     const rsp = await getExecOutput('wget', ['-q', '--tries=1', '--server-response', '-O', filePath ?? '-', url], opts);
     const statuses = [...rsp.stderr.matchAll(/HTTP\/\S+\s+(\d{3})/g)];
     const last = statuses[statuses.length - 1];
+    // Each redirect prints a `Location:` header; the last one is the final host.
+    const locations = [...rsp.stderr.matchAll(/^\s*Location:\s*(\S+)/gim)];
+    const location = locations[locations.length - 1];
     return {
         exitCode: rsp.exitCode,
         status: last ? Number(last[1]) : undefined,
+        host: location ? hostOf(location[1]) : undefined,
         body: rsp.stdout,
         stderr: rsp.stderr,
         // wget exit 3: file I/O error
@@ -139846,6 +139861,7 @@ async function download(url, opts = {}) {
         throw downloadError({
             url,
             status: rsp.status,
+            host: rsp.host,
             stderr: rsp.stderr,
             localError: rsp.localError
         });

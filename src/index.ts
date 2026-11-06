@@ -12,7 +12,7 @@ import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
-import { downloadError, retryDownload } from './download-retry.js'
+import { downloadError, hostOf, retryDownload } from './download-retry.js'
 import {
   readCachedShasums,
   shasumsPaths,
@@ -871,6 +871,8 @@ interface DownloadResponse {
   exitCode: number
   /** Final HTTP status after redirects; absent when none could be read. */
   status?: number
+  /** Host that sent the final response (differs from the request after a redirect). */
+  host?: string
   body: string
   stderr: string
   /** The tool could not write the file (disk full, bad path): retrying won't help. */
@@ -896,17 +898,18 @@ async function requestOnce(
       [
         '-sSL',
         '-w',
-        '\n%{http_code}',
+        '\n%{http_code} %{url_effective}',
         ...(filePath ? ['--output', filePath] : []),
         url
       ],
       opts
     )
     const nl = rsp.stdout.lastIndexOf('\n')
-    const status = Number(rsp.stdout.slice(nl + 1)) || undefined
+    const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ')
     return {
       exitCode: rsp.exitCode,
-      status,
+      status: Number(code) || undefined,
+      host: hostOf(effectiveUrl),
       body: rsp.stdout.slice(0, Math.max(nl, 0)),
       stderr: rsp.stderr,
       // curl exit 23: write error
@@ -920,9 +923,13 @@ async function requestOnce(
   )
   const statuses = [...rsp.stderr.matchAll(/HTTP\/\S+\s+(\d{3})/g)]
   const last = statuses[statuses.length - 1]
+  // Each redirect prints a `Location:` header; the last one is the final host.
+  const locations = [...rsp.stderr.matchAll(/^\s*Location:\s*(\S+)/gim)]
+  const location = locations[locations.length - 1]
   return {
     exitCode: rsp.exitCode,
     status: last ? Number(last[1]) : undefined,
+    host: location ? hostOf(location[1]) : undefined,
     body: rsp.stdout,
     stderr: rsp.stderr,
     // wget exit 3: file I/O error
@@ -951,6 +958,7 @@ async function download(
       throw downloadError({
         url,
         status: rsp.status,
+        host: rsp.host,
         stderr: rsp.stderr,
         localError: rsp.localError
       })
