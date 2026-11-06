@@ -132,3 +132,13 @@ test('diagnostics drop signed URLs and response headers', () => {
   assert.ok(!/secret|Set-Cookie|Signature/.test(err.message), err.message)
   assert.match(err.message, /github\.com\/…\/x\.tar\.zst \(HTTP 503 from github\.com\)/)
 })
+
+test('a local write failure after HTTP 200 is not retried', () => {
+  const err = downloadError({
+    url: 'https://h/x',
+    status: 200,
+    stderr: 'curl: (23) Failure writing output to destination',
+    localError: true
+  })
+  assert.ok(err instanceof NonRetryableError)
+})

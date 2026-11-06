@@ -92614,7 +92614,7 @@ function downloadError(failure) {
         : `no HTTP response from ${host}`;
     const detail = sanitizeDetail(failure.stderr);
     const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail ? `: ${detail}` : ''}`;
-    return isRetryableStatus(failure.status)
+    return isRetryableStatus(failure.status) && !failure.localError
         ? new Error(msg)
         : new NonRetryableError(msg);
 }
@@ -139810,7 +139810,9 @@ async function requestOnce(url, filePath) {
             exitCode: rsp.exitCode,
             status,
             body: rsp.stdout.slice(0, Math.max(nl, 0)),
-            stderr: rsp.stderr
+            stderr: rsp.stderr,
+            // curl exit 23: write error
+            localError: rsp.exitCode === 23
         };
     }
     const rsp = await getExecOutput('wget', ['-q', '--tries=1', '--server-response', '-O', filePath ?? '-', url], opts);
@@ -139820,7 +139822,9 @@ async function requestOnce(url, filePath) {
         exitCode: rsp.exitCode,
         status: last ? Number(last[1]) : undefined,
         body: rsp.stdout,
-        stderr: rsp.stderr
+        stderr: rsp.stderr,
+        // wget exit 3: file I/O error
+        localError: rsp.exitCode === 3
     };
 }
 /**
@@ -139839,7 +139843,12 @@ async function download(url, opts = {}) {
             return rsp.body;
         if (opts.filePath)
             await rmRF(opts.filePath);
-        throw downloadError({ url, status: rsp.status, stderr: rsp.stderr });
+        throw downloadError({
+            url,
+            status: rsp.status,
+            stderr: rsp.stderr,
+            localError: rsp.localError
+        });
     }, { onRetry: warning });
 }
 async function downloadToFile(url, filePath) {

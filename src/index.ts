@@ -873,6 +873,8 @@ interface DownloadResponse {
   status?: number
   body: string
   stderr: string
+  /** The tool could not write the file (disk full, bad path): retrying won't help. */
+  localError: boolean
 }
 
 /**
@@ -906,7 +908,9 @@ async function requestOnce(
       exitCode: rsp.exitCode,
       status,
       body: rsp.stdout.slice(0, Math.max(nl, 0)),
-      stderr: rsp.stderr
+      stderr: rsp.stderr,
+      // curl exit 23: write error
+      localError: rsp.exitCode === 23
     }
   }
   const rsp = await exec.getExecOutput(
@@ -920,7 +924,9 @@ async function requestOnce(
     exitCode: rsp.exitCode,
     status: last ? Number(last[1]) : undefined,
     body: rsp.stdout,
-    stderr: rsp.stderr
+    stderr: rsp.stderr,
+    // wget exit 3: file I/O error
+    localError: rsp.exitCode === 3
   }
 }
 
@@ -942,7 +948,12 @@ async function download(
         (rsp.status === undefined || (rsp.status >= 200 && rsp.status < 300))
       if (ok) return rsp.body
       if (opts.filePath) await io.rmRF(opts.filePath)
-      throw downloadError({ url, status: rsp.status, stderr: rsp.stderr })
+      throw downloadError({
+        url,
+        status: rsp.status,
+        stderr: rsp.stderr,
+        localError: rsp.localError
+      })
     },
     { onRetry: core.warning }
   )

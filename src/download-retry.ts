@@ -67,6 +67,8 @@ export interface DownloadFailure {
   /** Final HTTP status; absent when the transfer failed before a response. */
   status?: number
   stderr: string
+  /** The tool failed writing the file locally, which another attempt won't fix. */
+  localError?: boolean
 }
 
 /** The error for a failed attempt: retryable unless the status is a permanent 4xx. */
@@ -77,7 +79,7 @@ export function downloadError(failure: DownloadFailure): Error {
     : `no HTTP response from ${host}`
   const detail = sanitizeDetail(failure.stderr)
   const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail ? `: ${detail}` : ''}`
-  return isRetryableStatus(failure.status)
+  return isRetryableStatus(failure.status) && !failure.localError
     ? new Error(msg)
     : new NonRetryableError(msg)
 }
