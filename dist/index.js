@@ -92545,6 +92545,73 @@ async function withThrottleRetry(op, opts) {
     }, opts);
 }
 
+/**
+ * Retry policy for the curl/wget downloads that bootstrap mise.
+ *
+ * Failed attempts wait for a capped exponential backoff with jitter. Only
+ * transient failures are retried: transport errors (no HTTP status) and the
+ * statuses 408, 429 and 5xx. Other 4xx responses and integrity failures end
+ * the loop at once.
+ */
+const DOWNLOAD_RETRIES = 5;
+const BASE_DELAY_MS = 2000;
+const MAX_DELAY_MS = 30_000;
+/** A failure that another attempt cannot fix. */
+class NonRetryableError extends Error {
+}
+/** Whether another attempt could succeed. `undefined` means no HTTP response. */
+function isRetryableStatus(status) {
+    if (status === undefined || status === 0)
+        return true;
+    return status === 408 || status === 429 || status >= 500;
+}
+/**
+ * Delay before retry number `retry` (0-based): 2s, 4s, 8s, 16s, 30s, each
+ * randomized into the upper half of its range so parallel jobs spread out.
+ */
+function backoffDelayMs(retry, random = Math.random) {
+    const ceiling = Math.min(MAX_DELAY_MS, BASE_DELAY_MS * 2 ** retry);
+    return Math.round(ceiling / 2 + (random() * ceiling) / 2);
+}
+/** Host of a URL, or a placeholder; never the path or query, which may be signed. */
+function hostOf(url) {
+    try {
+        return new URL(url).host;
+    }
+    catch {
+        return 'unknown host';
+    }
+}
+/** The error for a failed attempt: retryable unless the status is a permanent 4xx. */
+function downloadError(failure) {
+    const where = failure.status
+        ? `HTTP ${failure.status} from ${hostOf(failure.url)}`
+        : `no HTTP response from ${hostOf(failure.url)}`;
+    const detail = failure.stderr.trim();
+    const msg = `Could not download ${failure.url} (${where})${detail ? `: ${detail}` : ''}`;
+    return isRetryableStatus(failure.status)
+        ? new Error(msg)
+        : new NonRetryableError(msg);
+}
+/** Run `attempt` until it succeeds, throws a `NonRetryableError`, or the retries are spent. */
+async function retryDownload(attempt, opts = {}) {
+    const retries = opts.retries ?? DOWNLOAD_RETRIES;
+    const sleep = opts.sleep ?? ((ms) => new Promise(r => setTimeout(r, ms)));
+    for (let retry = 0;; retry++) {
+        try {
+            return await attempt(retry + 1);
+        }
+        catch (err) {
+            if (err instanceof NonRetryableError || retry === retries)
+                throw err;
+            const delay = backoffDelayMs(retry, opts.random);
+            const reason = err instanceof Error ? err.message : String(err);
+            opts.onRetry?.(`Download attempt ${retry + 1}/${retries + 1} failed: ${reason}. Retrying in ${(delay / 1000).toFixed(1)} seconds.`);
+            await sleep(delay);
+        }
+    }
+}
+
 function shasumsPaths(dir, version) {
     const file = path$3.join(dir, `SHASUMS256-${version}.txt`);
     return [file, `${file}.minisig`];
@@ -139042,10 +139109,6 @@ const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 };
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const verifiedShasums = new Map();
 let cachedDownloadTool;
-const DOWNLOAD_RETRIES = 5;
-const DOWNLOAD_RETRY_DELAY_MS = 2000;
-class NonRetryableError extends Error {
-}
 class MiseIntegrityMismatchError extends Error {
 }
 async function run() {
@@ -139698,47 +139761,70 @@ async function getDownloadTool() {
     info(`Using ${cachedDownloadTool} to download mise`);
     return cachedDownloadTool;
 }
-async function retryDownload(fn) {
-    for (let retry = 0;; retry++) {
-        try {
-            return await fn();
-        }
-        catch (err) {
-            if (err instanceof NonRetryableError || retry === DOWNLOAD_RETRIES)
-                throw err;
-            warning(`Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`);
-            await new Promise(resolve => setTimeout(resolve, DOWNLOAD_RETRY_DELAY_MS));
-        }
+/**
+ * One attempt with curl or wget. curl reports the final status through
+ * `--write-out`; wget through `--server-response`, which prints each
+ * response's status line to stderr. wget gets one try because the retry loop
+ * owns the policy. With `filePath` the body goes to that file (replacing any
+ * partial one), otherwise it is returned.
+ */
+async function requestOnce(url, filePath) {
+    const tool = await getDownloadTool();
+    const opts = { silent: true, ignoreReturnCode: true };
+    if (tool === 'curl') {
+        const rsp = await getExecOutput('curl', [
+            '-sSL',
+            '-w',
+            '\n%{http_code}',
+            ...(filePath ? ['--output', filePath] : []),
+            url
+        ], opts);
+        const nl = rsp.stdout.lastIndexOf('\n');
+        const status = Number(rsp.stdout.slice(nl + 1)) || undefined;
+        return {
+            exitCode: rsp.exitCode,
+            status,
+            body: rsp.stdout.slice(0, Math.max(nl, 0)),
+            stderr: rsp.stderr
+        };
     }
+    const rsp = await getExecOutput('wget', ['-q', '--tries=1', '--server-response', '-O', filePath ?? '-', url], opts);
+    const statuses = [...rsp.stderr.matchAll(/HTTP\/\S+\s+(\d{3})/g)];
+    const last = statuses[statuses.length - 1];
+    return {
+        exitCode: rsp.exitCode,
+        status: last ? Number(last[1]) : undefined,
+        body: rsp.stdout,
+        stderr: rsp.stderr
+    };
+}
+/**
+ * Download `url` with retries (see download-retry.ts) and return the body, or
+ * write it to `filePath` and return an empty string. With `notFoundOk`, an
+ * HTTP 404 returns undefined instead of failing.
+ */
+async function download(url, opts = {}) {
+    return retryDownload(async () => {
+        const rsp = await requestOnce(url, opts.filePath);
+        if (opts.notFoundOk && rsp.status === 404)
+            return undefined;
+        const ok = rsp.exitCode === 0 &&
+            (rsp.status === undefined || (rsp.status >= 200 && rsp.status < 300));
+        if (ok)
+            return rsp.body;
+        if (opts.filePath)
+            await rmRF(opts.filePath);
+        throw downloadError({ url, status: rsp.status, stderr: rsp.stderr });
+    }, { onRetry: warning });
 }
 async function downloadToFile(url, filePath) {
-    const tool = await getDownloadTool();
-    await retryDownload(async () => {
-        if (tool === 'curl') {
-            await exec('curl', ['-fsSL', url, '--output', filePath]);
-        }
-        else {
-            await exec('wget', ['-qO', filePath, url]);
-        }
-    });
+    await download(url, { filePath });
 }
 async function downloadText(url) {
     return (await downloadRawText(url)).trim();
 }
 async function downloadRawText(url) {
-    const tool = await getDownloadTool();
-    return retryDownload(async () => {
-        if (tool === 'curl') {
-            const rsp = await getExecOutput('curl', ['-fsSL', url], {
-                silent: true
-            });
-            return rsp.stdout;
-        }
-        const rsp = await getExecOutput('wget', ['-qO-', url], {
-            silent: true
-        });
-        return rsp.stdout;
-    });
+    return (await download(url));
 }
 async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName, fn) {
     const tempDir = await fs.promises.mkdtemp(path$2.join(os.tmpdir(), 'mise-action-'));
@@ -139760,43 +139846,7 @@ async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName,
  * failure throws, so a missing packslip is the only thing that falls back.
  */
 async function fetchPackslipBundle(url) {
-    const tool = await getDownloadTool();
-    return retryDownload(async () => {
-        const rsp = tool === 'curl'
-            ? await getExecOutput('curl', ['-sSL', '-w', '\n%{http_code}', url], { silent: true, ignoreReturnCode: true })
-            : await getExecOutput('wget', ['-qO-', '--server-response', url], {
-                silent: true,
-                ignoreReturnCode: true
-            });
-        if (tool === 'curl') {
-            const nl = rsp.stdout.lastIndexOf('\n');
-            const status = Number(rsp.stdout.slice(nl + 1));
-            if (status === 404)
-                return undefined;
-            if (rsp.exitCode === 0 && status >= 200 && status < 300) {
-                return rsp.stdout.slice(0, nl);
-            }
-            throwDownloadStatus(url, status || undefined, rsp.stderr);
-        }
-        if (rsp.exitCode === 0)
-            return rsp.stdout;
-        if (/HTTP\/\S+\s+404\b/.test(rsp.stderr))
-            return undefined;
-        const m = /HTTP\/\S+\s+(\d{3})/.exec(rsp.stderr);
-        throwDownloadStatus(url, m ? Number(m[1]) : undefined, rsp.stderr);
-    });
-}
-// Permanent client errors will not change on retry; 408 and 429 might.
-function throwDownloadStatus(url, status, stderr) {
-    const msg = `Could not download ${url}${status ? ` (HTTP ${status})` : ''}: ${stderr.trim()}`;
-    if (status &&
-        status >= 400 &&
-        status < 500 &&
-        status !== 408 &&
-        status !== 429) {
-        throw new NonRetryableError(msg);
-    }
-    throw new Error(msg);
+    return download(url, { notFoundOk: true });
 }
 async function verifyDownloadedMiseAsset(filePath, version, assetName) {
     if (getInput('sha256')) {

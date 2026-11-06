@@ -12,6 +12,7 @@ import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
+import { downloadError, retryDownload } from './download-retry.js'
 import {
   readCachedShasums,
   shasumsPaths,
@@ -41,10 +42,6 @@ const verifiedShasums = new Map<string, string>()
 
 type DownloadTool = 'curl' | 'wget'
 let cachedDownloadTool: DownloadTool | undefined
-const DOWNLOAD_RETRIES = 5
-const DOWNLOAD_RETRY_DELAY_MS = 2000
-
-class NonRetryableError extends Error {}
 class MiseIntegrityMismatchError extends Error {}
 
 async function run(): Promise<void> {
@@ -870,30 +867,89 @@ async function getDownloadTool(): Promise<DownloadTool> {
   return cachedDownloadTool
 }
 
-async function retryDownload<T>(fn: () => Promise<T>): Promise<T> {
-  for (let retry = 0; ; retry++) {
-    try {
-      return await fn()
-    } catch (err) {
-      if (err instanceof NonRetryableError || retry === DOWNLOAD_RETRIES)
-        throw err
-      core.warning(
-        `Download failed: ${errorMessage(err)}. Retrying in ${DOWNLOAD_RETRY_DELAY_MS / 1000} seconds (${retry + 1}/${DOWNLOAD_RETRIES}).`
-      )
-      await new Promise(resolve => setTimeout(resolve, DOWNLOAD_RETRY_DELAY_MS))
+interface DownloadResponse {
+  exitCode: number
+  /** Final HTTP status after redirects; absent when none could be read. */
+  status?: number
+  body: string
+  stderr: string
+}
+
+/**
+ * One attempt with curl or wget. curl reports the final status through
+ * `--write-out`; wget through `--server-response`, which prints each
+ * response's status line to stderr. wget gets one try because the retry loop
+ * owns the policy. With `filePath` the body goes to that file (replacing any
+ * partial one), otherwise it is returned.
+ */
+async function requestOnce(
+  url: string,
+  filePath?: string
+): Promise<DownloadResponse> {
+  const tool = await getDownloadTool()
+  const opts = { silent: true, ignoreReturnCode: true }
+  if (tool === 'curl') {
+    const rsp = await exec.getExecOutput(
+      'curl',
+      [
+        '-sSL',
+        '-w',
+        '\n%{http_code}',
+        ...(filePath ? ['--output', filePath] : []),
+        url
+      ],
+      opts
+    )
+    const nl = rsp.stdout.lastIndexOf('\n')
+    const status = Number(rsp.stdout.slice(nl + 1)) || undefined
+    return {
+      exitCode: rsp.exitCode,
+      status,
+      body: rsp.stdout.slice(0, Math.max(nl, 0)),
+      stderr: rsp.stderr
     }
+  }
+  const rsp = await exec.getExecOutput(
+    'wget',
+    ['-q', '--tries=1', '--server-response', '-O', filePath ?? '-', url],
+    opts
+  )
+  const statuses = [...rsp.stderr.matchAll(/HTTP\/\S+\s+(\d{3})/g)]
+  const last = statuses[statuses.length - 1]
+  return {
+    exitCode: rsp.exitCode,
+    status: last ? Number(last[1]) : undefined,
+    body: rsp.stdout,
+    stderr: rsp.stderr
   }
 }
 
+/**
+ * Download `url` with retries (see download-retry.ts) and return the body, or
+ * write it to `filePath` and return an empty string. With `notFoundOk`, an
+ * HTTP 404 returns undefined instead of failing.
+ */
+async function download(
+  url: string,
+  opts: { filePath?: string; notFoundOk?: boolean } = {}
+): Promise<string | undefined> {
+  return retryDownload(
+    async () => {
+      const rsp = await requestOnce(url, opts.filePath)
+      if (opts.notFoundOk && rsp.status === 404) return undefined
+      const ok =
+        rsp.exitCode === 0 &&
+        (rsp.status === undefined || (rsp.status >= 200 && rsp.status < 300))
+      if (ok) return rsp.body
+      if (opts.filePath) await io.rmRF(opts.filePath)
+      throw downloadError({ url, status: rsp.status, stderr: rsp.stderr })
+    },
+    { onRetry: core.warning }
+  )
+}
+
 async function downloadToFile(url: string, filePath: string): Promise<void> {
-  const tool = await getDownloadTool()
-  await retryDownload(async () => {
-    if (tool === 'curl') {
-      await exec.exec('curl', ['-fsSL', url, '--output', filePath])
-    } else {
-      await exec.exec('wget', ['-qO', filePath, url])
-    }
-  })
+  await download(url, { filePath })
 }
 
 async function downloadText(url: string): Promise<string> {
@@ -901,19 +957,7 @@ async function downloadText(url: string): Promise<string> {
 }
 
 async function downloadRawText(url: string): Promise<string> {
-  const tool = await getDownloadTool()
-  return retryDownload(async () => {
-    if (tool === 'curl') {
-      const rsp = await exec.getExecOutput('curl', ['-fsSL', url], {
-        silent: true
-      })
-      return rsp.stdout
-    }
-    const rsp = await exec.getExecOutput('wget', ['-qO-', url], {
-      silent: true
-    })
-    return rsp.stdout
-  })
+  return (await download(url)) as string
 }
 
 async function withDownloadedMiseAsset(
@@ -944,52 +988,7 @@ async function withDownloadedMiseAsset(
  * failure throws, so a missing packslip is the only thing that falls back.
  */
 async function fetchPackslipBundle(url: string): Promise<string | undefined> {
-  const tool = await getDownloadTool()
-  return retryDownload(async () => {
-    const rsp =
-      tool === 'curl'
-        ? await exec.getExecOutput(
-            'curl',
-            ['-sSL', '-w', '\n%{http_code}', url],
-            { silent: true, ignoreReturnCode: true }
-          )
-        : await exec.getExecOutput('wget', ['-qO-', '--server-response', url], {
-            silent: true,
-            ignoreReturnCode: true
-          })
-    if (tool === 'curl') {
-      const nl = rsp.stdout.lastIndexOf('\n')
-      const status = Number(rsp.stdout.slice(nl + 1))
-      if (status === 404) return undefined
-      if (rsp.exitCode === 0 && status >= 200 && status < 300) {
-        return rsp.stdout.slice(0, nl)
-      }
-      throwDownloadStatus(url, status || undefined, rsp.stderr)
-    }
-    if (rsp.exitCode === 0) return rsp.stdout
-    if (/HTTP\/\S+\s+404\b/.test(rsp.stderr)) return undefined
-    const m = /HTTP\/\S+\s+(\d{3})/.exec(rsp.stderr)
-    throwDownloadStatus(url, m ? Number(m[1]) : undefined, rsp.stderr)
-  })
-}
-
-// Permanent client errors will not change on retry; 408 and 429 might.
-function throwDownloadStatus(
-  url: string,
-  status: number | undefined,
-  stderr: string
-): never {
-  const msg = `Could not download ${url}${status ? ` (HTTP ${status})` : ''}: ${stderr.trim()}`
-  if (
-    status &&
-    status >= 400 &&
-    status < 500 &&
-    status !== 408 &&
-    status !== 429
-  ) {
-    throw new NonRetryableError(msg)
-  }
-  throw new Error(msg)
+  return download(url, { notFoundOk: true })
 }
 
 async function verifyDownloadedMiseAsset(
