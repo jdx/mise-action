@@ -14,9 +14,13 @@ const MAX_DELAY_MS = 30_000
 /** A failure that another attempt cannot fix. */
 export class NonRetryableError extends Error {}
 
-/** Whether another attempt could succeed. `undefined` means no HTTP response. */
+/**
+ * Whether another attempt could succeed. `undefined` means no HTTP response; a
+ * status below 400 on a failed attempt means the transfer broke after the
+ * headers arrived, which is just as transient.
+ */
 export function isRetryableStatus(status: number | undefined): boolean {
-  if (status === undefined || status === 0) return true
+  if (status === undefined || status < 400) return true
   return status === 408 || status === 429 || status >= 500
 }
 
@@ -48,7 +52,7 @@ export interface DownloadFailure {
 /** The error for a failed attempt: retryable unless the status is a permanent 4xx. */
 export function downloadError(failure: DownloadFailure): Error {
   const where = failure.status
-    ? `HTTP ${failure.status} from ${hostOf(failure.url)}`
+    ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${hostOf(failure.url)}`
     : `no HTTP response from ${hostOf(failure.url)}`
   const detail = failure.stderr.trim()
   const msg = `Could not download ${failure.url} (${where})${detail ? `: ${detail}` : ''}`

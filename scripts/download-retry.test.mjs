@@ -10,7 +10,7 @@ import {
 } from '../src/download-retry.ts'
 
 test('retries transport errors and transient statuses only', () => {
-  for (const s of [undefined, 408, 429, 500, 502, 503, 504]) {
+  for (const s of [undefined, 0, 200, 302, 408, 429, 500, 502, 503, 504]) {
     assert.equal(isRetryableStatus(s), true, String(s))
   }
   for (const s of [400, 401, 403, 404, 410]) {
@@ -93,4 +93,14 @@ test('gives up after the configured retries', async () => {
     /HTTP 500/
   )
   assert.equal(calls, 3)
+})
+
+test('an interrupted 200 transfer is retryable', () => {
+  const err = downloadError({
+    url: 'https://h/x',
+    status: 200,
+    stderr: 'curl: (18) transfer closed'
+  })
+  assert.ok(!(err instanceof NonRetryableError))
+  assert.match(err.message, /transfer interrupted after HTTP 200 from h/)
 })
