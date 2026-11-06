@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.2.7](https://github.com/jdx/mise-action/compare/v5.2.6..v5.2.7) - 2026-11-06
+
+### 🐛 Bug Fixes
+
+- retry transient download failures with backoff and report the HTTP status (#722) by [@jdx](https://github.com/jdx) in [#722](https://github.com/jdx/mise-action/pull/722)
+
+---
 ## [5.2.6](https://github.com/jdx/mise-action/compare/v5.2.5..v5.2.6) - 2026-11-02
 
 ### 🐛 Bug Fixes
