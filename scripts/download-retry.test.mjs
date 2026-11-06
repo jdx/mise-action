@@ -163,3 +163,25 @@ test('reports the host that sent the failing response after a redirect', () => {
   assert.match(err.message, /HTTP 503 from objects\.githubusercontent\.com/)
   assert.match(err.message, /Could not download github\.com\/…\/x\.tar\.zst/)
 })
+
+test('quotes in userinfo do not leak through retry warnings or the final error', async () => {
+  const stderr =
+    "curl: (6) could not resolve https://user:pw'abc@cdn.example/x?a=1"
+  const logs = []
+  let final
+  try {
+    await retryDownload(
+      async () => {
+        throw downloadError({ url: 'https://github.com/a/b', stderr })
+      },
+      { retries: 1, sleep: async () => {}, onRetry: m => logs.push(m) }
+    )
+  } catch (err) {
+    final = err.message
+  }
+  assert.equal(logs.length, 1)
+  for (const text of [logs[0], final]) {
+    assert.ok(!/pw|abc|user/.test(text), text)
+    assert.match(text, /cdn\.example/)
+  }
+})

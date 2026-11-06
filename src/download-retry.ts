@@ -59,11 +59,14 @@ export function sanitizeDetail(stderr: string): string {
   if (!line) return ''
   return (
     line
-      // Keep only host[:port]; drop userinfo (`user:pass@`), path and query.
+      // Keep only host[:port]; drop userinfo (`user:pass@`, which may itself
+      // contain quotes), path and query.
       .replace(
-        /\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#'"]+)\S*?(?=:?(?:\s|$))/gi,
+        /\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#]+)\S*?(?=:?(?:\s|$))/gi,
         (_m, authority: string) =>
-          authority.slice(authority.lastIndexOf('@') + 1)
+          authority
+            .slice(authority.lastIndexOf('@') + 1)
+            .replace(/['")\]]+$/, '')
       )
       .trim()
   )
