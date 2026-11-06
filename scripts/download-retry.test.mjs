@@ -3,7 +3,8 @@ import test from 'node:test'
 import {
   backoffDelayMs,
   downloadError,
-  hostOf,
+  describeUrl,
+  sanitizeDetail,
   isRetryableStatus,
   NonRetryableError,
   retryDownload
@@ -28,7 +29,10 @@ test('backoff doubles, is capped, and stays within the jittered range', () => {
 })
 
 test('failure messages name the status and host, not the query', () => {
-  assert.equal(hostOf('https://example.com/a?sig=secret'), 'example.com')
+  assert.equal(
+    describeUrl('https://example.com/a/b.tar.zst?sig=secret'),
+    'example.com/…/b.tar.zst'
+  )
   const err = downloadError({
     url: 'https://github.com/jdx/mise/releases/download/v1/x.tar.zst',
     status: 503,
@@ -103,4 +107,28 @@ test('an interrupted 200 transfer is retryable', () => {
   })
   assert.ok(!(err instanceof NonRetryableError))
   assert.match(err.message, /transfer interrupted after HTTP 200 from h/)
+})
+
+test('diagnostics drop signed URLs and response headers', () => {
+  const wgetStderr = [
+    '  HTTP/1.1 302 Found',
+    '  Location: https://objects.example.com/x?X-Amz-Signature=secret',
+    '  Set-Cookie: session=secret',
+    'https://objects.example.com/x?X-Amz-Signature=secret: Connection reset'
+  ].join('\n')
+  assert.equal(
+    sanitizeDetail(wgetStderr),
+    'objects.example.com: Connection reset'
+  )
+  assert.equal(
+    sanitizeDetail('curl: (22) The requested URL returned error: 503'),
+    'curl: (22) The requested URL returned error: 503'
+  )
+  const err = downloadError({
+    url: 'https://github.com/jdx/mise/releases/download/v1/x.tar.zst?token=secret',
+    status: 503,
+    stderr: wgetStderr
+  })
+  assert.ok(!/secret|Set-Cookie|Signature/.test(err.message), err.message)
+  assert.match(err.message, /github\.com\/…\/x\.tar\.zst \(HTTP 503 from github\.com\)/)
 })

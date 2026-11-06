@@ -33,13 +33,33 @@ export function backoffDelayMs(retry: number, random = Math.random): number {
   return Math.round(ceiling / 2 + (random() * ceiling) / 2)
 }
 
-/** Host of a URL, or a placeholder; never the path or query, which may be signed. */
-export function hostOf(url: string): string {
+/**
+ * Host and last path segment of a URL, which is enough to tell the release
+ * archive from its checksums. The query and the rest of the path may carry
+ * signatures, so they are dropped.
+ */
+export function describeUrl(url: string): string {
   try {
-    return new URL(url).host
+    const u = new URL(url)
+    const name = u.pathname.split('/').filter(Boolean).pop()
+    return name ? `${u.host}/…/${name}` : u.host
   } catch {
     return 'unknown host'
   }
+}
+
+/**
+ * The tool's own error line, minus anything that could leak: wget's
+ * `--server-response` prints each response header indented, so indented lines
+ * (which can include a signed `Location`) are dropped, and every URL left is
+ * reduced to its host.
+ */
+export function sanitizeDetail(stderr: string): string {
+  const line = stderr.split(/\r?\n/).find(l => l.trim() && !/^\s/.test(l))
+  if (!line) return ''
+  return line
+    .replace(/\b[a-z][a-z0-9+.-]*:\/\/([^\s/?#'"]+)\S*?(?=:?(?:\s|$))/gi, '$1')
+    .trim()
 }
 
 export interface DownloadFailure {
@@ -51,11 +71,12 @@ export interface DownloadFailure {
 
 /** The error for a failed attempt: retryable unless the status is a permanent 4xx. */
 export function downloadError(failure: DownloadFailure): Error {
+  const host = describeUrl(failure.url).split('/')[0]
   const where = failure.status
-    ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${hostOf(failure.url)}`
-    : `no HTTP response from ${hostOf(failure.url)}`
-  const detail = failure.stderr.trim()
-  const msg = `Could not download ${failure.url} (${where})${detail ? `: ${detail}` : ''}`
+    ? `${failure.status < 400 ? 'transfer interrupted after HTTP' : 'HTTP'} ${failure.status} from ${host}`
+    : `no HTTP response from ${host}`
+  const detail = sanitizeDetail(failure.stderr)
+  const msg = `Could not download ${describeUrl(failure.url)} (${where})${detail ? `: ${detail}` : ''}`
   return isRetryableStatus(failure.status)
     ? new Error(msg)
     : new NonRetryableError(msg)
