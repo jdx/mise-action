@@ -982,7 +982,7 @@ async function download(
       const timeout =
         rsp.status === 408 || (rsp.tool === 'curl' && rsp.exitCode === 28)
       if (
-        attempt === 2 &&
+        attempt >= 2 &&
         !rsp.localError &&
         /^[\w.+-]+$/.test(asset) &&
         (timeout || (rsp.status !== undefined && rsp.status >= 500))

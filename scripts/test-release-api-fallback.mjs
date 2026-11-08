@@ -31,6 +31,14 @@ args=("$@")
 last=$((\${#args[@]} - 1))
 case "\${args[$last]}" in
   https://github.com/jdx/mise/releases/download/v${version}/*)
+    if [[ "\${args[$last]##*/}" == SHASUMS256.txt && -n "\${WARM_RETRY_FIXTURE:-}" ]]; then
+      tries=0
+      if [[ -f "$WARM_RETRY_FIXTURE" ]]; then read -r tries < "$WARM_RETRY_FIXTURE"; fi
+      if (( tries < 2 )); then
+        echo "$((tries + 1))" > "$WARM_RETRY_FIXTURE"
+        exit 60
+      fi
+    fi
     args[$last]="http://127.0.0.1:${server.address().port}/\${args[$last]##*/}"
     ;;
 esac
@@ -84,7 +92,10 @@ exec "\${REAL_CURL}" "\${args[@]}"
   // Simulate a runner last used by v5.1.2, which retains only the executable.
   await rm(join(miseDir, 'bin', checksums))
   await rm(join(miseDir, 'bin', `${checksums}.minisig`))
+  env.WARM_RETRY_FIXTURE = join(root, 'warm-retry-attempts')
   const warm = await run()
+  delete env.WARM_RETRY_FIXTURE
+  assert.match(warm, /curl exit 60/)
   assert.match(warm, /HTTP 504/)
   assert.match(warm, /Switching to the GitHub release assets API/)
   assert.match(warm, /against signed checksums/)
