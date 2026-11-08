@@ -140617,6 +140617,10 @@ async function download(url, opts = {}) {
             const body = await downloadReleaseAsset(ref, token, (u, headers, filePath) => downloadWithRetry(u, { headers, filePath }), opts.filePath);
             if (body !== null)
                 return body;
+            // The release listing is authoritative, so a 404 from the plain URL is certain.
+            if (opts.notFoundOk)
+                return undefined;
+            info(`The release does not list ${describeUrl(url)}; trying without the token`);
         }
         catch (err) {
             warning(`Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`);

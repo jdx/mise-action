@@ -979,6 +979,11 @@ async function download(
         opts.filePath
       )
       if (body !== null) return body
+      // The release listing is authoritative, so a 404 from the plain URL is certain.
+      if (opts.notFoundOk) return undefined
+      core.info(
+        `The release does not list ${describeUrl(url)}; trying without the token`
+      )
     } catch (err) {
       core.warning(
         `Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`
