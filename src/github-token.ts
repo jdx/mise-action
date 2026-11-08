@@ -1,9 +1,13 @@
 import * as core from '@actions/core'
 
+/** The token this action authenticates with: env.MISE_GITHUB_TOKEN, else the input. */
+export function actionGitHubToken(): string {
+  return process.env.MISE_GITHUB_TOKEN || core.getInput('github_token')
+}
+
 /** Authenticate this action; persist a token only when explicitly requested. */
 export function setupGitHubToken(): void {
-  const githubToken = core.getInput('github_token')
-  const actionToken = process.env.MISE_GITHUB_TOKEN || githubToken
+  const actionToken = actionGitHubToken()
   const persist = core.getInput('persist_github_token')
   const persistedToken = /^true$/i.test(persist)
     ? actionToken
