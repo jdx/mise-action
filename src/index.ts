@@ -7,6 +7,7 @@ import * as crypto from 'crypto'
 import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
+import { pipeline } from 'node:stream/promises'
 import * as Handlebars from 'handlebars'
 import { cacheKeyToSave } from './cache-save.js'
 import { cachePeriod } from './cache-period.js'
@@ -16,6 +17,7 @@ import {
   downloadError,
   failedStatus,
   hostOf,
+  NonRetryableError,
   redirectedHost,
   retryDownload
 } from './download-retry.js'
@@ -954,8 +956,14 @@ async function download(
   url: string,
   opts: { filePath?: string; notFoundOk?: boolean } = {}
 ): Promise<string | undefined> {
+  const pin = cleanVersion(core.getInput('version'))
+  const releasePrefix = `https://github.com/jdx/mise/releases/download/v${pin}/`
+  const asset =
+    pin && url.startsWith(releasePrefix) ? url.slice(releasePrefix.length) : ''
+  let useReleaseApi = false
   return retryDownload(
-    async () => {
+    async attempt => {
+      if (useReleaseApi) return downloadReleaseAsset(pin, asset, opts)
       const rsp = await requestOnce(url, opts.filePath)
       if (opts.notFoundOk && rsp.status === 404) return undefined
       const ok =
@@ -963,7 +971,7 @@ async function download(
         (rsp.status === undefined || (rsp.status >= 200 && rsp.status < 300))
       if (ok) return rsp.body
       if (opts.filePath) await io.rmRF(opts.filePath)
-      throw downloadError({
+      const error = downloadError({
         url,
         status: failedStatus(rsp.status, rsp.exitCode),
         host: rsp.host,
@@ -971,9 +979,102 @@ async function download(
         exitCode: rsp.exitCode,
         localError: rsp.localError
       })
+      const timeout =
+        rsp.status === 408 || (rsp.tool === 'curl' && rsp.exitCode === 28)
+      if (
+        attempt === 2 &&
+        !rsp.localError &&
+        /^[\w.+-]+$/.test(asset) &&
+        (timeout || (rsp.status !== undefined && rsp.status >= 500))
+      ) {
+        core.warning(
+          `${error.message}. Switching to the GitHub release assets API.`
+        )
+        useReleaseApi = true
+      }
+      throw error
     },
     { onRetry: core.warning }
   )
+}
+
+const miseReleaseApi = 'https://api.github.com/repos/jdx/mise/releases'
+const releaseAssetIds = new Map<string, number>()
+
+async function requestReleaseApi(
+  url: string,
+  accept: string
+): Promise<Response> {
+  const token = process.env.MISE_GITHUB_TOKEN || core.getInput('github_token')
+  const headers = {
+    Accept: accept,
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  }
+  let response: Response
+  try {
+    // Fetch removes authorization when following a cross-origin asset redirect.
+    response = await fetch(url, {
+      headers,
+      signal: AbortSignal.timeout(60_000)
+    })
+  } catch {
+    throw downloadError({ url })
+  }
+  if (!response.ok) {
+    await response.body?.cancel()
+    throw downloadError({
+      url,
+      status: response.status,
+      host: hostOf(response.url)
+    })
+  }
+  return response
+}
+
+async function downloadReleaseAsset(
+  version: string,
+  name: string,
+  { filePath, notFoundOk }: { filePath?: string; notFoundOk?: boolean }
+): Promise<string | undefined> {
+  const key = `${version}/${name}`
+  let id = releaseAssetIds.get(key)
+  if (id === undefined) {
+    const response = await requestReleaseApi(
+      `${miseReleaseApi}/tags/v${encodeURIComponent(version)}`,
+      'application/vnd.github+json'
+    )
+    const release = (await response.json()) as {
+      tag_name?: string
+      assets?: { name: string; id: number }[]
+    }
+    if (release.tag_name !== `v${version}` || !Array.isArray(release.assets)) {
+      throw new NonRetryableError(
+        `Unexpected release metadata for mise ${version}`
+      )
+    }
+    for (const asset of release.assets) {
+      if (Number.isSafeInteger(asset.id) && asset.id > 0) {
+        releaseAssetIds.set(`${version}/${asset.name}`, asset.id)
+      }
+    }
+    id = releaseAssetIds.get(key)
+    if (id === undefined && notFoundOk) return undefined
+    if (id === undefined)
+      throw new NonRetryableError(
+        `Missing release asset ${name} for mise ${version}`
+      )
+  }
+  const response = await requestReleaseApi(
+    `${miseReleaseApi}/assets/${id}`,
+    'application/octet-stream'
+  )
+  if (!filePath) return response.text()
+  if (!response.body)
+    throw new NonRetryableError(
+      `Empty release asset ${name} for mise ${version}`
+    )
+  await pipeline(response.body, fs.createWriteStream(filePath))
+  return ''
 }
 
 async function downloadToFile(url: string, filePath: string): Promise<void> {

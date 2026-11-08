@@ -527,6 +527,13 @@ jobs:
         id: typescript-7
         run: aubr typecheck
 
+      - name: Qualify release API fallback on fresh and warm installs
+        run: |
+          aubr package
+          node scripts/test-release-api-fallback.mjs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
       # - name: Test
       #   id: npm-ci-test
       #   run: npm run ci-test
