@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   assetApiUrl,
+  downloadReleaseAsset,
   parseReleaseDownloadUrl,
   releaseByTagApiUrl
 } from '../src/github-release.ts'
@@ -27,6 +28,7 @@ test('parses github.com release download URLs only', () => {
     'https://github.com/jdx/mise/releases/download/v1/x?token=1',
     'https://github.com/jdx/mise/releases/latest/download/x',
     'https://github.com/jdx/mise/releases/download/v1/a/b',
+    'https://github.com/jdx/mise/releases/download/v1/%E0%A4%A',
     'not a url'
   ]) {
     assert.equal(parseReleaseDownloadUrl(url), undefined, url)
@@ -45,4 +47,54 @@ test('finds the asset API URL by exact name', () => {
   assert.equal(assetApiUrl(json, 'missing'), undefined)
   assert.equal(assetApiUrl(json, 'evil'), undefined)
   assert.equal(assetApiUrl('{}', 'SHASUMS256.txt'), undefined)
+})
+
+const ref = {
+  owner: 'jdx',
+  repo: 'mise',
+  tag: 'v1',
+  name: 'mise.tar.gz'
+}
+
+function fakeRequest(release) {
+  const calls = []
+  const request = async (url, headers, filePath) => {
+    calls.push({ url, headers, filePath })
+    if (url.endsWith('/releases/tags/v1')) {
+      if (release instanceof Error) throw release
+      return JSON.stringify(release)
+    }
+    return ''
+  }
+  return { calls, request }
+}
+
+test('downloads the asset through the API with the token', async () => {
+  const { calls, request } = fakeRequest({
+    assets: [{ name: 'mise.tar.gz', url: 'https://api.github.com/assets/7' }]
+  })
+  assert.equal(await downloadReleaseAsset(ref, 't0k', request, '/f'), '')
+  assert.deepEqual(calls, [
+    {
+      url: 'https://api.github.com/repos/jdx/mise/releases/tags/v1',
+      headers: ['Authorization: Bearer t0k', 'Accept: application/vnd.github+json'],
+      filePath: undefined
+    },
+    {
+      url: 'https://api.github.com/assets/7',
+      headers: ['Authorization: Bearer t0k', 'Accept: application/octet-stream'],
+      filePath: '/f'
+    }
+  ])
+})
+
+test('returns null when the release does not list the asset', async () => {
+  const { calls, request } = fakeRequest({ assets: [] })
+  assert.equal(await downloadReleaseAsset(ref, 't0k', request), null)
+  assert.equal(calls.length, 1)
+})
+
+test('throws the API error so the caller can fall back', async () => {
+  const { request } = fakeRequest(new Error('HTTP 504'))
+  await assert.rejects(downloadReleaseAsset(ref, 't0k', request), /HTTP 504/)
 })

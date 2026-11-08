@@ -27,9 +27,8 @@ import {
 } from './shasums-cache.js'
 import { actionGitHubToken, setupGitHubToken } from './github-token.js'
 import {
-  assetApiUrl,
-  parseReleaseDownloadUrl,
-  releaseByTagApiUrl
+  downloadReleaseAsset,
+  parseReleaseDownloadUrl
 } from './github-release.js'
 import * as packslip from 'packslip'
 import { verifyAgainstPackslip } from './packslip.js'
@@ -972,18 +971,14 @@ async function download(
   // wget would forward the token to the redirect target, so curl only.
   if (ref && token && (await getDownloadTool()) === 'curl') {
     core.setSecret(token)
-    const auth = `Authorization: Bearer ${token}`
     try {
-      const release = await downloadWithRetry(releaseByTagApiUrl(ref), {
-        headers: [auth, 'Accept: application/vnd.github+json']
-      })
-      const assetUrl = assetApiUrl(release as string, ref.name)
-      if (assetUrl) {
-        return await downloadWithRetry(assetUrl, {
-          filePath: opts.filePath,
-          headers: [auth, 'Accept: application/octet-stream']
-        })
-      }
+      const body = await downloadReleaseAsset(
+        ref,
+        token,
+        (u, headers, filePath) => downloadWithRetry(u, { headers, filePath }),
+        opts.filePath
+      )
+      if (body !== null) return body
     } catch (err) {
       core.warning(
         `Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`

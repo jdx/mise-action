@@ -485,9 +485,11 @@ jobs:
           mise_dir: ${{ runner.temp }}/mise-download-retry
           version: 2025.7.3
           sha256: d38d4993c5379a680b50661f86287731dc1d1264777880a79b786403af337948
+      # Two failed attempts, then the release lookup and the asset download:
+      # with the default token, the archive comes through the REST API.
       - name: Check download attempts
         shell: bash
-        run: test "$(cat "$MISE_ACTION_CURL_ATTEMPTS")" = 3
+        run: test "$(cat "$MISE_ACTION_CURL_ATTEMPTS")" = 4
 
   test-typescript:
     timeout-minutes: 10

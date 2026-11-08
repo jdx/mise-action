@@ -93362,7 +93362,13 @@ function parseReleaseDownloadUrl(url) {
     if (u.protocol !== 'https:' || u.host !== 'github.com' || u.search) {
         return undefined;
     }
-    const parts = u.pathname.split('/').slice(1).map(decodeURIComponent);
+    let parts;
+    try {
+        parts = u.pathname.split('/').slice(1).map(decodeURIComponent);
+    }
+    catch {
+        return undefined;
+    }
     if (parts.length !== 6 || parts[2] !== 'releases' || parts[3] !== 'download')
         return undefined;
     const [owner, repo, , , tag, name] = parts;
@@ -93379,6 +93385,22 @@ function assetApiUrl(releaseJson, name) {
     const release = JSON.parse(releaseJson);
     const url = release.assets?.find(a => a.name === name)?.url;
     return url?.startsWith('https://api.github.com/') ? url : undefined;
+}
+/**
+ * Download `ref` through the REST API with `token`. Returns null when the
+ * release does not list the asset, so the caller can use the plain URL; any
+ * request error is thrown for the same reason.
+ */
+async function downloadReleaseAsset(ref, token, request, filePath) {
+    const auth = `Authorization: Bearer ${token}`;
+    const release = await request(releaseByTagApiUrl(ref), [
+        auth,
+        'Accept: application/vnd.github+json'
+    ]);
+    const assetUrl = assetApiUrl(release ?? '{}', ref.name);
+    if (!assetUrl)
+        return null;
+    return request(assetUrl, [auth, 'Accept: application/octet-stream'], filePath);
 }
 
 var dist$d = {};
@@ -140591,18 +140613,10 @@ async function download(url, opts = {}) {
     // wget would forward the token to the redirect target, so curl only.
     if (ref && token && (await getDownloadTool()) === 'curl') {
         setSecret(token);
-        const auth = `Authorization: Bearer ${token}`;
         try {
-            const release = await downloadWithRetry(releaseByTagApiUrl(ref), {
-                headers: [auth, 'Accept: application/vnd.github+json']
-            });
-            const assetUrl = assetApiUrl(release, ref.name);
-            if (assetUrl) {
-                return await downloadWithRetry(assetUrl, {
-                    filePath: opts.filePath,
-                    headers: [auth, 'Accept: application/octet-stream']
-                });
-            }
+            const body = await downloadReleaseAsset(ref, token, (u, headers, filePath) => downloadWithRetry(u, { headers, filePath }), opts.filePath);
+            if (body !== null)
+                return body;
         }
         catch (err) {
             warning(`Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`);

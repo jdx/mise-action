@@ -23,7 +23,12 @@ export function parseReleaseDownloadUrl(
   if (u.protocol !== 'https:' || u.host !== 'github.com' || u.search) {
     return undefined
   }
-  const parts = u.pathname.split('/').slice(1).map(decodeURIComponent)
+  let parts: string[]
+  try {
+    parts = u.pathname.split('/').slice(1).map(decodeURIComponent)
+  } catch {
+    return undefined
+  }
   if (parts.length !== 6 || parts[2] !== 'releases' || parts[3] !== 'download')
     return undefined
   const [owner, repo, , , tag, name] = parts
@@ -46,4 +51,32 @@ export function assetApiUrl(
   }
   const url = release.assets?.find(a => a.name === name)?.url
   return url?.startsWith('https://api.github.com/') ? url : undefined
+}
+
+/** One HTTP GET with extra headers; writes to `filePath` when given, else returns the body. */
+export type HeaderRequest = (
+  url: string,
+  headers: string[],
+  filePath?: string
+) => Promise<string | undefined>
+
+/**
+ * Download `ref` through the REST API with `token`. Returns null when the
+ * release does not list the asset, so the caller can use the plain URL; any
+ * request error is thrown for the same reason.
+ */
+export async function downloadReleaseAsset(
+  ref: ReleaseAssetRef,
+  token: string,
+  request: HeaderRequest,
+  filePath?: string
+): Promise<string | undefined | null> {
+  const auth = `Authorization: Bearer ${token}`
+  const release = await request(releaseByTagApiUrl(ref), [
+    auth,
+    'Accept: application/vnd.github+json'
+  ])
+  const assetUrl = assetApiUrl(release ?? '{}', ref.name)
+  if (!assetUrl) return null
+  return request(assetUrl, [auth, 'Accept: application/octet-stream'], filePath)
 }
