@@ -13,6 +13,7 @@ import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import {
+  describeUrl,
   downloadError,
   failedStatus,
   hostOf,
@@ -24,7 +25,12 @@ import {
   shasumsPaths,
   writeCachedShasums
 } from './shasums-cache.js'
-import { setupGitHubToken } from './github-token.js'
+import { actionGitHubToken, setupGitHubToken } from './github-token.js'
+import {
+  assetApiUrl,
+  parseReleaseDownloadUrl,
+  releaseByTagApiUrl
+} from './github-release.js'
 import * as packslip from 'packslip'
 import { verifyAgainstPackslip } from './packslip.js'
 import { parsePlugins } from './plugins.js'
@@ -894,21 +900,28 @@ interface DownloadResponse {
  */
 async function requestOnce(
   url: string,
-  filePath?: string
+  filePath?: string,
+  headers: string[] = []
 ): Promise<DownloadResponse> {
   const tool = await getDownloadTool()
   const opts = { silent: true, ignoreReturnCode: true }
   if (tool === 'curl') {
+    // Headers come on stdin so a token never shows in the process list. curl
+    // drops them on a redirect to another host, so the token stays with the
+    // host it was meant for.
     const rsp = await exec.getExecOutput(
       'curl',
       [
         '-sSL',
         '-w',
         '\n%{http_code} %{url_effective}',
+        ...(headers.length ? ['-H', '@-'] : []),
         ...(filePath ? ['--output', filePath] : []),
         url
       ],
-      opts
+      headers.length
+        ? { ...opts, input: Buffer.from(headers.join('\n') + '\n') }
+        : opts
     )
     const nl = rsp.stdout.lastIndexOf('\n')
     const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ')
@@ -954,9 +967,39 @@ async function download(
   url: string,
   opts: { filePath?: string; notFoundOk?: boolean } = {}
 ): Promise<string | undefined> {
+  const ref = parseReleaseDownloadUrl(url)
+  const token = actionGitHubToken()
+  // wget would forward the token to the redirect target, so curl only.
+  if (ref && token && (await getDownloadTool()) === 'curl') {
+    core.setSecret(token)
+    const auth = `Authorization: Bearer ${token}`
+    try {
+      const release = await downloadWithRetry(releaseByTagApiUrl(ref), {
+        headers: [auth, 'Accept: application/vnd.github+json']
+      })
+      const assetUrl = assetApiUrl(release as string, ref.name)
+      if (assetUrl) {
+        return await downloadWithRetry(assetUrl, {
+          filePath: opts.filePath,
+          headers: [auth, 'Accept: application/octet-stream']
+        })
+      }
+    } catch (err) {
+      core.warning(
+        `Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`
+      )
+    }
+  }
+  return downloadWithRetry(url, opts)
+}
+
+async function downloadWithRetry(
+  url: string,
+  opts: { filePath?: string; notFoundOk?: boolean; headers?: string[] } = {}
+): Promise<string | undefined> {
   return retryDownload(
     async () => {
-      const rsp = await requestOnce(url, opts.filePath)
+      const rsp = await requestOnce(url, opts.filePath, opts.headers)
       if (opts.notFoundOk && rsp.status === 404) return undefined
       const ok =
         rsp.exitCode === 0 &&

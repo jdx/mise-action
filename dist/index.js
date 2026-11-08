@@ -93307,10 +93307,13 @@ function writeCachedShasums(dir, version, shasums, minisig) {
     }
 }
 
+/** The token this action authenticates with: env.MISE_GITHUB_TOKEN, else the input. */
+function actionGitHubToken() {
+    return process.env.MISE_GITHUB_TOKEN || getInput('github_token');
+}
 /** Authenticate this action; persist a token only when explicitly requested. */
 function setupGitHubToken() {
-    const githubToken = getInput('github_token');
-    const actionToken = process.env.MISE_GITHUB_TOKEN || githubToken;
+    const actionToken = actionGitHubToken();
     const persist = getInput('persist_github_token');
     const persistedToken = /^true$/i.test(persist)
         ? actionToken
@@ -93341,6 +93344,41 @@ function setupGitHubToken() {
                 process.env.MISE_GITHUB_TOKEN = previousToken;
         }
     }
+}
+
+/**
+ * The release asset a `https://github.com/<owner>/<repo>/releases/download/<tag>/<name>`
+ * URL names, or undefined for any other URL. github.com ignores credentials on
+ * that path, so an authenticated download has to go through the REST API.
+ */
+function parseReleaseDownloadUrl(url) {
+    let u;
+    try {
+        u = new URL(url);
+    }
+    catch {
+        return undefined;
+    }
+    if (u.protocol !== 'https:' || u.host !== 'github.com' || u.search) {
+        return undefined;
+    }
+    const parts = u.pathname.split('/').slice(1).map(decodeURIComponent);
+    if (parts.length !== 6 || parts[2] !== 'releases' || parts[3] !== 'download')
+        return undefined;
+    const [owner, repo, , , tag, name] = parts;
+    if (!owner || !repo || !tag || !name)
+        return undefined;
+    return { owner, repo, tag, name };
+}
+function releaseByTagApiUrl(ref) {
+    const tag = encodeURIComponent(ref.tag);
+    return `https://api.github.com/repos/${ref.owner}/${ref.repo}/releases/tags/${tag}`;
+}
+/** The API URL that serves `name` from a `releases/tags/<tag>` response, if listed. */
+function assetApiUrl(releaseJson, name) {
+    const release = JSON.parse(releaseJson);
+    const url = release.assets?.find(a => a.name === name)?.url;
+    return url?.startsWith('https://api.github.com/') ? url : undefined;
 }
 
 var dist$d = {};
@@ -140497,17 +140535,23 @@ async function getDownloadTool() {
  * owns the policy. With `filePath` the body goes to that file (replacing any
  * partial one), otherwise it is returned.
  */
-async function requestOnce(url, filePath) {
+async function requestOnce(url, filePath, headers = []) {
     const tool = await getDownloadTool();
     const opts = { silent: true, ignoreReturnCode: true };
     if (tool === 'curl') {
+        // Headers come on stdin so a token never shows in the process list. curl
+        // drops them on a redirect to another host, so the token stays with the
+        // host it was meant for.
         const rsp = await getExecOutput('curl', [
             '-sSL',
             '-w',
             '\n%{http_code} %{url_effective}',
+            ...(headers.length ? ['-H', '@-'] : []),
             ...(filePath ? ['--output', filePath] : []),
             url
-        ], opts);
+        ], headers.length
+            ? { ...opts, input: Buffer.from(headers.join('\n') + '\n') }
+            : opts);
         const nl = rsp.stdout.lastIndexOf('\n');
         const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ');
         return {
@@ -140542,8 +140586,33 @@ async function requestOnce(url, filePath) {
  * HTTP 404 returns undefined instead of failing.
  */
 async function download(url, opts = {}) {
+    const ref = parseReleaseDownloadUrl(url);
+    const token = actionGitHubToken();
+    // wget would forward the token to the redirect target, so curl only.
+    if (ref && token && (await getDownloadTool()) === 'curl') {
+        setSecret(token);
+        const auth = `Authorization: Bearer ${token}`;
+        try {
+            const release = await downloadWithRetry(releaseByTagApiUrl(ref), {
+                headers: [auth, 'Accept: application/vnd.github+json']
+            });
+            const assetUrl = assetApiUrl(release, ref.name);
+            if (assetUrl) {
+                return await downloadWithRetry(assetUrl, {
+                    filePath: opts.filePath,
+                    headers: [auth, 'Accept: application/octet-stream']
+                });
+            }
+        }
+        catch (err) {
+            warning(`Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`);
+        }
+    }
+    return downloadWithRetry(url, opts);
+}
+async function downloadWithRetry(url, opts = {}) {
     return retryDownload(async () => {
-        const rsp = await requestOnce(url, opts.filePath);
+        const rsp = await requestOnce(url, opts.filePath, opts.headers);
         if (opts.notFoundOk && rsp.status === 404)
             return undefined;
         const ok = rsp.exitCode === 0 &&
