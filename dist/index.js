@@ -139898,6 +139898,8 @@ const MISE_MINISIGN_STARTED_AT = { year: 2024, month: 12, patch: 24 };
 const ED25519_SPKI_PREFIX = Buffer.from('302a300506032b6570032100', 'hex');
 const verifiedShasums = new Map();
 let cachedDownloadTool;
+// Set after a failed REST API download, so a runner without API access pays once.
+let releaseApiFailed = false;
 class MiseIntegrityMismatchError extends Error {
 }
 async function run() {
@@ -140611,7 +140613,10 @@ async function download(url, opts = {}) {
     const ref = parseReleaseDownloadUrl(url);
     const token = actionGitHubToken();
     // wget would forward the token to the redirect target, so curl only.
-    if (ref && token && (await getDownloadTool()) === 'curl') {
+    if (ref &&
+        token &&
+        !releaseApiFailed &&
+        (await getDownloadTool()) === 'curl') {
         setSecret(token);
         try {
             const body = await downloadReleaseAsset(ref, token, (u, headers, filePath) => downloadWithRetry(u, { headers, filePath }), opts.filePath);
@@ -140623,7 +140628,8 @@ async function download(url, opts = {}) {
             info(`The release does not list ${describeUrl(url)}; trying without the token`);
         }
         catch (err) {
-            warning(`Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`);
+            releaseApiFailed = true;
+            warning(`Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); downloading without the token for the rest of this run`);
         }
     }
     return downloadWithRetry(url, opts);

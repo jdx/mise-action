@@ -53,6 +53,8 @@ const verifiedShasums = new Map<string, string>()
 
 type DownloadTool = 'curl' | 'wget'
 let cachedDownloadTool: DownloadTool | undefined
+// Set after a failed REST API download, so a runner without API access pays once.
+let releaseApiFailed = false
 class MiseIntegrityMismatchError extends Error {}
 
 async function run(): Promise<void> {
@@ -969,7 +971,12 @@ async function download(
   const ref = parseReleaseDownloadUrl(url)
   const token = actionGitHubToken()
   // wget would forward the token to the redirect target, so curl only.
-  if (ref && token && (await getDownloadTool()) === 'curl') {
+  if (
+    ref &&
+    token &&
+    !releaseApiFailed &&
+    (await getDownloadTool()) === 'curl'
+  ) {
     core.setSecret(token)
     try {
       const body = await downloadReleaseAsset(
@@ -985,8 +992,9 @@ async function download(
         `The release does not list ${describeUrl(url)}; trying without the token`
       )
     } catch (err) {
+      releaseApiFailed = true
       core.warning(
-        `Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); trying without the token`
+        `Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); downloading without the token for the rest of this run`
       )
     }
   }

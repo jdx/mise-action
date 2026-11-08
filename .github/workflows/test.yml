@@ -185,7 +185,11 @@ jobs:
           #!/usr/bin/env bash
           set -euo pipefail
           for arg in "$@"; do
-            if [[ "$arg" == https://api.github.com/* ]]; then
+            # Downloading a chosen version may use the API (releases/tags,
+            # releases/assets); choosing the version must not.
+            if [[ "$arg" == https://api.github.com/* &&
+                  "$arg" != https://api.github.com/repos/jdx/mise/releases/tags/* &&
+                  "$arg" != https://api.github.com/repos/jdx/mise/releases/assets/* ]]; then
               echo "Release selection must not call the GitHub API" >&2
               exit 1
             fi
