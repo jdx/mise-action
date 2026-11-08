@@ -93377,8 +93377,8 @@ function parseReleaseDownloadUrl(url) {
     return { owner, repo, tag, name };
 }
 function releaseByTagApiUrl(ref) {
-    const tag = encodeURIComponent(ref.tag);
-    return `https://api.github.com/repos/${ref.owner}/${ref.repo}/releases/tags/${tag}`;
+    const [owner, repo, tag] = [ref.owner, ref.repo, ref.tag].map(encodeURIComponent);
+    return `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
 }
 /** The API URL that serves `name` from a `releases/tags/<tag>` response, if listed. */
 function assetApiUrl(releaseJson, name) {

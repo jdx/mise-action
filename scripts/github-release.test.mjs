@@ -21,6 +21,10 @@ test('parses github.com release download URLs only', () => {
     releaseByTagApiUrl(ref),
     'https://api.github.com/repos/jdx/mise/releases/tags/v2026.10.19'
   )
+  assert.equal(
+    releaseByTagApiUrl({ owner: 'a/b', repo: 'c?d', tag: 'v1', name: 'x' }),
+    'https://api.github.com/repos/a%2Fb/c%3Fd/releases/tags/v1'
+  )
   for (const url of [
     'http://github.com/jdx/mise/releases/download/v1/x',
     'https://mise.jdx.dev/v1/x',
