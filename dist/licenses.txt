@@ -386,44 +386,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ---
 
 Name: @typespec/ts-http-runtime
-Version: 0.3.9
+Version: 0.3.10
 License: null
 Private: false
-
----
-
-Name: https-proxy-agent
-Version: 7.0.6
-License: MIT
-Private: false
-Description: An HTTP(s) proxy `http.Agent` implementation for HTTPS
-Repository: https://github.com/TooTallNate/proxy-agents.git
-Author: Nathan Rajlich <nathan@tootallnate.net> (http://n8.io/)
-License Text:
-===
-
-(The MIT License)
-
-Copyright (c) 2013 Nathan Rajlich <nathan@tootallnate.net>
-
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of this software and associated documentation files (the
-'Software'), to deal in the Software without restriction, including
-without limitation the rights to use, copy, modify, merge, publish,
-distribute, sublicense, and/or sell copies of the Software, and to
-permit persons to whom the Software is furnished to do so, subject to
-the following conditions:
-
-The above copyright notice and this permission notice shall be
-included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
@@ -519,7 +484,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 ---
 
 Name: agent-base
-Version: 7.1.4
+Version: 9.0.0
 License: MIT
 Private: false
 Description: Turn a function into an `http.Agent` instance
@@ -553,8 +518,53 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
+Name: https-proxy-agent
+Version: 9.1.0
+License: MIT
+Private: false
+Description: An HTTP(s) proxy `http.Agent` implementation for HTTPS
+Repository: https://github.com/TooTallNate/proxy-agents.git
+Author: Nathan Rajlich <nathan@tootallnate.net> (http://n8.io/)
+License Text:
+===
+
+(The MIT License)
+
+Copyright (c) 2013 Nathan Rajlich <nathan@tootallnate.net>
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+---
+
+Name: proxy-agent-negotiate
+Version: 1.1.0
+License: MIT
+Private: false
+Description: Negotiate/SPNEGO proxy authentication for proxy-agents
+Repository: https://github.com/TooTallNate/proxy-agents.git
+Author: Nathan Rajlich <nathan@tootallnate.net> (http://n8.io/)
+
+---
+
 Name: http-proxy-agent
-Version: 7.0.2
+Version: 9.1.0
 License: MIT
 Private: false
 Description: An HTTP(s) proxy `http.Agent` implementation for HTTP
@@ -834,7 +844,7 @@ SOFTWARE.
 ---
 
 Name: @azure/core-client
-Version: 1.11.1
+Version: 1.11.2
 License: null
 Private: false
 
@@ -1090,37 +1100,9 @@ SOFTWARE.
 ---
 
 Name: @azure/core-xml
-Version: 1.6.0
-License: MIT
+Version: 1.6.1
+License: null
 Private: false
-Description: Core library for interacting with XML payloads
-Repository: git+https://github.com/Azure/azure-sdk-for-js
-Homepage: https://github.com/Azure/azure-sdk-for-js/tree/main/sdk/core/core-xml/README.md
-Author: Microsoft Corporation
-License Text:
-===
-
-Copyright (c) Microsoft Corporation.
-
-MIT License
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED *AS IS*, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 
 ---
 
@@ -3511,7 +3493,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 Name: glob
-Version: 13.0.6
+Version: 13.0.7
 License: BlueOak-1.0.0
 Private: false
 Description: the most correct and second fastest glob implementation in JavaScript
@@ -3656,16 +3638,6 @@ Description: the http/https agent used by the npm cli
 Repository: git+https://github.com/npm/agent.git
 Homepage: https://github.com/npm/agent#readme
 Author: GitHub Inc.
-
----
-
-Name: proxy-agent-negotiate
-Version: 1.1.0
-License: MIT
-Private: false
-Description: Negotiate/SPNEGO proxy authentication for proxy-agents
-Repository: https://github.com/TooTallNate/proxy-agents.git
-Author: Nathan Rajlich <nathan@tootallnate.net> (http://n8.io/)
 
 ---
 
