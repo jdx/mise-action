@@ -139481,6 +139481,33 @@ async function verifyAgainstPackslip(filePath, version, assetName, fetchBundle, 
 }
 
 /**
+ * Directory to create scratch directories in. Prefer `RUNNER_TEMP`: on hosted
+ * Windows x64 runners it is on the same drive as the workspace, while
+ * `os.tmpdir()` is on `C:`, so a `MISE_DATA_DIR` inside the workspace would be
+ * on another device than the download.
+ */
+function tempRoot(env, fallback, exists = fs.existsSync) {
+    const runnerTemp = env.RUNNER_TEMP;
+    return runnerTemp && exists(runnerTemp) ? runnerTemp : fallback;
+}
+/**
+ * Move a file, copying and deleting when a rename cannot cross devices
+ * (`EXDEV`), such as the temp directory and the mise data directory being on
+ * different drives.
+ */
+async function moveFile(src, dest, ops) {
+    try {
+        await ops.mv(src, dest);
+    }
+    catch (err) {
+        if (err.code !== 'EXDEV')
+            throw err;
+        await ops.copyFile(src, dest);
+        await ops.unlink(src);
+    }
+}
+
+/**
  * Parse the `plugins` input: one plugin per line, either `name` or
  * `name url`. Blank lines and `#` comments are ignored.
  */
@@ -140089,7 +140116,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
         const installFromUrl = async (downloadUrl, downloadAssetName, checksumAssetName, extractArchive) => {
             await withDownloadedMiseAsset(downloadUrl, resolvedVersion, downloadAssetName, checksumAssetName, async (downloadPath, tempDir) => {
                 if (!extractArchive) {
-                    await mv(downloadPath, miseBinPath);
+                    await moveIntoPlace(downloadPath, miseBinPath);
                     await exec('chmod', ['+x', miseBinPath]);
                     return;
                 }
@@ -140097,7 +140124,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
                     case '.zip':
                         await withExtractedZip(downloadPath, tempDir, async (extractDir) => {
                             const extractedMiseBinDir = path$2.join(extractDir, 'mise', 'bin');
-                            await mv(path$2.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
+                            await moveIntoPlace(path$2.join(extractedMiseBinDir, 'mise.exe'), miseBinPath);
                             await installWindowsMiseShim(extractedMiseBinDir, miseShimPath);
                         });
                         break;
@@ -140108,7 +140135,7 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
                         await installFromTarFile(downloadPath, ['-xzf'], tempDir, miseBinPath);
                         break;
                     default:
-                        await mv(downloadPath, miseBinPath);
+                        await moveIntoPlace(downloadPath, miseBinPath);
                         await exec('chmod', ['+x', miseBinPath]);
                         break;
                 }
@@ -140241,7 +140268,7 @@ async function installWindowsMiseShim(extractedMiseBinDir, miseShimPath) {
         info('mise-shim.exe not found in the mise archive; skipping');
         return;
     }
-    await mv(extractedMiseShimPath, miseShimPath);
+    await moveIntoPlace(extractedMiseShimPath, miseShimPath);
 }
 async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
     if (process.platform !== 'win32')
@@ -140359,8 +140386,15 @@ async function downloadText(url) {
 async function downloadRawText(url) {
     return (await download(url));
 }
+function moveIntoPlace(src, dest) {
+    return moveFile(src, dest, {
+        mv: (s, d) => mv(s, d),
+        copyFile: (s, d) => fs.promises.copyFile(s, d),
+        unlink: p => fs.promises.unlink(p)
+    });
+}
 async function withDownloadedMiseAsset(url, version, assetName, verifyAssetName, fn) {
-    const tempDir = await fs.promises.mkdtemp(path$2.join(os.tmpdir(), 'mise-action-'));
+    const tempDir = await fs.promises.mkdtemp(path$2.join(tempRoot(process.env, os.tmpdir()), 'mise-action-'));
     try {
         const downloadPath = path$2.join(tempDir, assetName);
         await downloadToFile(url, downloadPath);
