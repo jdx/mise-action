@@ -27,6 +27,7 @@ import {
 import { setupGitHubToken } from './github-token.js'
 import * as packslip from 'packslip'
 import { verifyAgainstPackslip } from './packslip.js'
+import { moveFile, tempRoot } from './file-move.js'
 import { parsePlugins } from './plugins.js'
 import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
@@ -617,7 +618,7 @@ async function setupMise(
         checksumAssetName,
         async (downloadPath, tempDir) => {
           if (!extractArchive) {
-            await io.mv(downloadPath, miseBinPath)
+            await moveIntoPlace(downloadPath, miseBinPath)
             await exec.exec('chmod', ['+x', miseBinPath])
             return
           }
@@ -632,7 +633,7 @@ async function setupMise(
                     'mise',
                     'bin'
                   )
-                  await io.mv(
+                  await moveIntoPlace(
                     path.join(extractedMiseBinDir, 'mise.exe'),
                     miseBinPath
                   )
@@ -660,7 +661,7 @@ async function setupMise(
               )
               break
             default:
-              await io.mv(downloadPath, miseBinPath)
+              await moveIntoPlace(downloadPath, miseBinPath)
               await exec.exec('chmod', ['+x', miseBinPath])
               break
           }
@@ -818,7 +819,7 @@ async function installWindowsMiseShim(
     return
   }
 
-  await io.mv(extractedMiseShimPath, miseShimPath)
+  await moveIntoPlace(extractedMiseShimPath, miseShimPath)
 }
 
 async function ensureWindowsMiseShim(
@@ -988,6 +989,14 @@ async function downloadRawText(url: string): Promise<string> {
   return (await download(url)) as string
 }
 
+function moveIntoPlace(src: string, dest: string): Promise<void> {
+  return moveFile(src, dest, {
+    mv: (s, d) => io.mv(s, d),
+    copyFile: (s, d) => fs.promises.copyFile(s, d),
+    unlink: p => fs.promises.unlink(p)
+  })
+}
+
 async function withDownloadedMiseAsset(
   url: string,
   version: string,
@@ -996,7 +1005,7 @@ async function withDownloadedMiseAsset(
   fn: (downloadPath: string, tempDir: string) => Promise<void>
 ): Promise<void> {
   const tempDir = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), 'mise-action-')
+    path.join(tempRoot(process.env, os.tmpdir()), 'mise-action-')
   )
   try {
     const downloadPath = path.join(tempDir, assetName)
