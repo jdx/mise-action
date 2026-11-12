@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.2.8](https://github.com/jdx/mise-action/compare/v5.2.7..v5.2.8) - 2026-11-12
+
+### 🐛 Bug Fixes
+
+- **(windows)** install mise when MISE_DATA_DIR is on another drive (#732) by [@jdx](https://github.com/jdx) in [#732](https://github.com/jdx/mise-action/pull/732)
+
+---
 ## [5.2.7](https://github.com/jdx/mise-action/compare/v5.2.6..v5.2.7) - 2026-11-06
 
 ### 🐛 Bug Fixes
