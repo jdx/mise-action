@@ -233,7 +233,7 @@ SOFTWARE.
 ---
 
 Name: brace-expansion
-Version: 5.0.12
+Version: 5.0.13
 License: MIT
 Private: false
 Description: Brace expansion as known from sh/bash
@@ -2976,7 +2976,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 Name: minipass-fetch
-Version: 6.0.0
+Version: 6.0.1
 License: MIT
 Private: false
 Description: An implementation of window.fetch in Node.js using Minipass streams
@@ -3279,7 +3279,7 @@ software or this license, under any kind of legal claim.***
 ---
 
 Name: cacache
-Version: 21.0.1
+Version: 21.0.2
 License: ISC
 Private: false
 Description: Fast, fault-tolerant, cross-platform, disk-based, data-agnostic, content-addressable cache.
@@ -3493,7 +3493,7 @@ IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 ---
 
 Name: glob
-Version: 13.0.7
+Version: 14.0.5
 License: BlueOak-1.0.0
 Private: false
 Description: the most correct and second fastest glob implementation in JavaScript
@@ -4133,7 +4133,7 @@ Author: bdehamer@github.com
 ---
 
 Name: packslip
-Version: 1.11.2
+Version: 1.11.3
 License: MIT
 Private: false
 Description: Verify a packslip release bundle and the files downloaded from it
