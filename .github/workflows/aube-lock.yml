@@ -20,7 +20,7 @@ jobs:
   aube-lock:
     permissions:
       contents: write
-    uses: jdx/renovate-config/.github/workflows/aube-lock.yml@d0f85cba63adc5a26194009e76eebcf5bc1ee823 # v1.0.2
+    uses: jdx/renovate-config/.github/workflows/aube-lock.yml@0a00c309f12e0bc78e18e220bc0ba95ed14552e8 # main (post-v1.0.2; adds client-id support)
     secrets:
-      AUBE_LOCK_APP_ID: ${{ secrets.AUBE_LOCK_APP_ID }}
+      AUBE_LOCK_APP_CLIENT_ID: ${{ secrets.AUBE_LOCK_APP_CLIENT_ID }}
       AUBE_LOCK_APP_PRIVATE_KEY: ${{ secrets.AUBE_LOCK_APP_PRIVATE_KEY }}
