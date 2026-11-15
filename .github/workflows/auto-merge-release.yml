@@ -54,7 +54,7 @@ jobs:
               # reads a variable (no pipe), so no SIGPIPE can fail it under pipefail.
               commit_subjects=$(git log --format=%s "$range")
               commit_bodies=$(git log --format=%b "$range")
-              if ! grep -Pq '^feat(\([^)]+\))?!?: |^fix(\((?!deps|ci(?![a-z]))[^)]+\))?!?: |^(fix|feat)\([^)]+\)!: ' <<<"$commit_subjects" \
+              if ! grep -Pq '^feat(\([^)]+\))?!?: |^fix(\((?!deps|ci(?![a-z]))[^)]+\))?!?: |^[a-z]+(\([^)]+\))?!: ' <<<"$commit_subjects" \
                 && ! grep -Eq '^BREAKING[ -]CHANGE: ' <<<"$commit_bodies"; then
                 echo "No pending user-facing fix/feat commits since the latest release; not auto-merging release PRs"
                 exit 0
