@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.2.9](https://github.com/jdx/mise-action/compare/v5.2.8..v5.2.9) - 2026-11-14
+
+### 🐛 Bug Fixes
+
+- **(ci)** pass App client ID to aube-lock (#739) by [@jdx](https://github.com/jdx) in [#739](https://github.com/jdx/mise-action/pull/739)
+
+---
 ## [5.2.8](https://github.com/jdx/mise-action/compare/v5.2.7..v5.2.8) - 2026-11-12
 
 ### 🐛 Bug Fixes
