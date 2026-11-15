@@ -13,6 +13,7 @@ import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import {
+  describeUrl,
   downloadError,
   failedStatus,
   hostOf,
@@ -24,7 +25,11 @@ import {
   shasumsPaths,
   writeCachedShasums
 } from './shasums-cache.js'
-import { setupGitHubToken } from './github-token.js'
+import { actionGitHubToken, setupGitHubToken } from './github-token.js'
+import {
+  downloadReleaseAsset,
+  parseReleaseDownloadUrl
+} from './github-release.js'
 import * as packslip from 'packslip'
 import { verifyAgainstPackslip } from './packslip.js'
 import { moveFile, tempRoot } from './file-move.js'
@@ -49,6 +54,21 @@ const verifiedShasums = new Map<string, string>()
 
 type DownloadTool = 'curl' | 'wget'
 let cachedDownloadTool: DownloadTool | undefined
+// Set after a failed REST API download, so a runner without API access pays once.
+let releaseApiFailed = false
+// The API path must fail in bounded time so the plain download still runs: a
+// response stalled for 30s, or any transfer over 5 minutes, ends the attempt.
+const RELEASE_API_CURL_LIMITS = [
+  '--connect-timeout',
+  '10',
+  '--speed-limit',
+  '1',
+  '--speed-time',
+  '30',
+  '--max-time',
+  '300'
+]
+const RELEASE_API_RETRIES = 2
 class MiseIntegrityMismatchError extends Error {}
 
 async function run(): Promise<void> {
@@ -895,21 +915,30 @@ interface DownloadResponse {
  */
 async function requestOnce(
   url: string,
-  filePath?: string
+  filePath?: string,
+  headers: string[] = [],
+  curlLimits: string[] = []
 ): Promise<DownloadResponse> {
   const tool = await getDownloadTool()
   const opts = { silent: true, ignoreReturnCode: true }
   if (tool === 'curl') {
+    // Headers come on stdin so a token never shows in the process list. curl
+    // drops them on a redirect to another host, so the token stays with the
+    // host it was meant for.
     const rsp = await exec.getExecOutput(
       'curl',
       [
         '-sSL',
         '-w',
         '\n%{http_code} %{url_effective}',
+        ...curlLimits,
+        ...(headers.length ? ['-H', '@-'] : []),
         ...(filePath ? ['--output', filePath] : []),
         url
       ],
-      opts
+      headers.length
+        ? { ...opts, input: Buffer.from(headers.join('\n') + '\n') }
+        : opts
     )
     const nl = rsp.stdout.lastIndexOf('\n')
     const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ')
@@ -955,9 +984,63 @@ async function download(
   url: string,
   opts: { filePath?: string; notFoundOk?: boolean } = {}
 ): Promise<string | undefined> {
+  const ref = parseReleaseDownloadUrl(url)
+  const token = actionGitHubToken()
+  // wget would forward the token to the redirect target, so curl only.
+  if (
+    ref &&
+    token &&
+    !releaseApiFailed &&
+    (await getDownloadTool()) === 'curl'
+  ) {
+    core.setSecret(token)
+    try {
+      const body = await downloadReleaseAsset(
+        ref,
+        token,
+        (u, headers, filePath) =>
+          downloadWithRetry(u, {
+            headers,
+            filePath,
+            curlLimits: RELEASE_API_CURL_LIMITS,
+            retries: RELEASE_API_RETRIES
+          }),
+        opts.filePath
+      )
+      if (body !== null) return body
+      // The release listing is authoritative, so a 404 from the plain URL is certain.
+      if (opts.notFoundOk) return undefined
+      core.info(
+        `The release does not list ${describeUrl(url)}; trying without the token`
+      )
+    } catch (err) {
+      releaseApiFailed = true
+      core.warning(
+        `Authenticated download of ${describeUrl(url)} failed (${errorMessage(err)}); downloading without the token for the rest of this run`
+      )
+    }
+  }
+  return downloadWithRetry(url, opts)
+}
+
+async function downloadWithRetry(
+  url: string,
+  opts: {
+    filePath?: string
+    notFoundOk?: boolean
+    headers?: string[]
+    curlLimits?: string[]
+    retries?: number
+  } = {}
+): Promise<string | undefined> {
   return retryDownload(
     async () => {
-      const rsp = await requestOnce(url, opts.filePath)
+      const rsp = await requestOnce(
+        url,
+        opts.filePath,
+        opts.headers,
+        opts.curlLimits
+      )
       if (opts.notFoundOk && rsp.status === 404) return undefined
       const ok =
         rsp.exitCode === 0 &&
@@ -973,7 +1056,7 @@ async function download(
         localError: rsp.localError
       })
     },
-    { onRetry: core.warning }
+    { onRetry: core.warning, retries: opts.retries }
   )
 }
 
