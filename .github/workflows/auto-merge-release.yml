@@ -45,9 +45,12 @@ jobs:
               range=""
             fi
             if [ -n "$range" ]; then
+              # fix(deps) and fix(ci) commits (dependency bumps, CI changes) are not
+              # user-facing, so they alone never justify an automatic release.
               commit_subjects=$(git log --format=%s "$range")
-              if ! grep -Eq '^(fix|feat)(\([^)]+\))?!?: ' <<<"$commit_subjects"; then
-                echo "No pending fix/feat commits since the latest release; not auto-merging release PRs"
+              if ! grep -E '^(fix|feat)(\([^)]+\))?!?: ' <<<"$commit_subjects" \
+                | grep -Evq '^fix\((deps|ci)[^)]*\): '; then
+                echo "No pending user-facing fix/feat commits since the latest release; not auto-merging release PRs"
                 exit 0
               fi
             fi
