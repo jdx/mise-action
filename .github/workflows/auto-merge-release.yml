@@ -45,9 +45,18 @@ jobs:
               range=""
             fi
             if [ -n "$range" ]; then
+              # fix(deps) and fix(ci) commits (dependency bumps, CI changes) are not
+              # user-facing, so they alone never justify an automatic release.
+              # Any feat counts, as does a breaking change (a "!" in the subject or
+              # a BREAKING CHANGE footer). The fix/feat rules apply to subjects
+              # only, so a body line that starts with "feat:" cannot trigger a
+              # release; footers are searched in the bodies separately. Each grep
+              # reads a variable (no pipe), so no SIGPIPE can fail it under pipefail.
               commit_subjects=$(git log --format=%s "$range")
-              if ! grep -Eq '^(fix|feat)(\([^)]+\))?!?: ' <<<"$commit_subjects"; then
-                echo "No pending fix/feat commits since the latest release; not auto-merging release PRs"
+              commit_bodies=$(git log --format=%b "$range")
+              if ! grep -Pq '^feat(\([^)]+\))?!?: |^fix(\((?!deps|ci(?![a-z]))[^)]+\))?!?: |^[a-z]+(\([^)]+\))?!: ' <<<"$commit_subjects" \
+                && ! grep -Eq '^BREAKING[ -]CHANGE: ' <<<"$commit_bodies"; then
+                echo "No pending user-facing fix/feat commits since the latest release; not auto-merging release PRs"
                 exit 0
               fi
             fi
