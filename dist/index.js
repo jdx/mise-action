@@ -94136,6 +94136,17 @@ async function retryDownload(attempt, opts = {}) {
         }
     }
 }
+/**
+ * The `--write-out` format for curl. It has no newline because MSYS curl.exe
+ * (Rtools, Git for Windows) splits one in an argument; the body goes to a file
+ * so this is all curl prints to stdout.
+ */
+const CURL_WRITE_OUT = '%{http_code} %{url_effective}';
+/** Final status and URL from curl's `--write-out` output; status is undefined when unreadable. */
+function parseCurlTrailer(stdout) {
+    const [code, effectiveUrl = ''] = stdout.trim().split(' ');
+    return { status: Number(code) || undefined, effectiveUrl };
+}
 
 function shasumsPaths(dir, version) {
     const file = path$3.join(dir, `SHASUMS256-${version}.txt`);
@@ -140749,6 +140760,14 @@ async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
         warning(`Failed to install mise-shim.exe: ${errorMessage(err)}. Continuing because mise can fall back to file shim mode on Windows.`);
     }
 }
+async function readIfExists(p) {
+    try {
+        return await fs.promises.readFile(p, 'utf8');
+    }
+    catch {
+        return '';
+    }
+}
 async function getDownloadTool() {
     if (cachedDownloadTool)
         return cachedDownloadTool;
@@ -140775,24 +140794,31 @@ async function requestOnce(url, filePath) {
     const tool = await getDownloadTool();
     const opts = { silent: true, ignoreReturnCode: true };
     if (tool === 'curl') {
-        const rsp = await getExecOutput('curl', [
-            '-sSL',
-            '-w',
-            '\n%{http_code} %{url_effective}',
-            ...(filePath ? ['--output', filePath] : []),
-            url
-        ], opts);
-        const nl = rsp.stdout.lastIndexOf('\n');
-        const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ');
-        return {
-            exitCode: rsp.exitCode,
-            status: Number(code) || undefined,
-            host: hostOf(effectiveUrl),
-            body: rsp.stdout.slice(0, Math.max(nl, 0)),
-            tool,
-            // curl exit 23: write error
-            localError: rsp.exitCode === 23
-        };
+        // The body always goes to a file and `--write-out` carries no newline:
+        // MSYS curl.exe (Rtools, Git for Windows) splits a literal newline in the
+        // argument, which broke reading the status from a stdout that also held
+        // the body.
+        const tempDir = filePath
+            ? undefined
+            : await fs.promises.mkdtemp(path$2.join(tempRoot(process.env, os.tmpdir()), 'mise-action-'));
+        const outPath = filePath ?? path$2.join(tempDir, 'body');
+        try {
+            const rsp = await getExecOutput('curl', ['-sSL', '-w', CURL_WRITE_OUT, '--output', outPath, url], opts);
+            const { status, effectiveUrl } = parseCurlTrailer(rsp.stdout);
+            return {
+                exitCode: rsp.exitCode,
+                status,
+                host: hostOf(effectiveUrl),
+                body: tempDir ? await readIfExists(outPath) : '',
+                tool,
+                // curl exit 23: write error
+                localError: rsp.exitCode === 23
+            };
+        }
+        finally {
+            if (tempDir)
+                await rmRF(tempDir);
+        }
     }
     const rsp = await getExecOutput('wget', ['-q', '--tries=1', '--server-response', '-O', filePath ?? '-', url], opts);
     const statuses = [...rsp.stderr.matchAll(/HTTP\/\S+\s+(\d{3})/g)];
