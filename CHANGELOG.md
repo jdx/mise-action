@@ -1,7 +1,18 @@
 # Changelog
 
 ---
-## [5.2.9](https://github.com/jdx/mise-action/compare/v5.2.8..v5.2.9) - 2026-11-14
+## [5.2.10](https://github.com/jdx/mise-action/compare/v5.2.9..v5.2.10) - 2026-11-18
+
+### 🐛 Bug Fixes
+
+- **(download)** keep curl's --write-out free of newlines (#744) by [@jdx](https://github.com/jdx) in [#744](https://github.com/jdx/mise-action/pull/744)
+
+### ⚙️ Miscellaneous Tasks
+
+- skip dependency and CI fixes when auto-merging release PRs (#741) by [@jdx](https://github.com/jdx) in [#741](https://github.com/jdx/mise-action/pull/741)
+
+---
+## [5.2.9](https://github.com/jdx/mise-action/compare/v5.2.8..v5.2.9) - 2026-11-15
 
 ### 🐛 Bug Fixes
 
