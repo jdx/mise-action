@@ -10,6 +10,8 @@ import {
   failedStatus,
   isRetryableStatus,
   NonRetryableError,
+  CURL_WRITE_OUT,
+  parseCurlTrailer,
   retryDownload
 } from '../src/download-retry.ts'
 
@@ -191,4 +193,16 @@ test('a failed transfer after a redirect does not keep the redirect status', () 
   assert.equal(failedStatus(503, 22), 503)
   assert.equal(failedStatus(200, 18), 200)
   assert.equal(failedStatus(undefined, 7), undefined)
+})
+
+test('parseCurlTrailer reads the status and url without a newline', () => {
+  assert.ok(!CURL_WRITE_OUT.includes('\n'))
+  assert.deepEqual(parseCurlTrailer('200 https://github.com/x/y'), {
+    status: 200,
+    effectiveUrl: 'https://github.com/x/y'
+  })
+  assert.deepEqual(parseCurlTrailer(''), {
+    status: undefined,
+    effectiveUrl: ''
+  })
 })

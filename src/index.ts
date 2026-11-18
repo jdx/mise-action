@@ -13,9 +13,11 @@ import { cachePeriod } from './cache-period.js'
 import { configFileGlobs, templateUsesFileHash } from './config-hash.js'
 import { parseDuration, withThrottleRetry } from './cache-retry.js'
 import {
+  CURL_WRITE_OUT,
   downloadError,
   failedStatus,
   hostOf,
+  parseCurlTrailer,
   redirectedHost,
   retryDownload
 } from './download-retry.js'
@@ -900,27 +902,39 @@ async function requestOnce(
   const tool = await getDownloadTool()
   const opts = { silent: true, ignoreReturnCode: true }
   if (tool === 'curl') {
-    const rsp = await exec.getExecOutput(
-      'curl',
-      [
-        '-sSL',
-        '-w',
-        '\n%{http_code} %{url_effective}',
-        ...(filePath ? ['--output', filePath] : []),
-        url
-      ],
-      opts
-    )
-    const nl = rsp.stdout.lastIndexOf('\n')
-    const [code, effectiveUrl = ''] = rsp.stdout.slice(nl + 1).split(' ')
-    return {
-      exitCode: rsp.exitCode,
-      status: Number(code) || undefined,
-      host: hostOf(effectiveUrl),
-      body: rsp.stdout.slice(0, Math.max(nl, 0)),
-      tool,
-      // curl exit 23: write error
-      localError: rsp.exitCode === 23
+    // The body always goes to a file and `--write-out` carries no newline:
+    // MSYS curl.exe (Rtools, Git for Windows) splits a literal newline in the
+    // argument, which broke reading the status from a stdout that also held
+    // the body.
+    const tempDir = filePath
+      ? undefined
+      : await fs.promises.mkdtemp(
+          path.join(tempRoot(process.env, os.tmpdir()), 'mise-action-')
+        )
+    const outPath = filePath ?? path.join(tempDir as string, 'body')
+    try {
+      const rsp = await exec.getExecOutput(
+        'curl',
+        ['-sSL', '-w', CURL_WRITE_OUT, '--output', outPath, url],
+        opts
+      )
+      const { status, effectiveUrl } = parseCurlTrailer(rsp.stdout)
+      return {
+        exitCode: rsp.exitCode,
+        status,
+        host: hostOf(effectiveUrl),
+        // A failed transfer may leave no file; after a successful one a read
+        // error is real and must surface rather than look like an empty body.
+        body:
+          tempDir && rsp.exitCode === 0
+            ? await fs.promises.readFile(outPath, 'utf8')
+            : '',
+        tool,
+        // curl exit 23: write error
+        localError: rsp.exitCode === 23
+      }
+    } finally {
+      if (tempDir) await io.rmRF(tempDir)
     }
   }
   const rsp = await exec.getExecOutput(

@@ -182,3 +182,19 @@ export async function retryDownload<T>(
     }
   }
 }
+
+/**
+ * The `--write-out` format for curl. It has no newline because MSYS curl.exe
+ * (Rtools, Git for Windows) splits one in an argument; the body goes to a file
+ * so this is all curl prints to stdout.
+ */
+export const CURL_WRITE_OUT = '%{http_code} %{url_effective}'
+
+/** Final status and URL from curl's `--write-out` output; status is undefined when unreadable. */
+export function parseCurlTrailer(stdout: string): {
+  status?: number
+  effectiveUrl: string
+} {
+  const [code, effectiveUrl = ''] = stdout.trim().split(' ')
+  return { status: Number(code) || undefined, effectiveUrl }
+}
