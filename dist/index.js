@@ -140760,14 +140760,6 @@ async function ensureWindowsMiseShim(miseBinPath, miseShimPath, version) {
         warning(`Failed to install mise-shim.exe: ${errorMessage(err)}. Continuing because mise can fall back to file shim mode on Windows.`);
     }
 }
-async function readIfExists(p) {
-    try {
-        return await fs.promises.readFile(p, 'utf8');
-    }
-    catch {
-        return '';
-    }
-}
 async function getDownloadTool() {
     if (cachedDownloadTool)
         return cachedDownloadTool;
@@ -140809,7 +140801,11 @@ async function requestOnce(url, filePath) {
                 exitCode: rsp.exitCode,
                 status,
                 host: hostOf(effectiveUrl),
-                body: tempDir ? await readIfExists(outPath) : '',
+                // A failed transfer may leave no file; after a successful one a read
+                // error is real and must surface rather than look like an empty body.
+                body: tempDir && rsp.exitCode === 0
+                    ? await fs.promises.readFile(outPath, 'utf8')
+                    : '',
                 tool,
                 // curl exit 23: write error
                 localError: rsp.exitCode === 23

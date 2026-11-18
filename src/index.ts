@@ -863,14 +863,6 @@ async function ensureWindowsMiseShim(
   }
 }
 
-async function readIfExists(p: string): Promise<string> {
-  try {
-    return await fs.promises.readFile(p, 'utf8')
-  } catch {
-    return ''
-  }
-}
-
 async function getDownloadTool(): Promise<DownloadTool> {
   if (cachedDownloadTool) return cachedDownloadTool
   if (await io.which('curl')) {
@@ -931,7 +923,12 @@ async function requestOnce(
         exitCode: rsp.exitCode,
         status,
         host: hostOf(effectiveUrl),
-        body: tempDir ? await readIfExists(outPath) : '',
+        // A failed transfer may leave no file; after a successful one a read
+        // error is real and must surface rather than look like an empty body.
+        body:
+          tempDir && rsp.exitCode === 0
+            ? await fs.promises.readFile(outPath, 'utf8')
+            : '',
         tool,
         // curl exit 23: write error
         localError: rsp.exitCode === 23
