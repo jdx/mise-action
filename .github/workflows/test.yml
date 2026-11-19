@@ -425,6 +425,51 @@ jobs:
         shell: bash
         run: test "$MISE_DATA_DIR" = "$RUNNER_TEMP/mise-data-dir"
 
+  mise_env_input:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Write an environment-specific config
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/mise-env-input"
+          cd "$RUNNER_TEMP/mise-env-input"
+          printf '[env]\nMISE_ACTION_TEST_ENV = "base"\n' > mise.toml
+          printf '[env]\nMISE_ACTION_TEST_ENV = "overlay"\n' > mise.ci.toml
+      - name: Setup mise with mise_env
+        uses: $/
+        env:
+          # The input must win over a different value set by the workflow.
+          MISE_ENV: ignored
+        with:
+          mise_env: ci
+          mise_dir: ${{ runner.temp }}/mise-env-input-data
+          working_directory: ${{ runner.temp }}/mise-env-input
+          cache_key: "mise-env-input-{{mise_env}}-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Check later steps use the mise_env environment
+        shell: bash
+        working-directory: ${{ runner.temp }}/mise-env-input
+        run: |
+          test "$MISE_ENV" = "ci"
+          test "$MISE_ACTION_TEST_ENV" = "overlay"
+          test "$(mise env --json | jq -r '.MISE_ACTION_TEST_ENV')" = "overlay"
+      - name: Restore the cache saved under the mise_env key
+        id: restore
+        uses: $/
+        with:
+          install: false
+          mise_dir: ${{ runner.temp }}/mise-env-input-data
+          working_directory: ${{ runner.temp }}/mise-env-input
+          cache_key: "mise-env-input-ci-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Check the cache key used the mise_env input
+        shell: bash
+        env:
+          CACHE_HIT: ${{ steps.restore.outputs.cache-hit }}
+        run: test "$CACHE_HIT" = "true"
+
   fetch_from_github:
     timeout-minutes: 10
     runs-on: ubuntu-latest
@@ -677,6 +722,7 @@ jobs:
       - custom_cache_key
       - mise_dir_sets_data_dir
       - mise_dir_matching_data_dir
+      - mise_env_input
       - download_retry
       - fetch_from_github
     runs-on: ubuntu-latest

@@ -30,6 +30,7 @@ jobs:
           cache_save_post: false # [default: false] save the cache in the post step, after later steps install more tools
           experimental: true # [default: false] enable experimental features
           log_level: debug # [default: info] log level
+          mise_env: ci # [default: ""] export MISE_ENV for the action and later steps
           # automatically write this .tool-versions file
           tool_versions: |
             shellcheck 0.11.0
@@ -82,6 +83,41 @@ API quota. If the index is unavailable
 or invalid, the action fails rather than bypassing the age policy.
 This input controls the mise binary; it does not set the release-age policy for
 tools installed by mise.
+
+## mise Environments (`MISE_ENV`)
+
+Set `mise_env` to pick the [mise environment](https://mise.jdx.dev/configuration/environments.html)
+the job uses:
+
+```yaml
+- uses: jdx/mise-action@v5
+  with:
+    mise_env: ci # loads mise.ci.toml on top of mise.toml
+- run: mise run test # also runs with MISE_ENV=ci
+```
+
+The action exports the value as `MISE_ENV`, so the cache key, `mise install`,
+and every later step in the job use the same configs. The input wins over a
+`MISE_ENV` that is already set.
+
+Setting `MISE_ENV` in `env:` on the action's step alone is not enough: the
+action installs and caches tools for that environment, but later steps do not
+see the variable and fall back to the base config. Job-level or workflow-level
+`env:` works too; the input is for when that is not available, such as a
+composite action that picks the environment from its own inputs:
+
+```yaml
+# .github/actions/setup/action.yml
+inputs:
+  haskell:
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@v5
+      with:
+        mise_env: ${{ inputs.haskell == 'true' && 'ci' || 'ci-no-haskell' }}
+```
 
 ## Environment and PATH Export
 
@@ -237,7 +273,7 @@ Available template variables:
 - `{{cache_key_prefix}}` - The cache key prefix (from `cache_key_prefix` input or default)
 - `{{platform}}` - The target platform, including the runner image (e.g., "linux-x64-ubuntu24", "macos-arm64-macos15", "linux-x64-self-hosted"). The trailing segment is `process.env.ImageOS` on github-hosted runners and falls back to `"self-hosted"` elsewhere — preventing cache collisions when the same repo runs on different runner providers (github-hosted, namespace.so, self-hosted).
 - `{{file_hash}}` - Hash of all mise configuration files
-- `{{mise_env}}` - The MISE_ENV environment variable value
+- `{{mise_env}}` - The `MISE_ENV` value (from the `mise_env` input or the environment)
 - `{{install_args_hash}}` - SHA256 hash of the sorted tools from install args
 - `{{bootstrap_hash}}` - SHA256 hash of bootstrap mode, skip list, and args
 - `{{plugins_hash}}` - SHA256 hash of the `plugins` input (empty when unset)
