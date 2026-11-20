@@ -1,6 +1,13 @@
 # Changelog
 
 ---
+## [5.3.0](https://github.com/jdx/mise-action/compare/v5.2.10..v5.3.0) - 2026-11-20
+
+### 🚀 Features
+
+- add mise_env input that exports MISE_ENV to later steps (#745) by [@jdx](https://github.com/jdx) in [#745](https://github.com/jdx/mise-action/pull/745)
+
+---
 ## [5.2.10](https://github.com/jdx/mise-action/compare/v5.2.9..v5.2.10) - 2026-11-18
 
 ### 🐛 Bug Fixes
