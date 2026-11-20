@@ -140130,6 +140130,7 @@ async function run() {
         // Fail on a bad budget before any cache call, not partway through the run.
         cacheRetryBudgetMs('restore');
         cacheRetryBudgetMs('save');
+        setMiseEnv();
         await setToolVersions();
         await setMiseToml();
         let cacheKey;
@@ -140395,6 +140396,19 @@ function checkMiseSupportsRedacted() {
             return true;
     }
     return false;
+}
+/**
+ * Export the `mise_env` input as MISE_ENV. This runs before the cache key is
+ * computed, so the key, the install, and later steps all use the same
+ * environment. The input wins over an existing MISE_ENV, like `mise_dir` does
+ * over MISE_DATA_DIR.
+ */
+function setMiseEnv() {
+    const miseEnv = getInput('mise_env');
+    if (!miseEnv)
+        return;
+    info(`Setting MISE_ENV=${miseEnv}`);
+    exportVariable('MISE_ENV', miseEnv);
 }
 /** Set mise defaults, action authentication, and the optional shims path. */
 async function setEnvVars() {
