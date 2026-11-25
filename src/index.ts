@@ -35,6 +35,7 @@ import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
 import { parseManagedPaths, selectPathAdditions } from './managed-paths.js'
+import { misePathDirs } from './mise-path.js'
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
@@ -94,6 +95,7 @@ async function run(): Promise<void> {
     const fetchFromGitHub = core.getBooleanInput('fetch_from_github')
     await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate)
     await setEnvVars()
+    addMiseToPath()
     if (core.getBooleanInput('reshim')) {
       await miseReshim()
     }
@@ -182,7 +184,7 @@ async function exportMiseEnv(): Promise<void> {
     try {
       // First, get the redacted values to identify what needs masking
       const redactedOutput = await exec.getExecOutput(
-        'mise',
+        miseBin(),
         ['env', '--redacted', '--json'],
         { silent: true, cwd }
       )
@@ -195,9 +197,11 @@ async function exportMiseEnv(): Promise<void> {
       }
 
       // Then get the actual values
-      const actualOutput = await exec.getExecOutput('mise', ['env', '--json'], {
-        cwd
-      })
+      const actualOutput = await exec.getExecOutput(
+        miseBin(),
+        ['env', '--json'],
+        { cwd }
+      )
       const actualVars = JSON.parse(actualOutput.stdout)
       const managedPaths = await getMiseManagedPaths(cwd)
 
@@ -216,7 +220,7 @@ async function exportMiseEnv(): Promise<void> {
     } catch {
       // Fall back to dotenv format if the redacted command fails
       core.info('Falling back to dotenv format')
-      const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
+      const output = await exec.getExecOutput(miseBin(), ['env', '--dotenv'], {
         cwd
       })
       exportMiseDotenv(output.stdout)
@@ -224,7 +228,7 @@ async function exportMiseEnv(): Promise<void> {
     }
   } else {
     // Fall back to the old --dotenv format for older versions
-    const output = await exec.getExecOutput('mise', ['env', '--dotenv'], {
+    const output = await exec.getExecOutput(miseBin(), ['env', '--dotenv'], {
       cwd
     })
     exportMiseDotenv(output.stdout)
@@ -286,7 +290,7 @@ function getMisePathAdditions(computedPath: string): string[] {
 async function getMiseManagedPaths(cwd: string): Promise<string[] | undefined> {
   if (!core.getBooleanInput('export_path')) return undefined
 
-  const output = await exec.getExecOutput('mise', ['env', '--paths'], {
+  const output = await exec.getExecOutput(miseBin(), ['env', '--paths'], {
     cwd,
     silent: true,
     ignoreReturnCode: true
@@ -310,7 +314,7 @@ async function exportMisePathFromJson(cwd: string): Promise<void> {
   if (!core.getBooleanInput('export_path')) return
 
   try {
-    const output = await exec.getExecOutput('mise', ['env', '--json'], {
+    const output = await exec.getExecOutput(miseBin(), ['env', '--json'], {
       cwd,
       silent: true
     })
@@ -409,11 +413,21 @@ async function setEnvVars(): Promise<void> {
 
   set('MISE_TRUSTED_CONFIG_PATHS', process.cwd())
   set('MISE_YES', '1')
+}
 
-  if (core.getBooleanInput('add_shims_to_path')) {
-    const shimsDir = path.join(miseDir(), 'shims')
-    core.info(`Adding ${shimsDir} to PATH`)
-    core.addPath(shimsDir)
+/**
+ * Add the shims directory (when enabled) and then the verified mise binary's
+ * directory to PATH. Each addition is prepended, so `mise` in later steps
+ * resolves to the verified binary rather than to anything in the shims
+ * directory, which may be restored from the cache.
+ */
+function addMiseToPath(): void {
+  const binDir = path.dirname(miseBin())
+  const shimsDir = path.join(miseDir(), 'shims')
+  const addShims = core.getBooleanInput('add_shims_to_path')
+  for (const dir of misePathDirs(binDir, shimsDir, addShims)) {
+    core.info(`Adding ${dir} to PATH`)
+    core.addPath(dir)
   }
 }
 
@@ -749,7 +763,18 @@ async function setupMise(
     await saveMiseBinCache(binCacheKey, binCacheFiles)
   }
 
-  core.addPath(miseBinDir)
+  verifiedMiseBinPath = miseBinPath
+}
+
+/**
+ * The mise binary `setupMise` installed or verified. Every call the action
+ * makes runs it by absolute path, never by a PATH lookup, so a `mise` found
+ * elsewhere on PATH (such as in the shims directory) never runs in its place.
+ */
+let verifiedMiseBinPath: string | undefined
+function miseBin(): string {
+  if (!verifiedMiseBinPath) throw new Error('mise has not been set up yet')
+  return verifiedMiseBinPath
 }
 
 function isFileInUseError(err: unknown): boolean {
@@ -1464,7 +1489,7 @@ const miseInstall = async (): Promise<number> => {
  */
 async function hasMonorepoConfigRoots(): Promise<boolean> {
   const { stdout, exitCode } = await exec.getExecOutput(
-    'mise',
+    miseBin(),
     ['config', 'get', 'monorepo.config_roots'],
     {
       cwd: getCwd(),
@@ -1521,7 +1546,7 @@ async function miseInstallPlugins(): Promise<void> {
 async function setToolVersionOutputs(): Promise<void> {
   try {
     const { stdout } = await exec.getExecOutput(
-      'mise',
+      miseBin(),
       ['ls', '--json', '--current'],
       { cwd: getCwd(), silent: true }
     )
@@ -1548,12 +1573,13 @@ const mise = async (args: string[]): Promise<number> =>
       : baseEnv
 
     if (args.length === 1) {
-      return exec.exec(`mise ${args}`, [], {
+      // A single argument is a command line (e.g. install args) to split.
+      return exec.exec(`"${miseBin()}" ${args}`, [], {
         cwd,
         env
       })
     } else {
-      return exec.exec('mise', args, { cwd, env })
+      return exec.exec(miseBin(), args, { cwd, env })
     }
   })
 
@@ -1623,7 +1649,7 @@ async function miseSupportsLockedInstall(): Promise<boolean> {
   if (supportsLockedInstall !== undefined) return supportsLockedInstall
 
   const { stdout, stderr } = await exec.getExecOutput(
-    'mise',
+    miseBin(),
     ['install', '--help'],
     {
       cwd: getCwd(),
