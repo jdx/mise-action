@@ -24,7 +24,9 @@ test('the action never runs mise through a PATH lookup', () => {
   const byName = [
     /exec\.(?:exec|getExecOutput)\(\s*'mise'/,
     /exec\.(?:exec|getExecOutput)\(\s*`mise[\s`]/,
-    /exec\.(?:exec|getExecOutput)\(\s*"mise"/
+    /exec\.(?:exec|getExecOutput)\(\s*"mise"/,
+    // @actions/exec splits the command on whitespace, so the path is quoted.
+    /exec\.(?:exec|getExecOutput)\(\s*miseBin\(\)/
   ]
   for (const pattern of byName) {
     assert.doesNotMatch(source, pattern)

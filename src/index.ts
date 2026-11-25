@@ -184,7 +184,7 @@ async function exportMiseEnv(): Promise<void> {
     try {
       // First, get the redacted values to identify what needs masking
       const redactedOutput = await exec.getExecOutput(
-        miseBin(),
+        quotedMiseBin(),
         ['env', '--redacted', '--json'],
         { silent: true, cwd }
       )
@@ -198,7 +198,7 @@ async function exportMiseEnv(): Promise<void> {
 
       // Then get the actual values
       const actualOutput = await exec.getExecOutput(
-        miseBin(),
+        quotedMiseBin(),
         ['env', '--json'],
         { cwd }
       )
@@ -220,17 +220,21 @@ async function exportMiseEnv(): Promise<void> {
     } catch {
       // Fall back to dotenv format if the redacted command fails
       core.info('Falling back to dotenv format')
-      const output = await exec.getExecOutput(miseBin(), ['env', '--dotenv'], {
-        cwd
-      })
+      const output = await exec.getExecOutput(
+        quotedMiseBin(),
+        ['env', '--dotenv'],
+        { cwd }
+      )
       exportMiseDotenv(output.stdout)
       await exportMisePathFromJson(cwd)
     }
   } else {
     // Fall back to the old --dotenv format for older versions
-    const output = await exec.getExecOutput(miseBin(), ['env', '--dotenv'], {
-      cwd
-    })
+    const output = await exec.getExecOutput(
+      quotedMiseBin(),
+      ['env', '--dotenv'],
+      { cwd }
+    )
     exportMiseDotenv(output.stdout)
     await exportMisePathFromJson(cwd)
   }
@@ -290,7 +294,7 @@ function getMisePathAdditions(computedPath: string): string[] {
 async function getMiseManagedPaths(cwd: string): Promise<string[] | undefined> {
   if (!core.getBooleanInput('export_path')) return undefined
 
-  const output = await exec.getExecOutput(miseBin(), ['env', '--paths'], {
+  const output = await exec.getExecOutput(quotedMiseBin(), ['env', '--paths'], {
     cwd,
     silent: true,
     ignoreReturnCode: true
@@ -314,10 +318,11 @@ async function exportMisePathFromJson(cwd: string): Promise<void> {
   if (!core.getBooleanInput('export_path')) return
 
   try {
-    const output = await exec.getExecOutput(miseBin(), ['env', '--json'], {
-      cwd,
-      silent: true
-    })
+    const output = await exec.getExecOutput(
+      quotedMiseBin(),
+      ['env', '--json'],
+      { cwd, silent: true }
+    )
     const vars = JSON.parse(output.stdout)
     const pathEntry = Object.entries(vars).find(
       ([key, value]) =>
@@ -763,7 +768,7 @@ async function setupMise(
     await saveMiseBinCache(binCacheKey, binCacheFiles)
   }
 
-  verifiedMiseBinPath = miseBinPath
+  verifiedMiseBinPath = path.resolve(miseBinPath)
 }
 
 /**
@@ -775,6 +780,14 @@ let verifiedMiseBinPath: string | undefined
 function miseBin(): string {
   if (!verifiedMiseBinPath) throw new Error('mise has not been set up yet')
   return verifiedMiseBinPath
+}
+
+/**
+ * `miseBin()` quoted for `@actions/exec`, which splits its command line
+ * argument on whitespace even when the arguments are passed separately.
+ */
+function quotedMiseBin(): string {
+  return `"${miseBin()}"`
 }
 
 function isFileInUseError(err: unknown): boolean {
@@ -1489,7 +1502,7 @@ const miseInstall = async (): Promise<number> => {
  */
 async function hasMonorepoConfigRoots(): Promise<boolean> {
   const { stdout, exitCode } = await exec.getExecOutput(
-    miseBin(),
+    quotedMiseBin(),
     ['config', 'get', 'monorepo.config_roots'],
     {
       cwd: getCwd(),
@@ -1546,7 +1559,7 @@ async function miseInstallPlugins(): Promise<void> {
 async function setToolVersionOutputs(): Promise<void> {
   try {
     const { stdout } = await exec.getExecOutput(
-      miseBin(),
+      quotedMiseBin(),
       ['ls', '--json', '--current'],
       { cwd: getCwd(), silent: true }
     )
@@ -1574,12 +1587,12 @@ const mise = async (args: string[]): Promise<number> =>
 
     if (args.length === 1) {
       // A single argument is a command line (e.g. install args) to split.
-      return exec.exec(`"${miseBin()}" ${args}`, [], {
+      return exec.exec(`${quotedMiseBin()} ${args}`, [], {
         cwd,
         env
       })
     } else {
-      return exec.exec(miseBin(), args, { cwd, env })
+      return exec.exec(quotedMiseBin(), args, { cwd, env })
     }
   })
 
@@ -1649,7 +1662,7 @@ async function miseSupportsLockedInstall(): Promise<boolean> {
   if (supportsLockedInstall !== undefined) return supportsLockedInstall
 
   const { stdout, stderr } = await exec.getExecOutput(
-    miseBin(),
+    quotedMiseBin(),
     ['install', '--help'],
     {
       cwd: getCwd(),
