@@ -35,6 +35,7 @@ import { selectMiseRelease } from './release-index.js'
 import { toolVersionOutputs } from './tool-versions.js'
 import { buildInstallCommand } from './install-args.js'
 import { parseManagedPaths, selectPathAdditions } from './managed-paths.js'
+import { workspaceDataDir } from './data-dir.js'
 
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE =
@@ -59,6 +60,7 @@ async function run(): Promise<void> {
     cacheRetryBudgetMs('restore')
     cacheRetryBudgetMs('save')
     setMiseEnv()
+    setWorkspaceDataDir()
     await setToolVersions()
     await setMiseToml()
 
@@ -373,6 +375,19 @@ function setMiseEnv(): void {
   if (!miseEnv) return
   core.info(`Setting MISE_ENV=${miseEnv}`)
   core.exportVariable('MISE_ENV', miseEnv)
+}
+
+/**
+ * Export MISE_DATA_DIR on the workspace drive of a hosted Windows runner (see
+ * workspaceDataDir). This runs before the cache restore and the mise install,
+ * so miseDir() and mise use the same directory.
+ */
+function setWorkspaceDataDir(): void {
+  if (core.getInput('mise_dir')) return
+  const dataDir = workspaceDataDir(process.env, process.platform)
+  if (!dataDir) return
+  core.info(`Setting MISE_DATA_DIR=${dataDir}`)
+  core.exportVariable('MISE_DATA_DIR', dataDir)
 }
 
 /** Set mise defaults, action authentication, and the optional shims path. */
