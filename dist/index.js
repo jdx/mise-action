@@ -141862,6 +141862,33 @@ function selectPathAdditions(managedPaths, derive) {
     return managedPaths ?? derive();
 }
 
+/**
+ * The data directory to use on a GitHub-hosted Windows runner whose workspace
+ * is not on the system drive, or undefined to keep mise's default.
+ *
+ * Hosted Windows runners keep the workspace on D: and `%LOCALAPPDATA%` on C:.
+ * Restoring the mise cache onto D: is several times faster than onto C:.
+ */
+function workspaceDataDir(env, platform) {
+    if (platform !== 'win32')
+        return undefined;
+    if (env.RUNNER_ENVIRONMENT !== 'github-hosted')
+        return undefined;
+    if (env.MISE_DATA_DIR || env.XDG_DATA_HOME)
+        return undefined;
+    const workspace = env.GITHUB_WORKSPACE;
+    if (!workspace)
+        return undefined;
+    const root = path$2.win32.parse(workspace).root;
+    if (!root)
+        return undefined;
+    const systemDrive = env.SYSTEMDRIVE;
+    if (systemDrive && root.toUpperCase().startsWith(systemDrive.toUpperCase())) {
+        return undefined;
+    }
+    return path$2.win32.join(root, 'mise');
+}
+
 // Default cache key template
 const DEFAULT_CACHE_KEY_TEMPLATE = '{{cache_key_prefix}}-{{platform}}{{#if version}}-{{version}}{{/if}}{{#if mise_env}}-{{mise_env}}{{/if}}{{#if install_args_hash}}-{{install_args_hash}}{{/if}}{{#if bootstrap_hash}}-{{bootstrap_hash}}{{/if}}{{#if plugins_hash}}-{{plugins_hash}}{{/if}}{{#if cache_period}}-p{{cache_period}}{{/if}}-{{#if file_hash}}{{file_hash}}{{else}}no-config{{/if}}';
 const ROOT_MISE_LOCK_FILE_PATTERNS = [/^\.?mise(?:\.[^.]+)?\.lock$/];
@@ -141880,6 +141907,7 @@ async function run() {
         cacheRetryBudgetMs('restore');
         cacheRetryBudgetMs('save');
         setMiseEnv();
+        setWorkspaceDataDir();
         await setToolVersions();
         await setMiseToml();
         let cacheKey;
@@ -142158,6 +142186,20 @@ function setMiseEnv() {
         return;
     info(`Setting MISE_ENV=${miseEnv}`);
     exportVariable('MISE_ENV', miseEnv);
+}
+/**
+ * Export MISE_DATA_DIR on the workspace drive of a hosted Windows runner (see
+ * workspaceDataDir). This runs before the cache restore and the mise install,
+ * so miseDir() and mise use the same directory.
+ */
+function setWorkspaceDataDir() {
+    if (getInput('mise_dir'))
+        return;
+    const dataDir = workspaceDataDir(process.env, process.platform);
+    if (!dataDir)
+        return;
+    info(`Setting MISE_DATA_DIR=${dataDir}`);
+    exportVariable('MISE_DATA_DIR', dataDir);
 }
 /** Set mise defaults, action authentication, and the optional shims path. */
 async function setEnvVars() {
