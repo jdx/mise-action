@@ -43,8 +43,9 @@ jobs:
           # the network. Installing (even with nothing to do) is what makes the action save its cache.
           install: ${{ inputs.cache }}
           install_args: node aube
+      # run-action.sh leaves mise off the PATH steps start from, so this finds the action's GITHUB_PATH entry.
       - name: mise is on PATH and runs
         run: |
-          command -v mise
+          test "$(command -v mise)" = "$MISE_DATA_DIR/bin/mise"
           mise --version
           mise env --json

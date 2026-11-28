@@ -23,5 +23,18 @@ if ! jactionlint run --check-sandbox >/dev/null 2>&1; then
   sandbox=(--sandbox=off)
 fi
 
-exec jactionlint run .oss-scanner/workflow.yml -e workflow_dispatch \
+# Steps start from this PATH. Leave mise's own directories off it, so that the mise a step finds is the
+# one the action added through GITHUB_PATH, but keep node, which runs the action.
+jactionlint="$(mise which jactionlint)"
+node_bin="$(dirname "$(mise which node)")"
+step_path="$node_bin"
+IFS=: read -ra dirs <<<"$PATH"
+for dir in "${dirs[@]}"; do
+  case "$dir" in
+  "$MISE_DATA_DIR"/bin | "$MISE_DATA_DIR"/shims | "$MISE_DATA_DIR"/installs/*) ;;
+  *) step_path="$step_path:$dir" ;;
+  esac
+done
+
+PATH="$step_path" exec "$jactionlint" run .oss-scanner/workflow.yml -e workflow_dispatch \
   --allow-write "$MISE_DATA_DIR" -i version="$version" -i sha256="$sha256" "${sandbox[@]}" "$@"
