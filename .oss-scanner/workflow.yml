@@ -1,0 +1,56 @@
+# Runs this action inside the OSS Scanner image with jactionlint's local runner
+# (`jactionlint run`, https://jactionlint.jdx.dev/run), so the audit can exercise action.yml the way a
+# workflow does: inputs, the main and post steps, GITHUB_ENV and GITHUB_PATH, and the Actions cache.
+# Start it with .oss-scanner/run-action.sh, which passes the version and SHA-256 of the mise binary
+# installed in the image, so the action verifies it without the network.
+# This is not a CI workflow, which is why it is not in .github/workflows.
+name: oss-scanner
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: version of the mise binary in $MISE_DATA_DIR/bin
+        required: true
+      sha256:
+        description: its SHA-256
+        required: true
+      cache:
+        description: cache the mise directory through the runner's local cache service
+        default: "false"
+      ceiling:
+        description: a directory between the runner's copy of the checkout and the checkout itself
+        required: true
+permissions: {}
+jobs:
+  action:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      MISE_DATA_DIR: /opt/mise
+      MISE_CACHE_DIR: /opt/mise/cache
+      # The runner's copy of the checkout sits under /src/.jactionlint, so stop mise from walking up
+      # into /src, which the sandbox does not let a step read. mise does not read the ceiling
+      # directory itself, so it can't be the copy. jactionlint sets this itself from
+      # jdx/jactionlint#370 on; it stays here for the jactionlint version in mise.lock.
+      MISE_CEILING_PATHS: ${{ inputs.ceiling }}
+    steps:
+      # jactionlint's runner already works in a copy of the checkout, so this step does nothing there.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./
+        with:
+          version: ${{ inputs.version }}
+          sha256: ${{ inputs.sha256 }}
+          cache: ${{ inputs.cache }}
+          # node and aube are already installed in the image; the other tools in mise.toml would need
+          # the network. Installing (even with nothing to do) is what makes the action save its cache.
+          install: ${{ inputs.cache }}
+          install_args: node aube
+      # run-action.sh leaves mise off the PATH steps start from, so this finds the action's GITHUB_PATH entry.
+      - name: mise is on PATH and runs
+        run: |
+          test "$(command -v mise)" = "$MISE_DATA_DIR/bin/mise"
+          mise --version
+          mise config ls --no-header | grep -F "$GITHUB_WORKSPACE/mise.toml"
+          mise env --json
