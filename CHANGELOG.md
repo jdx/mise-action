@@ -1,7 +1,29 @@
 # Changelog
 
 ---
-## [5.3.0](https://github.com/jdx/mise-action/compare/v5.2.10..v5.3.0) - 2026-11-20
+## [5.4.0](https://github.com/jdx/mise-action/compare/v5.3.0..v5.4.0) - 2026-11-28
+
+### 🚀 Features
+
+- **(windows)** use the workspace drive for mise on hosted runners (#756) by [@jdx](https://github.com/jdx) in [#756](https://github.com/jdx/mise-action/pull/756)
+
+### 🐛 Bug Fixes
+
+- always run the verified mise binary (#753) by [@jdx](https://github.com/jdx) in [#753](https://github.com/jdx/mise-action/pull/753)
+
+### ⚙️ Miscellaneous Tasks
+
+- **(entire)** remove trail runners by [@jdx](https://github.com/jdx) in [bf055ba](https://github.com/jdx/mise-action/commit/bf055ba34eaa1103802de468d31eca5758b9a003)
+- **(renovate)** ignore github-actions[bot] commits so Renovate keeps rebasing (#757) by [@jdx](https://github.com/jdx) in [#757](https://github.com/jdx/mise-action/pull/757)
+- add GitHub Actions workflow lockfile by [@claude](https://github.com/claude) in [c01bfd3](https://github.com/jdx/mise-action/commit/c01bfd34ae6dbd79eca9dbbe092f76b226cc01be)
+
+### New Contributors
+
+* @claude made their first contribution
+* @ made their first contribution
+
+---
+## [5.3.0](https://github.com/jdx/mise-action/compare/v5.2.10..v5.3.0) - 2026-11-21
 
 ### 🚀 Features
 
