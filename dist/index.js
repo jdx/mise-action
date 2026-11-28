@@ -141863,6 +141863,16 @@ function selectPathAdditions(managedPaths, derive) {
 }
 
 /**
+ * The directories to add to PATH, in the order to add them. Each addition is
+ * prepended, so the last one wins: the verified mise binary's directory goes
+ * last, so `mise` resolves to it rather than to a `mise` in the shims
+ * directory, which may be restored from the cache.
+ */
+function misePathDirs(binDir, shimsDir, addShims) {
+    return addShims ? [shimsDir, binDir] : [binDir];
+}
+
+/**
  * The data directory to use on a GitHub-hosted Windows runner whose workspace
  * is not on the system drive, or undefined to keep mise's default.
  *
@@ -141941,6 +141951,7 @@ async function run() {
         const fetchFromGitHub = getBooleanInput('fetch_from_github');
         await setupMise(version, fetchFromGitHub, minimumReleaseAge, autoUpdate);
         await setEnvVars();
+        addMiseToPath();
         if (getBooleanInput('reshim')) {
             await miseReshim();
         }
@@ -142023,7 +142034,7 @@ async function exportMiseEnv() {
     if (supportsRedacted) {
         try {
             // First, get the redacted values to identify what needs masking
-            const redactedOutput = await getExecOutput('mise', ['env', '--redacted', '--json'], { silent: true, cwd });
+            const redactedOutput = await getExecOutput(quotedMiseBin(), ['env', '--redacted', '--json'], { silent: true, cwd });
             const redactedVars = JSON.parse(redactedOutput.stdout);
             // Mask sensitive values in GitHub Actions
             for (const [key, actualValue] of Object.entries(redactedVars)) {
@@ -142031,9 +142042,7 @@ async function exportMiseEnv() {
                 info(`Masked sensitive value for: ${key}`);
             }
             // Then get the actual values
-            const actualOutput = await getExecOutput('mise', ['env', '--json'], {
-                cwd
-            });
+            const actualOutput = await getExecOutput(quotedMiseBin(), ['env', '--json'], { cwd });
             const actualVars = JSON.parse(actualOutput.stdout);
             const managedPaths = await getMiseManagedPaths(cwd);
             // Export environment variables and add only mise's PATH changes through
@@ -142053,18 +142062,14 @@ async function exportMiseEnv() {
         catch {
             // Fall back to dotenv format if the redacted command fails
             info('Falling back to dotenv format');
-            const output = await getExecOutput('mise', ['env', '--dotenv'], {
-                cwd
-            });
+            const output = await getExecOutput(quotedMiseBin(), ['env', '--dotenv'], { cwd });
             exportMiseDotenv(output.stdout);
             await exportMisePathFromJson(cwd);
         }
     }
     else {
         // Fall back to the old --dotenv format for older versions
-        const output = await getExecOutput('mise', ['env', '--dotenv'], {
-            cwd
-        });
+        const output = await getExecOutput(quotedMiseBin(), ['env', '--dotenv'], { cwd });
         exportMiseDotenv(output.stdout);
         await exportMisePathFromJson(cwd);
     }
@@ -142110,7 +142115,7 @@ function getMisePathAdditions(computedPath) {
 async function getMiseManagedPaths(cwd) {
     if (!getBooleanInput('export_path'))
         return undefined;
-    const output = await getExecOutput('mise', ['env', '--paths'], {
+    const output = await getExecOutput(quotedMiseBin(), ['env', '--paths'], {
         cwd,
         silent: true,
         ignoreReturnCode: true
@@ -142130,10 +142135,7 @@ async function exportMisePathFromJson(cwd) {
     if (!getBooleanInput('export_path'))
         return;
     try {
-        const output = await getExecOutput('mise', ['env', '--json'], {
-            cwd,
-            silent: true
-        });
+        const output = await getExecOutput(quotedMiseBin(), ['env', '--json'], { cwd, silent: true });
         const vars = JSON.parse(output.stdout);
         const pathEntry = Object.entries(vars).find(([key, value]) => key.toUpperCase() === 'PATH' && typeof value === 'string');
         if (pathEntry) {
@@ -142230,10 +142232,20 @@ async function setEnvVars() {
     setupGitHubToken();
     set('MISE_TRUSTED_CONFIG_PATHS', process.cwd());
     set('MISE_YES', '1');
-    if (getBooleanInput('add_shims_to_path')) {
-        const shimsDir = path$2.join(miseDir(), 'shims');
-        info(`Adding ${shimsDir} to PATH`);
-        addPath(shimsDir);
+}
+/**
+ * Add the shims directory (when enabled) and then the verified mise binary's
+ * directory to PATH. Each addition is prepended, so `mise` in later steps
+ * resolves to the verified binary rather than to anything in the shims
+ * directory, which may be restored from the cache.
+ */
+function addMiseToPath() {
+    const binDir = path$2.dirname(miseBin());
+    const shimsDir = path$2.join(miseDir(), 'shims');
+    const addShims = getBooleanInput('add_shims_to_path');
+    for (const dir of misePathDirs(binDir, shimsDir, addShims)) {
+        info(`Adding ${dir} to PATH`);
+        addPath(dir);
     }
 }
 /** Run a cache call, retrying while GitHub throttles it (see cache-retry.ts). */
@@ -142474,7 +142486,25 @@ async function setupMise(version, fetchFromGitHub = false, minimumReleaseAge = '
     if (needsInstall && binCacheKey && getBooleanInput('cache_save')) {
         await saveMiseBinCache(binCacheKey, binCacheFiles);
     }
-    addPath(miseBinDir);
+    verifiedMiseBinPath = path$2.resolve(miseBinPath);
+}
+/**
+ * The mise binary `setupMise` installed or verified. Every call the action
+ * makes runs it by absolute path, never by a PATH lookup, so a `mise` found
+ * elsewhere on PATH (such as in the shims directory) never runs in its place.
+ */
+let verifiedMiseBinPath;
+function miseBin() {
+    if (!verifiedMiseBinPath)
+        throw new Error('mise has not been set up yet');
+    return verifiedMiseBinPath;
+}
+/**
+ * `miseBin()` quoted for `@actions/exec`, which splits its command line
+ * argument on whitespace even when the arguments are passed separately.
+ */
+function quotedMiseBin() {
+    return `"${miseBin()}"`;
 }
 function isFileInUseError(err) {
     // Only Windows refuses to delete a running executable; on Unix these codes
@@ -143028,7 +143058,7 @@ const miseInstall = async () => {
  * parse TOML (including its supported config locations and syntax) here.
  */
 async function hasMonorepoConfigRoots() {
-    const { stdout, exitCode } = await getExecOutput('mise', ['config', 'get', 'monorepo.config_roots'], {
+    const { stdout, exitCode } = await getExecOutput(quotedMiseBin(), ['config', 'get', 'monorepo.config_roots'], {
         cwd: getCwd(),
         env: { ...process.env, NO_COLOR: '1' },
         ignoreReturnCode: true,
@@ -143073,7 +143103,7 @@ async function miseInstallPlugins() {
  */
 async function setToolVersionOutputs() {
     try {
-        const { stdout } = await getExecOutput('mise', ['ls', '--json', '--current'], { cwd: getCwd(), silent: true });
+        const { stdout } = await getExecOutput(quotedMiseBin(), ['ls', '--json', '--current'], { cwd: getCwd(), silent: true });
         const { versions, outputs } = toolVersionOutputs(JSON.parse(stdout));
         setOutput('versions', JSON.stringify(versions));
         for (const [tool, version] of Object.entries(outputs)) {
@@ -143092,13 +143122,14 @@ const mise = async (args) => await group(`Running mise ${args.join(' ')}`, async
         ? { ...baseEnv, MISE_LOG_LEVEL: 'debug' }
         : baseEnv;
     if (args.length === 1) {
-        return exec(`mise ${args}`, [], {
+        // A single argument is a command line (e.g. install args) to split.
+        return exec(`${quotedMiseBin()} ${args}`, [], {
             cwd,
             env
         });
     }
     else {
-        return exec('mise', args, { cwd, env });
+        return exec(quotedMiseBin(), args, { cwd, env });
     }
 });
 const writeFile = async (p, body) => await group(`Writing ${p}`, async () => {
@@ -143162,7 +143193,7 @@ async function shouldUseLockedInstall() {
 async function miseSupportsLockedInstall() {
     if (supportsLockedInstall !== undefined)
         return supportsLockedInstall;
-    const { stdout, stderr } = await getExecOutput('mise', ['install', '--help'], {
+    const { stdout, stderr } = await getExecOutput(quotedMiseBin(), ['install', '--help'], {
         cwd: getCwd(),
         env: { ...process.env, NO_COLOR: '1' },
         ignoreReturnCode: true,
