@@ -17,6 +17,9 @@ on:
       cache:
         description: cache the mise directory through the runner's local cache service
         default: "false"
+      ceiling:
+        description: a directory between the runner's copy of the checkout and the checkout itself
+        required: true
 permissions: {}
 jobs:
   action:
@@ -26,9 +29,10 @@ jobs:
       MISE_DATA_DIR: /opt/mise
       MISE_CACHE_DIR: /opt/mise/cache
       # The runner's copy of the checkout sits under /src/.jactionlint, so stop mise from walking up
-      # into /src, which the sandbox does not let a step read. jactionlint sets this itself from
+      # into /src, which the sandbox does not let a step read. mise does not read the ceiling
+      # directory itself, so it can't be the copy. jactionlint sets this itself from
       # jdx/jactionlint#370 on; it stays here for the jactionlint version in mise.lock.
-      MISE_CEILING_PATHS: ${{ github.workspace }}
+      MISE_CEILING_PATHS: ${{ inputs.ceiling }}
     steps:
       # jactionlint's runner already works in a copy of the checkout, so this step does nothing there.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -48,4 +52,5 @@ jobs:
         run: |
           test "$(command -v mise)" = "$MISE_DATA_DIR/bin/mise"
           mise --version
+          mise config ls --no-header | grep -F "$GITHUB_WORKSPACE/mise.toml"
           mise env --json

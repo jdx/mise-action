@@ -37,4 +37,5 @@ for dir in "${dirs[@]}"; do
 done
 
 PATH="$step_path" exec "$jactionlint" run .oss-scanner/workflow.yml -e workflow_dispatch \
-  --allow-write "$MISE_DATA_DIR" -i version="$version" -i sha256="$sha256" "${sandbox[@]}" "$@"
+  --allow-write "$MISE_DATA_DIR" -i version="$version" -i sha256="$sha256" -i ceiling="$PWD/.jactionlint" \
+  "${sandbox[@]}" "$@"
