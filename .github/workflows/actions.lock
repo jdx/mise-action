@@ -8,19 +8,19 @@ workflows:
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
     '.github/workflows/codeql-analysis.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'github/codeql-action@33d7b85da1a04171e211befe2c739303b9a4c066'
+        - 'github/codeql-action@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea'
     '.github/workflows/pr-closer.yml':
         - 'jdx/pr-closer@cfa2025cb55ac202d3e329fc4cc412449de884e2'
     '.github/workflows/release-plz.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785'
+        - 'jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a'
     '.github/workflows/release.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
-        - 'jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785'
+        - 'jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a'
     '.github/workflows/test.yml':
         - 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
         - 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9'
-        - 'jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785'
+        - 'jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a'
 dependencies:
     'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1':
         ref: 'v7.0.1'
@@ -32,14 +32,14 @@ dependencies:
         commit: 'sha1-cf430e030ddbb5b0abf93d22962f4752f3646cd9'
         owner_id: 44036562
         repo_id: 192625955
-    'github/codeql-action@33d7b85da1a04171e211befe2c739303b9a4c066':
-        ref: 'v4.39.3'
-        commit: 'sha1-33d7b85da1a04171e211befe2c739303b9a4c066'
+    'github/codeql-action@1bd86f2fdb4b86187fa4059f16f31a3202acc9ea':
+        ref: 'v4.39.4'
+        commit: 'sha1-1bd86f2fdb4b86187fa4059f16f31a3202acc9ea'
         owner_id: 9919
         repo_id: 259445878
-    'jdx/mise-action@d5574b52816a478f9d4e6529a3f6ff17a8a36785':
-        ref: 'v5.2.8'
-        commit: 'sha1-d5574b52816a478f9d4e6529a3f6ff17a8a36785'
+    'jdx/mise-action@90f833d396d0cc3674b631d2d225e306476c303a':
+        ref: 'v5.2.10'
+        commit: 'sha1-90f833d396d0cc3674b631d2d225e306476c303a'
         owner_id: 216188
         repo_id: 738284564
     'jdx/pr-closer@cfa2025cb55ac202d3e329fc4cc412449de884e2':
