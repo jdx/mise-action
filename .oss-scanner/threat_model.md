@@ -70,12 +70,19 @@ The image has the dependencies installed and `dist/index.js` rebuilt from `src/`
 unit tests in `scripts/*.test.mjs`, which import `src/*.ts` directly and inject the network, cache and
 verifiers, so most of the verification logic can be driven offline. `aubr typecheck` checks the types.
 mise is installed at `$MISE_DATA_DIR/bin/mise` (`/opt/mise/bin/mise`), where the action looks for it.
-`node .oss-scanner/run-action.mjs` runs the bundled action offline against it: it fills in the
-`action.yml` defaults, passes that binary's version and SHA-256 as `version` and `sha256` so it verifies
-without the network, turns off `cache` and `install`, and writes `GITHUB_ENV`, `GITHUB_PATH` and the
-other runner files to a fresh temporary directory, printing them at the end. Set any `INPUT_<NAME>`
-first to override an input. Cache restore and save need the Actions cache service, so exercise them
-through the unit tests.
+`.oss-scanner/run-action.sh` runs the action through `.oss-scanner/workflow.yml` with jactionlint's local
+runner (`jactionlint run`, https://jactionlint.jdx.dev/run), which plays the part of the Actions runner:
+it fills in `action.yml`'s defaults and the workflow's `with:`, runs the main and post steps, applies
+`GITHUB_ENV` and `GITHUB_PATH` to the next step, and serves the Actions cache API on 127.0.0.1, so it all
+works without the internet. The script passes that binary's version and SHA-256 as `version` and
+`sha256`, so the action verifies it without the network, and `install` and `cache` are off unless you ask.
+`.oss-scanner/run-action.sh --net=none --no-cache` runs the action alone. `.oss-scanner/run-action.sh -i
+cache=true` saves `$MISE_DATA_DIR` to the local cache service, and running it again restores it: change
+the stored entry under `~/.cache/jactionlint/cache` (`jactionlint cache ls`) between the two runs to test
+what the action does with a tampered cache. Edit `workflow.yml` to try other inputs, and pass any other
+`jactionlint run` option (`--debug`, `--keep`) after the script's name. The local runner refuses some
+`GITHUB_ENV` names that GitHub's runner accepts (`NODE_OPTIONS`, `LD_*`, `BASH_ENV` and others), so check
+a `GITHUB_ENV` finding against GitHub's rules, not only against what happens here.
 
 ## How you rate severity
 

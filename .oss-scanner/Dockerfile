@@ -6,10 +6,12 @@ FROM buildpack-deps:trixie-scm@sha256:d524aa66d91264606eddea5b94af462fc3b969b84a
 
 # mise's release installer checks the binary against the checksums built into it. It goes in
 # $MISE_DATA_DIR/bin, where the action looks for it, so the audit can run the action against it
-# offline (`node .oss-scanner/run-action.mjs`, see threat_model.md).
+# offline (`.oss-scanner/run-action.sh`, see threat_model.md). Skills that tools declare aren't fetched:
+# they come from the GitHub API, which rate-limits anonymous builds, and the audit doesn't need them.
 ENV MISE_DATA_DIR=/opt/mise \
     MISE_CACHE_DIR=/opt/mise/cache \
     MISE_YES=1 \
+    MISE_SKILLS_FETCH=false \
     PATH="/opt/mise/bin:/opt/mise/shims:$PATH"
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN curl -fsSL https://github.com/jdx/mise/releases/latest/download/install.sh \
@@ -19,8 +21,10 @@ RUN curl -fsSL https://github.com/jdx/mise/releases/latest/download/install.sh \
 COPY . /src
 WORKDIR /src
 
-# node and aube at the versions and checksums in mise.lock, as CI installs them.
-RUN mise trust /src/mise.toml && mise install --locked node aube && node --version && aube --version
+# node, aube and jactionlint (whose local runner runs the action) at the versions and checksums in
+# mise.lock, as CI installs them.
+RUN mise trust /src/mise.toml && mise install --locked node aube jactionlint \
+    && node --version && aube --version && jactionlint --version
 # Fetch every dependency now, because the audit has no network.
 RUN aube install --frozen-lockfile
 # Rebuild the bundle the action runs (dist/index.js) from src/.
@@ -28,5 +32,5 @@ RUN aubr package
 RUN aubr typecheck
 # Unit tests import src/*.ts directly; a failure is reported but does not stop the build.
 RUN aube test || echo "WARNING: unit tests reported failures"
-# Smoke-test the offline runner the threat model points to.
-RUN node .oss-scanner/run-action.mjs > /dev/null
+# Run the action once, offline, the way the threat model says to.
+RUN .oss-scanner/run-action.sh --net=none --no-cache > /dev/null
