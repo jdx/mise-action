@@ -233,7 +233,7 @@ SOFTWARE.
 ---
 
 Name: brace-expansion
-Version: 5.0.13
+Version: 5.1.0
 License: MIT
 Private: false
 Description: Brace expansion as known from sh/bash
@@ -2554,7 +2554,7 @@ License Text:
 ---
 
 Name: @sigstore/core
-Version: 4.0.1
+Version: 4.0.2
 License: Apache-2.0
 Private: false
 Description: Base library for Sigstore
@@ -2802,7 +2802,7 @@ THE SOFTWARE.
 ---
 
 Name: make-fetch-happen
-Version: 16.0.1
+Version: 16.0.2
 License: ISC
 Private: false
 Description: Opinionated, caching, retrying fetch client
@@ -4188,7 +4188,7 @@ software or this license, under any kind of legal claim.***
 ---
 
 Name: @sigstore/verify
-Version: 4.1.3
+Version: 4.1.4
 License: Apache-2.0
 Private: false
 Description: Verification of Sigstore signatures
