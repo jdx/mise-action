@@ -4,15 +4,16 @@
 # buildpack-deps already has curl, git and ca-certificates, which is all the build needs.
 FROM buildpack-deps:trixie-scm@sha256:d524aa66d91264606eddea5b94af462fc3b969b84a1d4083e537a9ab84b579c5
 
-# mise's release installer checks the binary against the checksums built into it.
-# It lets the audit run the action against a real mise (`mise install`, `mise env`).
-SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -fsSL https://github.com/jdx/mise/releases/latest/download/install.sh \
-      | MISE_INSTALL_PATH=/usr/local/bin/mise sh
+# mise's release installer checks the binary against the checksums built into it. It goes in
+# $MISE_DATA_DIR/bin, where the action looks for it, so the audit can run the action against it
+# offline (`node .oss-scanner/run-action.mjs`, see threat_model.md).
 ENV MISE_DATA_DIR=/opt/mise \
     MISE_CACHE_DIR=/opt/mise/cache \
     MISE_YES=1 \
-    PATH="/opt/mise/shims:$PATH"
+    PATH="/opt/mise/bin:/opt/mise/shims:$PATH"
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN curl -fsSL https://github.com/jdx/mise/releases/latest/download/install.sh \
+      | MISE_INSTALL_PATH=/opt/mise/bin/mise sh
 
 # scanner contract: the checkout lives inside the image, at /src
 COPY . /src
@@ -27,4 +28,5 @@ RUN aubr package
 RUN aubr typecheck
 # Unit tests import src/*.ts directly; a failure is reported but does not stop the build.
 RUN aube test || echo "WARNING: unit tests reported failures"
-RUN mise --version
+# Smoke-test the offline runner the threat model points to.
+RUN node .oss-scanner/run-action.mjs > /dev/null
