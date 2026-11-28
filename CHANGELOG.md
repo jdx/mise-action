@@ -1,6 +1,14 @@
 # Changelog
 
 ---
+## [5.4.1](https://github.com/jdx/mise-action/compare/v5.4.0..v5.4.1) - 2026-11-28
+
+### ⚙️ Miscellaneous Tasks
+
+- add OSS Scanner build files (#758) by [@jdx](https://github.com/jdx) in [#758](https://github.com/jdx/mise-action/pull/758)
+- run the action in the OSS Scanner image with jactionlint run (#760) by [@jdx](https://github.com/jdx) in [#760](https://github.com/jdx/mise-action/pull/760)
+
+---
 ## [5.4.0](https://github.com/jdx/mise-action/compare/v5.3.0..v5.4.0) - 2026-11-28
 
 ### 🚀 Features
